@@ -1,0 +1,9 @@
+id: sharepoint-list
+namespace: io.kestra.plugin.microsoft365.sharepoint
+
+tasks:
+  - id: list-items
+    type: io.kestra.plugin.microsoft365.sharepoint.List
+    siteId: "{{ secret('SHAREPOINT_SITE_ID') }}"
+    driveId: "{{ secret('SHAREPOINT_DRIVE_ID') }}"
+    itemId: "{{ secret('SHAREPOINT_FOLDER_ID') }}"

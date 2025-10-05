@@ -33,11 +33,11 @@
 <p align="center" style="color:grey;"><i>Get started with Kestra in 4 minutes.</i></p>
 
 
-# Kestra Plugin Template
+# Kestra Microsoft 365 Plugin
 
-> A template for creating Kestra plugins
+> A plugin for interacting with Microsoft 365 services including SharePoint
 
-This repository serves as a general template for creating a new [Kestra](https://github.com/kestra-io/kestra) plugin. It should take only a few minutes! Use this repository as a scaffold to ensure that you've set up the plugin correctly, including unit tests and CI/CD workflows.
+This repository contains the Microsoft 365 plugin for Kestra, which provides tasks for interacting with Microsoft 365 services including SharePoint. The plugin includes tasks for creating, deleting, downloading, exporting, listing, and uploading files in SharePoint document libraries.
 
 ![Kestra orchestrator](https://kestra.io/video.gif)
 
