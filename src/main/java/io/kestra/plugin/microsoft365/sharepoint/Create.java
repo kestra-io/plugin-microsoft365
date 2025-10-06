@@ -92,7 +92,7 @@ public class Create extends Task implements RunnableTask<Create.Output> {
             renderedFilename, renderedSiteId, renderedDriveId);
         
         try {
-            com.microsoft.graph.requests.GraphServiceClient<?> graphClient = GraphClientProvider.getClient();
+            GraphServiceClient<?> graphClient = GraphClientProvider.getClient();
             
             DriveItem driveItem = new DriveItem();
             driveItem.name = renderedFilename;
