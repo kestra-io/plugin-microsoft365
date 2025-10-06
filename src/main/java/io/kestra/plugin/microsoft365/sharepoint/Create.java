@@ -26,7 +26,7 @@ import java.util.Map;
 @NoArgsConstructor
 @Plugin(
     examples = {
-        @io.kestra.core.models.annotations.Example(
+        @Example(
             title = "Create a new file in a SharePoint document library.",
             code = {
                 "siteId: \"your-site-id\"",
