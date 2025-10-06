@@ -1,6 +1,6 @@
 @PluginGroup(
     title = "Microsoft 365",
-    description = "Tasks for interacting with Microsoft 365 services including SharePoint."
+    description = "Tasks for interacting with Microsoft 365 services."
 )
 package io.kestra.plugin.microsoft365;
 
