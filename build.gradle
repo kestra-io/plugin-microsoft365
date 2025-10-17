@@ -49,6 +49,10 @@ dependencies {
     annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
+
+    // Microsoft Graph SDK
+    implementation "com.microsoft.graph:microsoft-graph:5.30.0"
+    implementation "com.azure:azure-identity:1.12.0"
 }
 
 
@@ -172,8 +176,8 @@ jar {
     manifest {
         attributes(
                 "X-Kestra-Name": project.name,
-                "X-Kestra-Title": "Template",
-                "X-Kestra-Group": project.group + ".templates",
+                "X-Kestra-Title": "Microsoft 365",
+                "X-Kestra-Group": project.group + ".microsoft365",
                 "X-Kestra-Description": project.description,
                 "X-Kestra-Version": project.version
         )

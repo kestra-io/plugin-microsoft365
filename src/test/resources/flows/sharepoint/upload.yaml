@@ -1,0 +1,11 @@
+id: sharepoint-upload
+namespace: io.kestra.plugin.microsoft365.sharepoint
+
+tasks:
+  - id: upload-file
+    type: io.kestra.plugin.microsoft365.sharepoint.Upload
+    siteId: "{{ secret('SHAREPOINT_SITE_ID') }}"
+    driveId: "{{ secret('SHAREPOINT_DRIVE_ID') }}"
+    parentId: "{{ secret('SHAREPOINT_PARENT_ID') }}"
+    filename: "uploaded-example.txt"
+    content: "This is an example file uploaded by Kestra"

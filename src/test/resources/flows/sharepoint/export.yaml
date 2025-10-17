@@ -1,0 +1,10 @@
+id: sharepoint-export
+namespace: io.kestra.plugin.microsoft365.sharepoint
+
+tasks:
+  - id: export-file
+    type: io.kestra.plugin.microsoft365.sharepoint.Export
+    siteId: "{{ secret('SHAREPOINT_SITE_ID') }}"
+    driveId: "{{ secret('SHAREPOINT_DRIVE_ID') }}"
+    itemId: "{{ secret('SHAREPOINT_ITEM_ID') }}"
+    format: "pdf"

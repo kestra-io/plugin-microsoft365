@@ -1,0 +1,9 @@
+id: sharepoint-delete
+namespace: io.kestra.plugin.microsoft365.sharepoint
+
+tasks:
+  - id: delete-file
+    type: io.kestra.plugin.microsoft365.sharepoint.Delete
+    siteId: "{{ secret('SHAREPOINT_SITE_ID') }}"
+    driveId: "{{ secret('SHAREPOINT_DRIVE_ID') }}"
+    itemId: "{{ secret('SHAREPOINT_ITEM_ID') }}"

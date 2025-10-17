@@ -1,0 +1,11 @@
+id: sharepoint-create
+namespace: io.kestra.plugin.microsoft365.sharepoint
+
+tasks:
+  - id: create-file
+    type: io.kestra.plugin.microsoft365.sharepoint.Create
+    siteId: "{{ secret('SHAREPOINT_SITE_ID') }}"
+    driveId: "{{ secret('SHAREPOINT_DRIVE_ID') }}"
+    parentId: "{{ secret('SHAREPOINT_PARENT_ID') }}"
+    filename: "example.txt"
+    content: "This is an example file created by Kestra"
