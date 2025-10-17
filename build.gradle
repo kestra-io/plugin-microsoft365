@@ -29,7 +29,7 @@ java {
 }
 
 group = "io.kestra.plugin"
-description = 'Plugin template for Kestra'
+description = 'Plugin for Microsoft 365 services like OneDrive and SharePoint.'
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
@@ -45,10 +45,30 @@ dependencies {
     annotationProcessor "org.projectlombok:lombok"
     compileOnly "org.projectlombok:lombok"
 
-    // kestra
+    // Micronaut
+    compileOnly "io.micronaut:micronaut-http-client"
+    compileOnly "io.micronaut.reactor:micronaut-reactor"
+    compileOnly "io.micronaut:micronaut-jackson-databind"
+
+    compileOnly group: 'com.fasterxml.jackson.module', name: 'jackson-module-parameter-names'
+    compileOnly group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava'
+    compileOnly group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310'
+
+    // Kestra
     annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
+
+    // Microsoft
+    api group: 'com.azure', name: 'azure-identity'
+    api (group: 'com.microsoft.graph', name: 'microsoft-graph', version: '6.54.0') {
+        // exclude libraries already provided by Kestra
+        exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'com.fasterxml.jackson.dataformat', module: 'jackson-dataformat-xml'
+        exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-jdk8'
+        exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-jsr310'
+        exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-guava'
+    }
 }
 
 
@@ -85,17 +105,24 @@ dependencies {
 
     // test deps needed only for to have a runner
     testAnnotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
+
     testImplementation group: "io.kestra", name: "core", version: kestraVersion
     testImplementation group: "io.kestra", name: "tests", version: kestraVersion
     testImplementation group: "io.kestra", name: "script", version: kestraVersion
     testImplementation group: "io.kestra", name: "repository-memory", version: kestraVersion
     testImplementation group: "io.kestra", name: "runner-memory", version: kestraVersion
     testImplementation group: "io.kestra", name: "storage-local", version: kestraVersion
+    testImplementation group: "io.kestra", name: "scheduler", version: kestraVersion
+    testImplementation group: "io.kestra", name: "worker", version: kestraVersion
 
     // test
     testImplementation "org.junit.jupiter:junit-jupiter-engine"
+    testImplementation "org.junit.jupiter:junit-jupiter-params"
     testImplementation "org.hamcrest:hamcrest"
     testImplementation "org.hamcrest:hamcrest-library"
+
+    testImplementation group: 'com.devskiller.friendly-id', name: 'friendly-id'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
 }
 
 /**********************************************************************************************************************\
@@ -130,6 +157,9 @@ test {
 
 jacocoTestReport {
     dependsOn test
+    reports {
+        xml.required.set(true)
+    }
 }
 
 /**********************************************************************************************************************\
@@ -172,8 +202,8 @@ jar {
     manifest {
         attributes(
                 "X-Kestra-Name": project.name,
-                "X-Kestra-Title": "Template",
-                "X-Kestra-Group": project.group + ".templates",
+                "X-Kestra-Title": "Microsoft 365",
+                "X-Kestra-Group": project.group + ".microsoft365",
                 "X-Kestra-Description": project.description,
                 "X-Kestra-Version": project.version
         )
@@ -181,6 +211,7 @@ jar {
 }
 
 shadowJar {
+    zip64 true
     archiveClassifier.set(null)
     mergeServiceFiles()
 }
