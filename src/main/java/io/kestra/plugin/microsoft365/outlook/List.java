@@ -5,7 +5,6 @@ import com.microsoft.graph.models.Message;
 import com.microsoft.graph.models.MessageCollectionResponse;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
-import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
@@ -78,7 +77,6 @@ public class List extends Task implements RunnableTask<List.Output> {
         title = "Authentication configuration",
         description = "Microsoft Graph authentication settings including tenant ID, client ID, and client secret"
     )
-    @PluginProperty
     @Valid
     @NotNull
     private GraphAuthConfig auth;
@@ -88,14 +86,12 @@ public class List extends Task implements RunnableTask<List.Output> {
         description = "Email folder to retrieve messages from (inbox, sentitems, drafts, deleteditems, or folder ID)",
         defaultValue = "inbox"
     )
-    @PluginProperty
     private Property<String> folderId;
 
     @Schema(
         title = "Filter",
         description = "OData filter expression to filter the results (e.g., 'isRead eq false', 'from/emailAddress/address eq 'sender@example.com'')"
     )
-    @PluginProperty
     private Property<String> filter;
 
     @Schema(
@@ -103,14 +99,12 @@ public class List extends Task implements RunnableTask<List.Output> {
         description = "Maximum number of messages to return",
         defaultValue = "50"
     )
-    @PluginProperty
     private Property<Integer> top;
 
     @Schema(
         title = "User email",
         description = "Email address of the user whose mailbox to access (optional, uses authenticated user if not specified)"
     )
-    @PluginProperty
     private Property<String> userEmail;
 
     @Override
@@ -121,47 +115,47 @@ public class List extends Task implements RunnableTask<List.Output> {
         GraphServiceClient graphClient = GraphService.createClientCredentialClient(auth, runContext);
 
         // Render properties
-        String folder = runContext.render(folderId).as(String.class).orElse("inbox");
-        String filterExpression = filter != null ? runContext.render(filter).as(String.class).orElse(null) : null;
-        Integer maxResults = runContext.render(top).as(Integer.class).orElse(50);
-        String user = userEmail != null ? runContext.render(userEmail).as(String.class).orElse(null) : null;
+        String rFolder = runContext.render(folderId).as(String.class).orElse("inbox");
+        String rFilterExpression = filter != null ? runContext.render(filter).as(String.class).orElse(null) : null;
+        Integer rMaxResults = runContext.render(top).as(Integer.class).orElse(50);
+        String rUser = userEmail != null ? runContext.render(userEmail).as(String.class).orElse(null) : null;
 
         // Use userPrincipalName from auth if userEmail not provided
-        if (user == null && auth.getUserPrincipalName() != null) {
-            user = runContext.render(auth.getUserPrincipalName()).as(String.class).orElse(null);
+        if (rUser == null && auth.getUserPrincipalName() != null) {
+            rUser = runContext.render(auth.getUserPrincipalName()).as(String.class).orElse(null);
         }
 
-        logger.info("Listing messages from folder '{}' for user: {} (max: {})", folder, user != null ? user : "current user", maxResults);
+        logger.info("Listing messages from rFolder '{}' for rUser: {} (max: {})", rFolder, rUser != null ? rUser : "current rUser", rMaxResults);
 
         // Execute request using proper request configuration
         MessageCollectionResponse messagesResponse;
-        if (user != null) {
-            messagesResponse = graphClient.users().byUserId(user)
-                .mailFolders().byMailFolderId(folder)
+        if (rUser != null) {
+            messagesResponse = graphClient.users().byUserId(rUser)
+                .mailFolders().byMailFolderId(rFolder)
                 .messages()
                 .get(requestConfig -> {
-                    if (filterExpression != null) {
+                    if (rFilterExpression != null) {
                         assert requestConfig.queryParameters != null;
-                        requestConfig.queryParameters.filter = filterExpression;
-                        logger.debug("Applied filter: {}", filterExpression);
+                        requestConfig.queryParameters.filter = rFilterExpression;
+                        logger.debug("Applied filter: {}", rFilterExpression);
                     }
                     assert requestConfig.queryParameters != null;
-                    requestConfig.queryParameters.top = maxResults;
+                    requestConfig.queryParameters.top = rMaxResults;
                     requestConfig.queryParameters.orderby = new String[]{"receivedDateTime DESC"};
                     requestConfig.queryParameters.select = new String[]{"id", "subject", "from", "sender", "receivedDateTime", "sentDateTime", "isRead", "hasAttachments", "bodyPreview", "importance", "conversationId"};
                 });
         } else {
             messagesResponse = graphClient.me()
-                .mailFolders().byMailFolderId(folder)
+                .mailFolders().byMailFolderId(rFolder)
                 .messages()
                 .get(requestConfig -> {
-                    if (filterExpression != null) {
+                    if (rFilterExpression != null) {
                         assert requestConfig.queryParameters != null;
-                        requestConfig.queryParameters.filter = filterExpression;
-                        logger.debug("Applied filter: {}", filterExpression);
+                        requestConfig.queryParameters.filter = rFilterExpression;
+                        logger.debug("Applied filter: {}", rFilterExpression);
                     }
                     assert requestConfig.queryParameters != null;
-                    requestConfig.queryParameters.top = maxResults;
+                    requestConfig.queryParameters.top = rMaxResults;
                     requestConfig.queryParameters.orderby = new String[]{"receivedDateTime DESC"};
                     requestConfig.queryParameters.select = new String[]{"id", "subject", "from", "sender", "receivedDateTime", "sentDateTime", "isRead", "hasAttachments", "bodyPreview", "importance", "conversationId"};
                 });
@@ -197,7 +191,7 @@ public class List extends Task implements RunnableTask<List.Output> {
         return Output.builder()
             .messages(emailMessages)
             .count(emailMessages.size())
-            .folderId(folder)
+            .folderId(rFolder)
             .hasNextPage(messagesResponse.getOdataNextLink() != null)
             .build();
     }
