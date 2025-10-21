@@ -9,10 +9,8 @@ import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
-import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -77,15 +75,8 @@ import java.util.Objects;
         )
     }
 )
-public class Get extends Task implements RunnableTask<Get.Output> {
+public class Get extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIdentityConnection implements RunnableTask<Get.Output> {
 
-    @Schema(
-        title = "Authentication configuration",
-        description = "Microsoft Graph authentication settings including tenant ID, client ID and client secret"
-    )
-    @NotNull
-    @Valid
-    private GraphAuthConfig auth;
 
     @Schema(
         title = "Message ID",
@@ -111,15 +102,15 @@ public class Get extends Task implements RunnableTask<Get.Output> {
     public Output run (RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        GraphServiceClient graphClient = GraphService.createClientCredentialClient(auth, runContext);
+        GraphServiceClient graphClient = this.createGraphClient(runContext);
 
         String rMsgId = runContext.render(messageID).as(String.class).orElseThrow();
         String rUser = userEmail != null ? runContext.render(userEmail).as(String.class).orElse(null) : null;
         Boolean rIncludeAttachment = runContext.render(includeAttachments).as(Boolean.class).orElse(false);
 
-        // Use userPrincipalName from auth if userEmail not provided
-        if (rUser == null && auth.getUserPrincipalName() != null) {
-            rUser = runContext.render(auth.getUserPrincipalName()).as(String.class).orElse(null);
+        // Fallback to configured UPN if not provided
+        if (rUser == null) {
+            rUser = this.getUserPrincipalName(runContext).orElse(null);
         }
 
         logger.info("Retrieving message '{}' for user: {}", rMsgId, rUser != null ? rUser : "current user");

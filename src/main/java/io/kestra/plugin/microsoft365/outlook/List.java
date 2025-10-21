@@ -7,14 +7,12 @@ import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
-import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -71,15 +69,8 @@ import java.util.ArrayList;
         )
     }
 )
-public class List extends Task implements RunnableTask<List.Output> {
+public class List extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIdentityConnection implements RunnableTask<List.Output> {
 
-    @Schema(
-        title = "Authentication configuration",
-        description = "Microsoft Graph authentication settings including tenant ID, client ID, and client secret"
-    )
-    @Valid
-    @NotNull
-    private GraphAuthConfig auth;
 
     @Schema(
         title = "Folder ID",
@@ -111,8 +102,8 @@ public class List extends Task implements RunnableTask<List.Output> {
     public Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        // Create Graph service client
-        GraphServiceClient graphClient = GraphService.createClientCredentialClient(auth, runContext);
+        // Create Graph service client from abstract connection
+        GraphServiceClient graphClient = this.createGraphClient(runContext);
 
         // Render properties
         String rFolder = runContext.render(folderId).as(String.class).orElse("inbox");
@@ -120,9 +111,9 @@ public class List extends Task implements RunnableTask<List.Output> {
         Integer rMaxResults = runContext.render(top).as(Integer.class).orElse(50);
         String rUser = userEmail != null ? runContext.render(userEmail).as(String.class).orElse(null) : null;
 
-        // Use userPrincipalName from auth if userEmail not provided
-        if (rUser == null && auth.getUserPrincipalName() != null) {
-            rUser = runContext.render(auth.getUserPrincipalName()).as(String.class).orElse(null);
+        // Fallback to configured UPN if not provided
+        if (rUser == null) {
+            rUser = this.getUserPrincipalName(runContext).orElse(null);
         }
 
         logger.info("Listing messages from rFolder '{}' for rUser: {} (max: {})", rFolder, rUser != null ? rUser : "current rUser", rMaxResults);

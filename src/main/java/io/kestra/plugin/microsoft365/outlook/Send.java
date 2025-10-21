@@ -7,14 +7,13 @@ import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
-import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIdentityConnection;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -80,15 +79,7 @@ import java.util.stream.Collectors;
         )
     }
 )
-public class Send extends Task implements RunnableTask<Send.Output> {
-
-    @Schema(
-        title = "Authentication configuration",
-        description = "Microsoft Graph authentication settings including tenant ID, client ID, and client secret"
-    )
-    @Valid
-    @NotNull
-    private GraphAuthConfig auth;
+public class Send extends AbstractMicrosoftGraphIdentityConnection implements RunnableTask<Send.Output> {
 
     @Schema(
         title = "To recipients",
@@ -140,44 +131,44 @@ public class Send extends Task implements RunnableTask<Send.Output> {
     public Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        // Create Graph service client
-        GraphServiceClient graphClient = GraphService.createClientCredentialClient(auth, runContext);
+        // Create Graph service client from abstract connection
+        GraphServiceClient graphClient = this.createGraphClient(runContext);
 
         // Render properties
-        List<String> toRecipients = runContext.render(to).asList(String.class);
-        List<String> ccRecipients = cc != null ? runContext.render(cc).asList(String.class) : null;
-        List<String> bccRecipients = bcc != null ? runContext.render(bcc).asList(String.class) : null;
-        String emailSubject = runContext.render(subject).as(String.class).orElseThrow();
-        String emailBody = runContext.render(body).as(String.class).orElseThrow();
-        String contentType = runContext.render(bodyType).as(String.class).orElse("HTML");
+        List<String> rToRecipients = runContext.render(to).asList(String.class);
+        List<String> rCcRecipients = cc != null ? runContext.render(cc).asList(String.class) : null;
+        List<String> rBccRecipients = bcc != null ? runContext.render(bcc).asList(String.class) : null;
+        String rEmailSubject = runContext.render(subject).as(String.class).orElseThrow();
+        String rEmailBody = runContext.render(body).as(String.class).orElseThrow();
+        String rContentType = runContext.render(bodyType).as(String.class).orElse("HTML");
 
-        logger.info("Sending email to {} recipients with subject: {}", toRecipients.size(), emailSubject);
+        logger.info("Sending email to {} recipients with subject: {}", rToRecipients.size(), rEmailSubject);
 
         // Create message
         Message message = new Message();
-        message.setSubject(emailSubject);
+        message.setSubject(rEmailSubject);
 
         // Set body
         ItemBody itemBody = new ItemBody();
-        itemBody.setContentType(BodyType.valueOf(contentType));
-        itemBody.setContent(emailBody);
+        itemBody.setContentType(BodyType.valueOf(rContentType));
+        itemBody.setContent(rEmailBody);
         message.setBody(itemBody);
 
         // Set recipients
-        List<Recipient> toRecipientList = toRecipients.stream()
+        List<Recipient> toRecipientList = rToRecipients.stream()
             .map(this::createRecipient)
             .collect(Collectors.toList());
         message.setToRecipients(toRecipientList);
 
-        if (ccRecipients != null && !ccRecipients.isEmpty()) {
-            List<Recipient> ccRecipientList = ccRecipients.stream()
+        if (rCcRecipients != null && !rCcRecipients.isEmpty()) {
+            List<Recipient> ccRecipientList = rCcRecipients.stream()
                 .map(this::createRecipient)
                 .collect(Collectors.toList());
             message.setCcRecipients(ccRecipientList);
         }
 
-        if (bccRecipients != null && !bccRecipients.isEmpty()) {
-            List<Recipient> bccRecipientList = bccRecipients.stream()
+        if (rBccRecipients != null && !rBccRecipients.isEmpty()) {
+            List<Recipient> bccRecipientList = rBccRecipients.stream()
                 .map(this::createRecipient)
                 .collect(Collectors.toList());
             message.setBccRecipients(bccRecipientList);
@@ -185,8 +176,8 @@ public class Send extends Task implements RunnableTask<Send.Output> {
 
         // Determine sender
         String senderEmail = from != null ? runContext.render(from).as(String.class).orElse(null) : null;
-        if (senderEmail == null && auth.getUserPrincipalName() != null) {
-            senderEmail = runContext.render(auth.getUserPrincipalName()).as(String.class).orElse(null);
+        if (senderEmail == null) {
+            senderEmail = this.getUserPrincipalName(runContext).orElse(null);
         }
 
         // Create send mail request body
@@ -205,11 +196,11 @@ public class Send extends Task implements RunnableTask<Send.Output> {
         }
 
         return Output.builder()
-            .subject(emailSubject)
-            .toCount(toRecipients.size())
-            .ccCount(ccRecipients != null ? ccRecipients.size() : 0)
-            .bccCount(bccRecipients != null ? bccRecipients.size() : 0)
-            .bodyType(contentType)
+            .subject(rEmailSubject)
+            .toCount(rToRecipients.size())
+            .ccCount(rCcRecipients != null ? rCcRecipients.size() : 0)
+            .bccCount(rBccRecipients != null ? rBccRecipients.size() : 0)
+            .bodyType(rContentType)
             .build();
     }
 

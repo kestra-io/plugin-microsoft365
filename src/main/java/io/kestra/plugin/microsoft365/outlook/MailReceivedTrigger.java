@@ -10,8 +10,6 @@ import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.triggers.*;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -63,7 +61,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 
                 triggers:
                   - id: watch
-                    type: io.kestra.plugin.microsoft365.outlook.MailReceived
+                    type: io.kestra.plugin.microsoft365.outlook.MailReceivedTrigger
                     interval: PT5M
                     auth:
                       tenantId: "{{ secret('AZURE_TENANT_ID') }}"
@@ -98,7 +96,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 
                 triggers:
                   - id: watch
-                    type: io.kestra.plugin.microsoft365.outlook.MailReceived
+                    type: io.kestra.plugin.microsoft365.outlook.MailReceivedTrigger
                     interval: PT2M
                     auth:
                       tenantId: "{{ secret('AZURE_TENANT_ID') }}"
@@ -124,7 +122,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 
                 triggers:
                   - id: watch
-                    type: io.kestra.plugin.microsoft365.outlook.MailReceived
+                    type: io.kestra.plugin.microsoft365.outlook.MailReceivedTrigger
                     interval: PT1M
                     auth:
                       tenantId: "{{ secret('AZURE_TENANT_ID') }}"
@@ -137,15 +135,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
         )
     }
 )
-public class MailReceived extends AbstractTrigger implements PollingTriggerInterface, TriggerOutput<MailReceived.Output>, StatefulTriggerInterface {
+public class MailReceivedTrigger extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIdentityPollingTrigger implements TriggerOutput<MailReceivedTrigger.Output>, StatefulTriggerInterface {
 
-    @Schema(
-        title = "Authentication configuration",
-        description = "Microsoft Graph authentication settings"
-    )
-    @NotNull
-    @Valid
-    private GraphAuthConfig auth;
 
     @Builder.Default
     @Schema(
@@ -204,11 +195,11 @@ public class MailReceived extends AbstractTrigger implements PollingTriggerInter
         var runContext = conditionContext.getRunContext();
         var logger = runContext.logger();
 
-        GraphServiceClient graphClient = GraphService.createClientCredentialClient(auth, runContext);
+        GraphServiceClient graphClient = this.createGraphClient(runContext);
 
         String rUser = userEmail != null ? runContext.render(userEmail).as(String.class).orElse(null) : null;
-        if (rUser == null && auth.getUserPrincipalName() != null) {
-            rUser = runContext.render(auth.getUserPrincipalName()).as(String.class).orElse(null);
+        if (rUser == null) {
+            rUser = this.getUserPrincipalName(runContext).orElse(null);
         }
 
         String rFolderId = runContext.render(folderId).as(String.class).orElse("inbox");
