@@ -11,6 +11,7 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.triggers.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
+import jakarta.validation.constraints.Email;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -156,7 +157,7 @@ public class MailReceivedTrigger extends io.kestra.plugin.microsoft365.AbstractM
         title = "User email",
         description = "Email address of the user whose mailbox to monitor. If not specified, uses the authenticated user's mailbox."
     )
-    private Property<String> userEmail;
+    private Property<@Email String> userEmail;
 
     @Schema(
         title = "OData filter",

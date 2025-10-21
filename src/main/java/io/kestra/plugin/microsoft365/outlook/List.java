@@ -9,11 +9,11 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
-import jakarta.validation.constraints.NotNull;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 
@@ -96,7 +96,7 @@ public class List extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphId
         title = "User email",
         description = "Email address of the user whose mailbox to access (optional, uses authenticated user if not specified)"
     )
-    private Property<String> userEmail;
+    private Property<@Email String> userEmail;
 
     @Override
     public Output run(RunContext runContext) throws Exception {
