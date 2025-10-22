@@ -1,9 +1,7 @@
 package io.kestra.plugin.microsoft365.outlook;
 
 import com.microsoft.graph.models.Attachment;
-import com.microsoft.graph.models.AttachmentInfo;
 import com.microsoft.graph.models.Message;
-import com.microsoft.graph.models.Recipient;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -18,7 +16,6 @@ import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -128,7 +125,7 @@ public class Get extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIde
         logger.info("Retrieved message: {}", message.getSubject());
 
         // Get attachments if requested
-        List<AttachmentInfo> attachmentInfos = new ArrayList<>();
+        java.util.List<io.kestra.plugin.microsoft365.outlook.domain.AttachmentInfo> attachmentInfos = new ArrayList<>();
         if (rIncludeAttachment && message.getHasAttachments() != null) {
             logger.debug("Retrieving attachment information");
 
@@ -141,36 +138,39 @@ public class Get extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIde
 
             assert attachments != null;
             attachmentInfos = attachments.stream()
-                .map(att -> {
-                    AttachmentInfo info = new AttachmentInfo();
-                    info.setName(att.getName());
-                    info.setContentType(att.getContentType());
-                    info.setSize(Objects.requireNonNull(att.getSize()).longValue());
-                    return info;
-                })
+                .map(att -> io.kestra.plugin.microsoft365.outlook.domain.AttachmentInfo.builder()
+                    .id(att.getId())
+                    .name(att.getName())
+                    .contentType(att.getContentType())
+                    .size(att.getSize() != null ? att.getSize().longValue() : null)
+                    .build())
                 .toList();
         }
 
-        return Output.builder()
+        io.kestra.plugin.microsoft365.outlook.domain.MessageDetail detail = io.kestra.plugin.microsoft365.outlook.domain.MessageDetail.builder()
             .id(message.getId())
             .subject(message.getSubject())
             .bodyContent(Objects.requireNonNull(message.getBody()).getContent())
             .bodyType(String.valueOf(message.getBody().getContentType()))
             .bodyPreview(message.getBodyPreview())
-            .sender(String.valueOf(message.getSender()))
-            .from(String.valueOf(message.getFrom()))
-            .toRecipients(message.getToRecipients())
-            .ccRecipients(message.getCcRecipients())
-            .bccRecipients(message.getBccRecipients())
+            .sender(message.getSender() != null && message.getSender().getEmailAddress() != null ? message.getSender().getEmailAddress().getAddress() : null)
+            .from(message.getFrom() != null && message.getFrom().getEmailAddress() != null ? message.getFrom().getEmailAddress().getAddress() : null)
+            .toRecipients(message.getToRecipients() != null ? message.getToRecipients().stream().map(r -> r.getEmailAddress() != null ? r.getEmailAddress().getAddress() : null).filter(Objects::nonNull).toList() : java.util.List.of())
+            .ccRecipients(message.getCcRecipients() != null ? message.getCcRecipients().stream().map(r -> r.getEmailAddress() != null ? r.getEmailAddress().getAddress() : null).filter(Objects::nonNull).toList() : java.util.List.of())
+            .bccRecipients(message.getBccRecipients() != null ? message.getBccRecipients().stream().map(r -> r.getEmailAddress() != null ? r.getEmailAddress().getAddress() : null).filter(Objects::nonNull).toList() : java.util.List.of())
             .receivedDateTime(message.getReceivedDateTime())
             .sentDateTime(message.getSentDateTime())
             .isRead(message.getIsRead())
             .hasAttachments(message.getHasAttachments())
-            .importance(String.valueOf(message.getImportance()))
+            .importance(message.getImportance() != null ? message.getImportance().toString() : null)
             .conversationId(message.getConversationId())
             .conversationIndex(Arrays.toString(message.getConversationIndex()))
             .internetMessageId(message.getInternetMessageId())
             .attachments(attachmentInfos)
+            .build();
+
+        return Output.builder()
+            .message(detail)
             .build();
     }
 
@@ -178,118 +178,10 @@ public class Get extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIde
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "Message ID",
-            description = "Unique identifier of the email message"
+            title = "Message",
+            description = "Email message details"
         )
-        private final String id;
+private final io.kestra.plugin.microsoft365.outlook.domain.MessageDetail message;
 
-        @Schema(
-            title = "Subject",
-            description = "Subject line of the email"
-        )
-        private final String subject;
-
-        @Schema(
-            title = "Body content",
-            description = "Full body content of the email"
-        )
-        private final String bodyContent;
-
-        @Schema(
-            title = "Body type",
-            description = "Content type of the email body (HTML or TEXT)"
-        )
-        private final String bodyType;
-
-        @Schema(
-            title = "Body preview",
-            description = "Preview text of the message body"
-        )
-        private final String bodyPreview;
-
-        @Schema(
-            title = "Sender",
-            description = "Email address of the sender"
-        )
-        private final String sender;
-
-        @Schema(
-            title = "From",
-            description = "Email address in the from field"
-        )
-        private final String from;
-
-        @Schema(
-            title = "To recipients",
-            description = "List of email addresses in the to field"
-        )
-        private final List<Recipient> toRecipients;
-
-        @Schema(
-            title = "CC recipients",
-            description = "List of email addresses in the cc field"
-        )
-        private final List<Recipient> ccRecipients;
-
-        @Schema(
-            title = "BCC recipients",
-            description = "List of email addresses in the bcc field"
-        )
-        private final List<Recipient> bccRecipients;
-
-        @Schema(
-            title = "Received date/time",
-            description = "Date and time the message was received"
-        )
-        private final OffsetDateTime receivedDateTime;
-
-        @Schema(
-            title = "Sent date/time",
-            description = "Date and time the message was sent"
-        )
-        private final OffsetDateTime sentDateTime;
-
-        @Schema(
-            title = "Is read",
-            description = "Whether the message has been read"
-        )
-        private final Boolean isRead;
-
-        @Schema(
-            title = "Has attachments",
-            description = "Whether the message has attachments"
-        )
-        private final Boolean hasAttachments;
-
-        @Schema(
-            title = "Importance",
-            description = "Importance level of the message"
-        )
-        private final String importance;
-
-        @Schema(
-            title = "Conversation ID",
-            description = "Identifier of the conversation thread"
-        )
-        private final String conversationId;
-
-        @Schema(
-            title = "Conversation index",
-            description = "Index of the message in the conversation"
-        )
-        private final String conversationIndex;
-
-        @Schema(
-            title = "Internet message ID",
-            description = "Internet message ID of the email"
-        )
-        private final String internetMessageId;
-
-        @Schema(
-            title = "Attachments",
-            description = "List of attachment information"
-        )
-        private final List<AttachmentInfo> attachments;
-    }
-
+}
 }

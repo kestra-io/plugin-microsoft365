@@ -14,7 +14,6 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 
 @SuperBuilder
@@ -158,10 +157,10 @@ public class List extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphId
         assert messages != null;
         logger.info("Retrieved {} messages", messages.size());
 
-        // Convert messages to output format
-        java.util.List<EmailMessage> emailMessages = new ArrayList<>();
+        // Convert messages to domain summaries
+        java.util.List<io.kestra.plugin.microsoft365.outlook.domain.MessageSummary> summaries = new ArrayList<>();
         for (Message message : messages) {
-            EmailMessage emailMessage = EmailMessage.builder()
+            var summary = io.kestra.plugin.microsoft365.outlook.domain.MessageSummary.builder()
                 .id(message.getId())
                 .subject(message.getSubject())
                 .sender(message.getSender() != null && message.getSender().getEmailAddress() != null ?
@@ -170,58 +169,21 @@ public class List extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphId
                     message.getFrom().getEmailAddress().getAddress() : null)
                 .receivedDateTime(message.getReceivedDateTime())
                 .sentDateTime(message.getSentDateTime())
-                .isRead(message.getIsRead() != null ? message.getIsRead() : false)
-                .hasAttachments(message.getHasAttachments() != null ? message.getHasAttachments() : false)
+                .isRead(Boolean.TRUE.equals(message.getIsRead()))
+                .hasAttachments(Boolean.TRUE.equals(message.getHasAttachments()))
                 .bodyPreview(message.getBodyPreview())
                 .importance(message.getImportance() != null ? message.getImportance().toString() : null)
                 .conversationId(message.getConversationId())
                 .build();
-            emailMessages.add(emailMessage);
+            summaries.add(summary);
         }
 
         return Output.builder()
-            .messages(emailMessages)
-            .count(emailMessages.size())
+            .messages(summaries)
+            .count(summaries.size())
             .folderId(rFolder)
             .hasNextPage(messagesResponse.getOdataNextLink() != null)
             .build();
-    }
-
-    @Builder
-    @Getter
-    public static class EmailMessage {
-        @Schema(title = "Message ID", description = "Unique identifier of the email message")
-        private final String id;
-
-        @Schema(title = "Subject", description = "Subject line of the email")
-        private final String subject;
-
-        @Schema(title = "Sender", description = "Email address of the sender")
-        private final String sender;
-
-        @Schema(title = "From", description = "Email address in the from field")
-        private final String from;
-
-        @Schema(title = "Received date/time", description = "Date and time the message was received")
-        private final OffsetDateTime receivedDateTime;
-
-        @Schema(title = "Sent date/time", description = "Date and time the message was sent")
-        private final OffsetDateTime sentDateTime;
-
-        @Schema(title = "Is read", description = "Whether the message has been read")
-        private final Boolean isRead;
-
-        @Schema(title = "Has attachments", description = "Whether the message has attachments")
-        private final Boolean hasAttachments;
-
-        @Schema(title = "Body preview", description = "Preview text of the message body")
-        private final String bodyPreview;
-
-        @Schema(title = "Importance", description = "Importance level of the message")
-        private final String importance;
-
-        @Schema(title = "Conversation ID", description = "Identifier of the conversation thread")
-        private final String conversationId;
     }
 
     @Builder
@@ -231,7 +193,7 @@ public class List extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphId
             title = "Email messages",
             description = "List of retrieved email messages"
         )
-        private final java.util.List<EmailMessage> messages;
+        private final java.util.List<io.kestra.plugin.microsoft365.outlook.domain.MessageSummary> messages;
 
         @Schema(
             title = "Message count",
