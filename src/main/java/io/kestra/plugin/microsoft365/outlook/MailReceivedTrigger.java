@@ -3,6 +3,7 @@ package io.kestra.plugin.microsoft365.outlook;
 import com.microsoft.graph.models.Attachment;
 import com.microsoft.graph.models.Message;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.kestra.plugin.microsoft365.outlook.utils.GraphMailUtils;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.conditions.ConditionContext;
@@ -214,35 +215,7 @@ public class MailReceivedTrigger extends io.kestra.plugin.microsoft365.AbstractM
         // Get messages
         List<Message> messages;
         try {
-            if (rUser != null) {
-                var request = graphClient.users().byUserId(rUser)
-                    .mailFolders().byMailFolderId(rFolderId)
-                    .messages()
-                    .get(requestConfig -> {
-                        if (rFilter != null) {
-                            assert requestConfig.queryParameters != null;
-                            requestConfig.queryParameters.filter = rFilter;
-                        }
-                        assert requestConfig.queryParameters != null;
-                        requestConfig.queryParameters.top = rMaxMessages;
-                        requestConfig.queryParameters.orderby = new String[]{"receivedDateTime DESC"};
-                    });
-                messages = request != null && request.getValue() != null ? request.getValue() : new ArrayList<>();
-            } else {
-                var request = graphClient.me()
-                    .mailFolders().byMailFolderId(rFolderId)
-                    .messages()
-                    .get(requestConfig -> {
-                        if (rFilter != null) {
-                            assert requestConfig.queryParameters != null;
-                            requestConfig.queryParameters.filter = rFilter;
-                        }
-                        assert requestConfig.queryParameters != null;
-                        requestConfig.queryParameters.top = rMaxMessages;
-                        requestConfig.queryParameters.orderby = new String[]{"receivedDateTime DESC"};
-                    });
-                messages = request != null && request.getValue() != null ? request.getValue() : new ArrayList<>();
-            }
+            messages = GraphMailUtils.fetchMessagesForTrigger(graphClient, rUser, rFolderId, rFilter, rMaxMessages);
         } catch (Exception e) {
             logger.warn("Failed to retrieve messages: {}", e.getMessage());
             return Optional.empty();

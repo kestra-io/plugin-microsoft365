@@ -3,6 +3,7 @@ package io.kestra.plugin.microsoft365.outlook;
 import com.microsoft.graph.models.Attachment;
 import com.microsoft.graph.models.Message;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.kestra.plugin.microsoft365.outlook.utils.GraphMailUtils;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
@@ -114,29 +115,24 @@ public class Get extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIde
         logger.info("Retrieving message '{}' for user: {}", rMsgId, rUser != null ? rUser : "current user");
 
         // Get the message
-        Message message;
-        if (rUser != null) {
-            message = graphClient.users().byUserId(rUser).messages().byMessageId(rMsgId).get();
-        } else {
-            message = graphClient.me().messages().byMessageId(rMsgId).get();
+        Message message = GraphMailUtils.fetchMessage(graphClient, rUser, rMsgId);
+        
+        if (message == null) {
+            throw new IllegalStateException("Failed to retrieve message from Microsoft Graph API");
         }
-
-        assert message != null;
+        
         logger.info("Retrieved message: {}", message.getSubject());
 
         // Get attachments if requested
         java.util.List<io.kestra.plugin.microsoft365.outlook.domain.AttachmentInfo> attachmentInfos = new ArrayList<>();
-        if (rIncludeAttachment && message.getHasAttachments() != null) {
+        if (rIncludeAttachment && Boolean.TRUE.equals(message.getHasAttachments())) {
             logger.debug("Retrieving attachment information");
 
-            List<Attachment> attachments;
-            if (rUser != null) {
-                attachments = Objects.requireNonNull(graphClient.users().byUserId(rUser).messages().byMessageId(rMsgId).attachments().get()).getValue();
-            } else {
-                attachments = Objects.requireNonNull(graphClient.me().messages().byMessageId(rMsgId).attachments().get()).getValue();
+            List<Attachment> attachments = GraphMailUtils.fetchAttachments(graphClient, rUser, rMsgId);
+            if (attachments == null || attachments.isEmpty()) {
+                logger.debug("No attachments found or failed to retrieve attachments");
+                attachments = new ArrayList<>();
             }
-
-            assert attachments != null;
             attachmentInfos = attachments.stream()
                 .map(att -> io.kestra.plugin.microsoft365.outlook.domain.AttachmentInfo.builder()
                     .id(att.getId())
