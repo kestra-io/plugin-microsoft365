@@ -48,11 +48,10 @@ import java.util.Collections;
                 tasks:
                   - id: list_emails
                     type: io.kestra.plugin.microsoft365.outlook.List
-                    auth:
-                      tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                      clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                      clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                      userPrincipalName: "user@example.com"
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    userPrincipalName: "user@example.com"
                     folderId: "inbox"
                     top: 10
                 """
@@ -67,11 +66,10 @@ import java.util.Collections;
                 tasks:
                   - id: list_emails
                     type: io.kestra.plugin.microsoft365.outlook.List
-                    auth:
-                      tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                      clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                      clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                      userPrincipalName: "user@example.com"
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    userPrincipalName: "user@example.com"
                     folderId: "inbox"
                     filter: "isRead eq false and receivedDateTime ge {{ now() | dateAdd(-7, 'DAYS') | date('yyyy-MM-dd') }}T00:00:00Z"
                     top: 50
@@ -88,11 +86,10 @@ import java.util.Collections;
                 tasks:
                   - id: get_first
                     type: io.kestra.plugin.microsoft365.outlook.List
-                    auth:
-                      tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                      clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                      clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                      userPrincipalName: "user@example.com"
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    userPrincipalName: "user@example.com"
                     folderId: "inbox"
                     fetchType: FETCH_ONE
                     top: 1

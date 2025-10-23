@@ -65,11 +65,10 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                   - id: watch
                     type: io.kestra.plugin.microsoft365.outlook.MailReceivedTrigger
                     interval: PT5M
-                    auth:
-                      tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                      clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                      clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                      userPrincipalName: "user@example.com"
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    userPrincipalName: "user@example.com"
                     folderId: "inbox"
                 """
         ),
@@ -100,11 +99,10 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                   - id: watch
                     type: io.kestra.plugin.microsoft365.outlook.MailReceivedTrigger
                     interval: PT2M
-                    auth:
-                      tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                      clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                      clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                      userPrincipalName: "invoices@company.com"
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    userPrincipalName: "invoices@company.com"
                     folderId: "inbox"
                     filter: "hasAttachments eq true"
                     includeAttachments: true
@@ -126,11 +124,10 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                   - id: watch
                     type: io.kestra.plugin.microsoft365.outlook.MailReceivedTrigger
                     interval: PT1M
-                    auth:
-                      tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                      clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                      clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                      userPrincipalName: "user@example.com"
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    userPrincipalName: "user@example.com"
                     filter: "from/emailAddress/address eq 'boss@company.com'"
                     stateTtl: P30D
                 """

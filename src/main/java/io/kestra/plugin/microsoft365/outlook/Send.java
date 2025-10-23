@@ -39,10 +39,9 @@ import java.util.stream.Collectors;
                 tasks:
                   - id: send_email
                     type: io.kestra.plugin.microsoft365.outlook.Send
-                    auth:
-                      tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                      clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                      clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
                     to:
                       - "recipient@example.com"
                     subject: "Hello from Kestra"
@@ -60,11 +59,10 @@ import java.util.stream.Collectors;
                 tasks:
                   - id: send_email
                     type: io.kestra.plugin.microsoft365.outlook.Send
-                    auth:
-                      tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                      clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                      clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                      userPrincipalName: "sender@example.com"
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    userPrincipalName: "sender@example.com"
                     to:
                       - "primary@example.com"
                     cc:

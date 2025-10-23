@@ -44,11 +44,10 @@ import java.util.Objects;
                 tasks:
                   - id: get_message
                     type: io.kestra.plugin.microsoft365.outlook.Get
-                    auth:
-                      tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                      clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                      clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                      userPrincipalName: "user@example.com"
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    userPrincipalName: "user@example.com"
                     messageId: "AAMkAGVmMDEzMTM4LTZmYWUtNDdkNC1hMDZiLTU1OGY5OTZhYmY4OABGAAAAAAAiQ8W967B7TKBjgx9rVEURBwAiIsqMbYjsT5e"
                 """
         ),
@@ -62,11 +61,10 @@ import java.util.Objects;
                 tasks:
                   - id: get_message
                     type: io.kestra.plugin.microsoft365.outlook.Get
-                    auth:
-                      tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                      clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                      clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                      userPrincipalName: "user@example.com"
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    userPrincipalName: "user@example.com"
                     userEmail: "specific.user@example.com"
                     messageId: "{{ vars.messageId }}"
                     includeAttachments: true
