@@ -29,7 +29,7 @@ java {
 }
 
 group = "io.kestra.plugin"
-description = 'Plugin template for Kestra'
+description = 'Microsoft 365 plugin for Kestra'
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
@@ -49,6 +49,9 @@ dependencies {
     annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
+
+    implementation "com.microsoft.graph:microsoft-graph:6.54.0"
+    implementation "com.azure:azure-identity:1.18.1"
 }
 
 
@@ -172,8 +175,8 @@ jar {
     manifest {
         attributes(
                 "X-Kestra-Name": project.name,
-                "X-Kestra-Title": "Template",
-                "X-Kestra-Group": project.group + ".templates",
+                "X-Kestra-Title": "Microsoft 365",
+                "X-Kestra-Group": project.group + ".microsoft 365",
                 "X-Kestra-Description": project.description,
                 "X-Kestra-Version": project.version
         )
