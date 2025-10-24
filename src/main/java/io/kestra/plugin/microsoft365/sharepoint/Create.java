@@ -1,7 +1,6 @@
 package io.kestra.plugin.microsoft365.sharepoint;
 
 import com.microsoft.graph.models.DriveItem;
-import com.microsoft.graph.models.File;
 import com.microsoft.graph.models.Folder;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import io.kestra.core.models.annotations.Example;
@@ -9,14 +8,11 @@ import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIdentityConnection;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
-
-import java.net.URI;
 
 @SuperBuilder
 @ToString
@@ -70,25 +66,11 @@ import java.net.URI;
     title = "Create a file or folder in SharePoint.",
     description = "Creates a new file with optional content or an empty folder in a SharePoint document library."
 )
-public class Create extends AbstractMicrosoftGraphIdentityConnection implements RunnableTask<Create.Output> {
-    
-    @Schema(
-        title = "The SharePoint site ID.",
-        description = "The unique identifier of the SharePoint site."
-    )
-    @NotNull
-    private Property<String> siteId;
+public class Create extends AbstractSharepointTask implements RunnableTask<Create.Output> {
 
     @Schema(
-        title = "The SharePoint drive ID.",
-        description = "The unique identifier of the SharePoint document library (drive)."
-    )
-    @NotNull
-    private Property<String> driveId;
-
-    @Schema(
-        title = "The parent item ID.",
-        description = "The unique identifier of the parent folder where the new item will be created."
+            title = "Parent folder ID",
+            description = "The ID of the parent folder where the item will be created. Use 'root' for the root of the document library."
     )
     @NotNull
     private Property<String> parentId;
@@ -101,73 +83,72 @@ public class Create extends AbstractMicrosoftGraphIdentityConnection implements 
     private Property<String> name;
 
     @Schema(
+            title = "Item type",
+            description = "Whether to create a FILE or FOLDER"
+    )
+    @NotNull
+    @Builder.Default
+    private Property<ItemType> itemType = Property.of(ItemType.FILE);
+
+    @Schema(
         title = "The content of the file.",
         description = "The content to be written to the new file. If not provided, an empty folder will be created."
     )
     private Property<String> content;
 
-    @Schema(
-        title = "Conflict behavior.",
-        description = "How to handle conflicts if an item with the same name already exists. Options: 'rename', 'replace', 'fail'."
-    )
-    @Builder.Default
-    private Property<String> conflictBehavior = Property.ofValue("rename");
-
     @Override
     public Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
-        
-        String rSiteId = runContext.render(siteId).as(String.class).orElseThrow();
-        String rDriveId = runContext.render(driveId).as(String.class).orElseThrow();
+
         String rParentId = runContext.render(parentId).as(String.class).orElseThrow();
         String rName = runContext.render(name).as(String.class).orElseThrow();
         String rContent = content != null ? runContext.render(content).as(String.class).orElse(null) : null;
-        String rConflictBehavior = runContext.render(conflictBehavior).as(String.class).orElseThrow();
 
-        GraphServiceClient graphClient = createGraphClient(runContext);
+        ItemType rItemType = runContext.render(itemType).as(ItemType.class).orElse(ItemType.FILE);
 
-        DriveItem driveItem;
+        SharepointConnection connection = this.connection(runContext);
+        GraphServiceClient client = connection.createClient(runContext);
+        String driveId = connection.getDriveId(runContext, client);
+        String siteId = connection.getSiteId(runContext);
 
-        if (rContent != null) {
-            // Create a file with content
-            logger.debug("Creating file '{}' in SharePoint site '{}', drive '{}', parent '{}'", 
-                rName, rSiteId, rDriveId, rParentId);
+        DriveItem createdItem;
 
-            byte[] contentBytes = rContent.getBytes();
-            
-            driveItem = graphClient.drives().byDriveId(rDriveId)
-                .items().byDriveItemId(rParentId)
-                .itemWithPath(rName)
-                .content()
-                .put(contentBytes);
-
-            logger.info("Successfully created file '{}'", rName);
-        } else {
-            // Create a folder
-            logger.debug("Creating folder '{}' in SharePoint site '{}', drive '{}', parent '{}'", 
-                rName, rSiteId, rDriveId, rParentId);
-
+        if (rItemType == ItemType.FOLDER) {
             DriveItem newFolder = new DriveItem();
             newFolder.setName(rName);
             newFolder.setFolder(new Folder());
-            newFolder.setAdditionalData(new java.util.HashMap<>());
-            newFolder.getAdditionalData().put("@microsoft.graph.conflictBehavior", rConflictBehavior);
 
-            driveItem = graphClient.drives().byDriveId(rDriveId)
+            createdItem = client.drives().byDriveId(driveId)
                 .items().byDriveItemId(rParentId)
                 .children()
                 .post(newFolder);
-
-            logger.info("Successfully created folder '{}'", rName);
+            logger.info("Created folder '{}' in parent '{}'", rName, rParentId);
+        } else {
+            // Create a file using simple upload
+            // For small files, use PUT to /drives/{drive-id}/items/{parent-id}:/{filename}:/content
+            byte[] contentBytes = (rContent != null) ? rContent.getBytes() : new byte[0];
+            
+            java.io.ByteArrayInputStream inputStream = new java.io.ByteArrayInputStream(contentBytes);
+            
+            createdItem = client.drives().byDriveId(driveId)
+                .items().byDriveItemId(rParentId + ":/" + rName + ":")
+                .content()
+                .put(inputStream);
+            logger.info("Created file '{}' in parent '{}'", rName, rParentId);
         }
 
         return Output.builder()
-            .itemId(driveItem.getId())
-            .itemName(driveItem.getName())
-            .webUrl(driveItem.getWebUrl())
-            .isFolder(driveItem.getFolder() != null)
-            .isFile(driveItem.getFile() != null)
+            .itemId(createdItem.getId())
+            .itemName(createdItem.getName())
+            .webUrl(createdItem.getWebUrl())
+            .isFolder(createdItem.getFolder() != null)
+            .isFile(createdItem.getFile() != null)
             .build();
+    }
+
+    public enum ItemType {
+        FILE,
+        FOLDER
     }
 
     @Builder

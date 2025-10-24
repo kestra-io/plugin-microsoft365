@@ -50,7 +50,7 @@ public class Item {
     )
     Boolean isFile;
 
-    public static Item of(DriveItem driveItem) {
+    public static Item fromDriveItem(DriveItem driveItem) {
         return Item.builder()
             .id(driveItem.getId())
             .name(driveItem.getName())

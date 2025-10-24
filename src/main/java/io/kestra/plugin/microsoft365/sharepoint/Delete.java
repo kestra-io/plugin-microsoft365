@@ -6,7 +6,6 @@ import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIdentityConnection;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -42,21 +41,7 @@ import org.slf4j.Logger;
 @Schema(
     title = "Delete a file or folder from SharePoint."
 )
-public class Delete extends AbstractMicrosoftGraphIdentityConnection implements RunnableTask<Delete.Output> {
-
-    @Schema(
-        title = "The SharePoint site ID.",
-        description = "The unique identifier of the SharePoint site."
-    )
-    @NotNull
-    private Property<String> siteId;
-
-    @Schema(
-        title = "The SharePoint drive ID.",
-        description = "The unique identifier of the SharePoint document library (drive)."
-    )
-    @NotNull
-    private Property<String> driveId;
+public class Delete extends AbstractSharepointTask implements RunnableTask<Delete.Output> {
 
     @Schema(
         title = "The item ID to delete.",
@@ -68,19 +53,15 @@ public class Delete extends AbstractMicrosoftGraphIdentityConnection implements 
     @Override
     public Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
+        SharepointConnection connection = this.connection(runContext);
+        GraphServiceClient client = connection.createClient(runContext);
+        String driveId = connection.getDriveId(runContext, client);
 
-        String rSiteId = runContext.render(siteId).as(String.class).orElseThrow();
-        String rDriveId = runContext.render(driveId).as(String.class).orElseThrow();
         String rItemId = runContext.render(itemId).as(String.class).orElseThrow();
 
-        GraphServiceClient graphClient = createGraphClient(runContext);
-
-        logger.debug("Deleting item '{}' from SharePoint site '{}', drive '{}'", rItemId, rSiteId, rDriveId);
-
-        graphClient.drives().byDriveId(rDriveId)
+        client.drives().byDriveId(driveId)
             .items().byDriveItemId(rItemId)
             .delete();
-
         logger.info("Successfully deleted item '{}'", rItemId);
 
         return Output.builder()
