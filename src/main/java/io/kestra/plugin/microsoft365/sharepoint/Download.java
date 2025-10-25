@@ -1,6 +1,7 @@
 package io.kestra.plugin.microsoft365.sharepoint;
 
 import com.microsoft.graph.models.DriveItem;
+import com.microsoft.graph.models.DriveItemCollectionResponse;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -8,12 +9,14 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.io.InputStream;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 @SuperBuilder
 @ToString
@@ -84,37 +87,61 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
         GraphServiceClient client = connection.createClient(runContext);
         String driveId = connection.getDriveId(runContext, client);
 
-        // Get the file metadata
-        DriveItem driveItem;
+        // Get the file metadata with downloadUrl
+        DriveItemCollectionResponse driveItem;
         if (itemId != null) {
             String rItemId = runContext.render(itemId).as(String.class).orElseThrow();
             driveItem = client.drives().byDriveId(driveId)
                 .items().byDriveItemId(rItemId)
-                .get();
+                .children().get(
+                );
         } else if (itemPath != null) {
             String rItemPath = runContext.render(itemPath).as(String.class).orElseThrow();
             driveItem = client.drives().byDriveId(driveId)
                 .items().byDriveItemId("root:" + rItemPath + ":")
-                .get();
+                .children().get(
+                );
         } else {
             throw new IllegalArgumentException("Either itemId or itemPath must be provided");
         }
 
-        // Download the file content
-        InputStream fileStream = client.drives().byDriveId(driveId)
-            .items().byDriveItemId(driveItem.getId())
-            .content()
-            .get();
+        // Extract the first item from the collection response
+        if (driveItem.getValue() == null || driveItem.getValue().isEmpty()) {
+            throw new RuntimeException("No items found in the response");
+        }
+        DriveItem firstItem = driveItem.getValue().getFirst();
 
-        // Store the file in Kestra's internal storage
-        URI fileUri = runContext.storage().putFile(fileStream, driveItem.getName());
+        // Get the download URL from the drive item metadata
+        Object downloadUrlObj = firstItem.getAdditionalData().get("@microsoft.graph.downloadUrl");
+        if (downloadUrlObj == null) {
+            throw new RuntimeException("Download URL not available. The file might be too large or unavailable.");
+        }
+        String downloadUrl = downloadUrlObj.toString();
+
+        // Use standard HTTP client to download the file
+        HttpClient httpClient = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(downloadUrl))
+            .GET()
+            .build();
+
+        HttpResponse<InputStream> response = httpClient.send(request,
+            HttpResponse.BodyHandlers.ofInputStream());
+
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("Failed to download file. Status code: " + response.statusCode());
+        }
+
+        InputStream fileStream = response.body();
+
+        URI fileUri = runContext.storage().putFile(fileStream, firstItem.getName());
 
         return Output.builder()
-            .itemId(driveItem.getId())
-            .name(driveItem.getName())
+            .itemId(firstItem.getId())
+            .name(firstItem.getName())
             .uri(fileUri.toString())
-            .size(driveItem.getSize())
-            .webUrl(driveItem.getWebUrl())
+            .size(firstItem.getSize())
+            .webUrl(firstItem.getWebUrl())
             .build();
     }
 
