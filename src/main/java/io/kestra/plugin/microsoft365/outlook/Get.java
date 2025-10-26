@@ -72,7 +72,7 @@ import java.util.Objects;
         )
     }
 )
-public class Get extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIdentityConnection implements RunnableTask<Get.Output> {
+public class Get extends AbstractMicrosoftGraphIdentityConnection implements RunnableTask<Get.Output> {
 
 
     @Schema(
@@ -114,11 +114,11 @@ public class Get extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIde
 
         // Get the message
         Message message = GraphMailUtils.fetchMessage(graphClient, rUser, rMsgId);
-        
+
         if (message == null) {
             throw new IllegalStateException("Failed to retrieve message from Microsoft Graph API");
         }
-        
+
         logger.info("Retrieved message: {}", message.getSubject());
 
         // Get attachments if requested

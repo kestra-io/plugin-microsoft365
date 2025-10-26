@@ -1,10 +1,11 @@
-package io.kestra.plugin.microsoft365;
+package io.kestra.plugin.microsoft365.outlook;
 
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import io.kestra.core.models.property.Property;
-import io.kestra.core.models.tasks.Task;
+import io.kestra.core.models.triggers.AbstractTrigger;
+import io.kestra.core.models.triggers.PollingTriggerInterface;
 import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -12,6 +13,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.time.Duration;
 import java.util.Optional;
 
 @SuperBuilder
@@ -19,7 +21,7 @@ import java.util.Optional;
 @EqualsAndHashCode
 @Getter
 @NoArgsConstructor
-public abstract class AbstractMicrosoftGraphIdentityConnection extends Task {
+public abstract class AbstractMicrosoftGraphIdentityPollingTrigger extends AbstractTrigger implements PollingTriggerInterface {
     @Schema(title = "Tenant ID", description = "Azure tenant ID (directory ID)")
     @NotNull
     protected Property<String> tenantId;
@@ -39,6 +41,10 @@ public abstract class AbstractMicrosoftGraphIdentityConnection extends Task {
     @Builder.Default
     protected Property<String> scopes = Property.ofValue("https://graph.microsoft.com/.default");
 
+    @Schema(title = "Polling interval", description = "Interval between polls")
+    @Builder.Default
+    protected Duration interval = Duration.ofMinutes(5);
+
     protected GraphServiceClient createGraphClient(RunContext runContext) throws Exception {
         String rTenantId = runContext.render(tenantId).as(String.class).orElseThrow();
         String rClientId = runContext.render(clientId).as(String.class).orElseThrow();
@@ -56,5 +62,10 @@ public abstract class AbstractMicrosoftGraphIdentityConnection extends Task {
     protected Optional<String> getUserPrincipalName(RunContext runContext) throws Exception {
         if (userPrincipalName == null) return Optional.empty();
         return runContext.render(userPrincipalName).as(String.class);
+    }
+
+    @Override
+    public Duration getInterval() {
+        return this.interval;
     }
 }

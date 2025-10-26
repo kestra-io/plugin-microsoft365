@@ -55,7 +55,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                 tasks:
                   - id: each
                     type: io.kestra.plugin.core.flow.EachSequential
-                    values: "{{ trigger.messages }}"
+                    value: "{{ trigger.messages }}"
                     tasks:
                       - id: log
                         type: io.kestra.plugin.core.debug.Return
@@ -82,7 +82,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                 tasks:
                   - id: each
                     type: io.kestra.plugin.core.flow.EachSequential
-                    values: "{{ trigger.messages }}"
+                    value: "{{ trigger.messages }}"
                     tasks:
                       - id: process
                         type: io.kestra.plugin.core.debug.Return
@@ -134,7 +134,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
         )
     }
 )
-public class MailReceivedTrigger extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIdentityPollingTrigger implements TriggerOutput<MailReceivedTrigger.Output>, StatefulTriggerInterface {
+public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTrigger implements TriggerOutput<MailReceivedTrigger.Output>, StatefulTriggerInterface {
 
 
     @Builder.Default

@@ -97,7 +97,7 @@ import java.util.Collections;
         )
     }
 )
-public class List extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIdentityConnection implements RunnableTask<List.Output> {
+public class List extends AbstractMicrosoftGraphIdentityConnection implements RunnableTask<List.Output> {
 
     @Schema(
         title = "Folder ID",
@@ -160,16 +160,16 @@ public class List extends io.kestra.plugin.microsoft365.AbstractMicrosoftGraphId
 
         // Execute request using proper request configuration
         MessageCollectionResponse messagesResponse = GraphMailUtils.fetchMessages(graphClient, rUser, rFolder, rFilterExpression, rMaxResults, logger);
-        
+
         if (messagesResponse == null) {
             throw new IllegalStateException("Failed to retrieve messages from Microsoft Graph API");
         }
-        
+
         java.util.List<Message> messages = messagesResponse.getValue();
         if (messages == null) {
             messages = Collections.emptyList();
         }
-        
+
         logger.info("Retrieved {} messages", messages.size());
 
         // Convert messages to domain summaries

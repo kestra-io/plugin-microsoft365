@@ -8,7 +8,6 @@ import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.microsoft365.AbstractMicrosoftGraphIdentityConnection;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -42,11 +41,12 @@ import java.util.stream.Collectors;
                     tenantId: "{{ secret('AZURE_TENANT_ID') }}"
                     clientId: "{{ secret('AZURE_CLIENT_ID') }}"
                     clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    from: "sender@example.com"
                     to:
                       - "recipient@example.com"
                     subject: "Hello from Kestra"
                     body: "<h1>Hello!</h1><p>This email was sent from a Kestra workflow.</p>"
-                    bodyType: "HTML"
+                    bodyType: "Html"
                 """
         ),
         @Example(
@@ -62,7 +62,7 @@ import java.util.stream.Collectors;
                     tenantId: "{{ secret('AZURE_TENANT_ID') }}"
                     clientId: "{{ secret('AZURE_CLIENT_ID') }}"
                     clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    userPrincipalName: "sender@example.com"
+                    from: "sender@example.com"
                     to:
                       - "primary@example.com"
                     cc:
@@ -72,7 +72,7 @@ import java.util.stream.Collectors;
                       - "bcc@example.com"
                     subject: "Important Notification"
                     body: "This is a plain text email sent from Kestra workflow."
-                    bodyType: "TEXT"
+                    bodyType: "Text"
                 """
         )
     }
@@ -114,8 +114,7 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
 
     @Schema(
         title = "Body type",
-        description = "Content type of the email body (HTML or TEXT)",
-        defaultValue = "HTML"
+        description = "Content type of the email body (Html or Text)"
     )
     private Property<String> bodyType;
 
@@ -123,13 +122,13 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
         title = "From address",
         description = "Email address to send from (optional, uses authenticated user if not specified)"
     )
+    @NotNull
     private Property<String> from;
 
     @Override
     public Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        // Create Graph service client from abstract connection
         GraphServiceClient graphClient = this.createGraphClient(runContext);
 
         // Render properties
@@ -138,7 +137,8 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
         List<String> rBccRecipients = bcc != null ? runContext.render(bcc).asList(String.class) : null;
         String rEmailSubject = runContext.render(subject).as(String.class).orElseThrow();
         String rEmailBody = runContext.render(body).as(String.class).orElseThrow();
-        String rContentType = runContext.render(bodyType).as(String.class).orElse("HTML");
+        String rContentType = runContext.render(bodyType).as(String.class).orElse("Html");
+        String rFrom = runContext.render(from).as(String.class).orElseThrow();
 
         logger.info("Sending email to {} recipients with subject: {}", rToRecipients.size(), rEmailSubject);
 
@@ -172,26 +172,13 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
             message.setBccRecipients(bccRecipientList);
         }
 
-        // Determine sender
-        String senderEmail = from != null ? runContext.render(from).as(String.class).orElse(null) : null;
-        if (senderEmail == null) {
-            senderEmail = this.getUserPrincipalName(runContext).orElse(null);
-        }
-
         // Create send mail request body
         SendMailPostRequestBody postRequest = new SendMailPostRequestBody();
         postRequest.setMessage(message);
 
         // Send email
-        if (senderEmail != null) {
-            // Send on behalf of specific user
-            graphClient.users().byUserId(senderEmail).sendMail().post(postRequest);
-            logger.info("Email sent successfully from: {}", senderEmail);
-        } else {
-            // Send using application identity (requires appropriate permissions)
-            graphClient.me().sendMail().post(postRequest);
-            logger.info("Email sent successfully using application identity");
-        }
+        graphClient.users().byUserId(rFrom).sendMail().post(postRequest);
+        logger.info("Email sent successfully from: {}", rFrom);
 
         return Output.builder()
             .subject(rEmailSubject)
@@ -239,7 +226,7 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
 
         @Schema(
             title = "Body type",
-            description = "Content type of the email body (HTML or TEXT)"
+            description = "Content type of the email body (Html or Text)"
         )
         private final String bodyType;
     }

@@ -1,10 +1,10 @@
 {
-  "name": "plugin-template",
+  "name": "plugin-microsoft365",
   "build": {
     "context": ".",
     "dockerfile": "Dockerfile"
   },
-  "workspaceFolder": "/workspaces/plugin-template",
+  "workspaceFolder": "/workspaces/plugin-microsoft365",
   "forwardPorts": [8080],
   "customizations": {
     "vscode": {
