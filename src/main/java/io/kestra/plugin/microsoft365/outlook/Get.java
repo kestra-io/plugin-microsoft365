@@ -175,7 +175,7 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
             title = "Message",
             description = "Email message details"
         )
-private final MessageDetail message;
+        private final MessageDetail message;
 
-}
+    }
 }

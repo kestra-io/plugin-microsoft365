@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 
 @KestraTest
 class SendTest {
-    
+
     @Inject
     private RunContextFactory runContextFactory;
 
