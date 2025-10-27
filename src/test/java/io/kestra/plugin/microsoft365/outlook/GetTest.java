@@ -40,7 +40,7 @@ public class GetTest {
             .tenantId(Property.ofValue("test"))
             .clientId(Property.ofValue("test"))
             .clientSecret(Property.ofValue("test"))
-            .messageID(Property.ofValue("123"))
+            .messageId(Property.ofValue("123"))
             .build();
     }
 
