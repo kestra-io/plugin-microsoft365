@@ -13,7 +13,6 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
@@ -178,9 +177,9 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
             var summary = io.kestra.plugin.microsoft365.outlook.domain.MessageSummary.builder()
                 .id(message.getId())
                 .subject(message.getSubject())
-                .sender(message.getSender() != null && message.getSender().getEmailAddress() != null ?
+                .senderMail(message.getSender() != null && message.getSender().getEmailAddress() != null ?
                     message.getSender().getEmailAddress().getAddress() : null)
-                .from(message.getFrom() != null && message.getFrom().getEmailAddress() != null ?
+                .fromMail(message.getFrom() != null && message.getFrom().getEmailAddress() != null ?
                     message.getFrom().getEmailAddress().getAddress() : null)
                 .receivedDateTime(message.getReceivedDateTime())
                 .sentDateTime(message.getSentDateTime())
