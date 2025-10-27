@@ -10,9 +10,7 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -147,8 +145,8 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
             .bodyContent(Objects.requireNonNull(message.getBody()).getContent())
             .bodyType(String.valueOf(message.getBody().getContentType()))
             .bodyPreview(message.getBodyPreview())
-            .sender(message.getSender() != null && message.getSender().getEmailAddress() != null ? message.getSender().getEmailAddress().getAddress() : null)
-            .from(message.getFrom() != null && message.getFrom().getEmailAddress() != null ? message.getFrom().getEmailAddress().getAddress() : null)
+            .senderMail(message.getSender() != null && message.getSender().getEmailAddress() != null ? message.getSender().getEmailAddress().getAddress() : null)
+            .fromMail(message.getFrom() != null && message.getFrom().getEmailAddress() != null ? message.getFrom().getEmailAddress().getAddress() : null)
             .toRecipients(message.getToRecipients() != null ? message.getToRecipients().stream().map(r -> r.getEmailAddress() != null ? r.getEmailAddress().getAddress() : null).filter(Objects::nonNull).toList() : java.util.List.of())
             .ccRecipients(message.getCcRecipients() != null ? message.getCcRecipients().stream().map(r -> r.getEmailAddress() != null ? r.getEmailAddress().getAddress() : null).filter(Objects::nonNull).toList() : java.util.List.of())
             .bccRecipients(message.getBccRecipients() != null ? message.getBccRecipients().stream().map(r -> r.getEmailAddress() != null ? r.getEmailAddress().getAddress() : null).filter(Objects::nonNull).toList() : java.util.List.of())

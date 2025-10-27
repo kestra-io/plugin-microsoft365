@@ -15,8 +15,8 @@ public class MessageDetail {
     private final String bodyType;
     private final String bodyPreview;
 
-    private final String sender;   // email address
-    private final String from;     // email address
+    private final String senderMail;
+    private final String fromMail;
     private final List<String> toRecipients;
     private final List<String> ccRecipients;
     private final List<String> bccRecipients;
