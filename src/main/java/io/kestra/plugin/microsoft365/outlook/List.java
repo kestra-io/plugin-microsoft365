@@ -12,8 +12,8 @@ import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
@@ -51,7 +51,7 @@ import java.util.Collections;
                     tenantId: "{{ secret('AZURE_TENANT_ID') }}"
                     clientId: "{{ secret('AZURE_CLIENT_ID') }}"
                     clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    userPrincipalName: "user@example.com"
+                    userEmail: "user@example.com"
                     folderId: "inbox"
                     top: 10
                 """
@@ -69,7 +69,7 @@ import java.util.Collections;
                     tenantId: "{{ secret('AZURE_TENANT_ID') }}"
                     clientId: "{{ secret('AZURE_CLIENT_ID') }}"
                     clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    userPrincipalName: "user@example.com"
+                    userEmail: "user@example.com"
                     folderId: "inbox"
                     filter: "isRead eq false and receivedDateTime ge {{ now() | dateAdd(-7, 'DAYS') | date('yyyy-MM-dd') }}T00:00:00Z"
                     top: 50
@@ -89,7 +89,7 @@ import java.util.Collections;
                     tenantId: "{{ secret('AZURE_TENANT_ID') }}"
                     clientId: "{{ secret('AZURE_CLIENT_ID') }}"
                     clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    userPrincipalName: "user@example.com"
+                    userEmail: "user@example.com"
                     folderId: "inbox"
                     fetchType: FETCH_ONE
                     top: 1
@@ -123,7 +123,8 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
         title = "User email",
         description = "Email address of the user whose mailbox to access (optional, uses authenticated user if not specified)"
     )
-    private Property<@Email String> userEmail;
+    @NotNull
+    private Property<String> userEmail;
 
     @Schema(
         title = "The way you want to store the data",
@@ -151,9 +152,8 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
         String rUser = userEmail != null ? runContext.render(userEmail).as(String.class).orElse(null) : null;
         FetchType rFetchType = runContext.render(fetchType).as(FetchType.class).orElse(FetchType.FETCH);
 
-        // Fallback to configured UPN if not provided
-        if (rUser == null) {
-            rUser = this.getUserPrincipalName(runContext).orElse(null);
+        if (rUser != null && !rUser.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            throw new IllegalArgumentException("Invalid email format for userEmail: " + rUser);
         }
 
         logger.info("Listing messages from folder '{}' for user: {} (max: {})", rFolder, rUser != null ? rUser : "current user", rMaxResults);

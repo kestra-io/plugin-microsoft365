@@ -11,8 +11,9 @@ import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.triggers.*;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -68,7 +69,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     tenantId: "{{ secret('AZURE_TENANT_ID') }}"
                     clientId: "{{ secret('AZURE_CLIENT_ID') }}"
                     clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    userPrincipalName: "user@example.com"
+                    userEmail: "user@example.com"
                     folderId: "inbox"
                 """
         ),
@@ -102,7 +103,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     tenantId: "{{ secret('AZURE_TENANT_ID') }}"
                     clientId: "{{ secret('AZURE_CLIENT_ID') }}"
                     clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    userPrincipalName: "invoices@company.com"
+                    userEmail: "invoices@company.com"
                     folderId: "inbox"
                     filter: "hasAttachments eq true"
                     includeAttachments: true
@@ -127,7 +128,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     tenantId: "{{ secret('AZURE_TENANT_ID') }}"
                     clientId: "{{ secret('AZURE_CLIENT_ID') }}"
                     clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    userPrincipalName: "user@example.com"
+                    userEmail: "user@example.com"
                     filter: "from/emailAddress/address eq 'boss@company.com'"
                     stateTtl: P30D
                 """
@@ -155,7 +156,8 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
         title = "User email",
         description = "Email address of the user whose mailbox to monitor. If not specified, uses the authenticated user's mailbox."
     )
-    private Property<@Email String> userEmail;
+    @NotNull
+    private Property<String> userEmail;
 
     @Schema(
         title = "OData filter",
@@ -197,8 +199,8 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
         GraphServiceClient graphClient = this.createGraphClient(runContext);
 
         String rUser = userEmail != null ? runContext.render(userEmail).as(String.class).orElse(null) : null;
-        if (rUser == null) {
-            rUser = this.getUserPrincipalName(runContext).orElse(null);
+        if (rUser != null && !rUser.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            throw new IllegalArgumentException("Invalid email format for userEmail: " + rUser);
         }
 
         String rFolderId = runContext.render(folderId).as(String.class).orElse("inbox");

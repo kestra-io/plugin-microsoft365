@@ -12,6 +12,7 @@ import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -80,7 +81,7 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
         description = "Uniques identifier of rhe email message to retrieve"
     )
     @NotNull
-    private Property<String> messageID;
+    private Property<String> messageId;
 
     @Schema(
         title = "Include attachments",
@@ -93,7 +94,7 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
         title = "User email",
         description = "Email address of the user whose mailbox to access (optional, uses authenticated user if not specified)"
     )
-    private Property<@Email String> userEmail;
+    private Property<String> userEmail;
 
     @Override
     public Output run (RunContext runContext) throws Exception {
@@ -101,13 +102,12 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
 
         GraphServiceClient graphClient = this.createGraphClient(runContext);
 
-        String rMsgId = runContext.render(messageID).as(String.class).orElseThrow();
+        String rMsgId = runContext.render(messageId).as(String.class).orElseThrow();
         String rUser = userEmail != null ? runContext.render(userEmail).as(String.class).orElse(null) : null;
         Boolean rIncludeAttachment = runContext.render(includeAttachments).as(Boolean.class).orElse(false);
 
-        // Fallback to configured UPN if not provided
-        if (rUser == null) {
-            rUser = this.getUserPrincipalName(runContext).orElse(null);
+        if (rUser != null && !rUser.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            throw new IllegalArgumentException("Invalid email format for userEmail: " + rUser);
         }
 
         logger.info("Retrieving message '{}' for user: {}", rMsgId, rUser != null ? rUser : "current user");
