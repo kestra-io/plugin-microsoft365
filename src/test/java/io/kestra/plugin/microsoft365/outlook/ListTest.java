@@ -8,6 +8,7 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
+import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.microsoft365.outlook.utils.GraphMailUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,7 @@ public class ListTest {
     @BeforeEach
     void setUp() {
         list = List.builder()
-            .id("list-task")
+            .id("list-task-" + IdUtils.create())
             .type(List.class.getName())
             .tenantId(Property.ofValue("test"))
             .clientId(Property.ofValue("test"))
@@ -63,7 +64,7 @@ public class ListTest {
             utilities.when(() -> GraphMailUtils.fetchMessages(any(), any(), any(), any(), any(), any())).thenReturn(messageCollectionResponse);
 
             spy = List.builder()
-                .id("list-task")
+                .id("list-task-" + IdUtils.create())
                 .type(List.class.getName())
                 .tenantId(Property.ofValue("test"))
                 .clientId(Property.ofValue("test"))

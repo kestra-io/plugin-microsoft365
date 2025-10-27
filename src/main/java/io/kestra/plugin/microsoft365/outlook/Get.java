@@ -3,6 +3,8 @@ package io.kestra.plugin.microsoft365.outlook;
 import com.microsoft.graph.models.Attachment;
 import com.microsoft.graph.models.Message;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.kestra.plugin.microsoft365.outlook.domain.AttachmentInfo;
+import io.kestra.plugin.microsoft365.outlook.domain.MessageDetail;
 import io.kestra.plugin.microsoft365.outlook.utils.GraphMailUtils;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -120,7 +122,7 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
         logger.info("Retrieved message: {}", message.getSubject());
 
         // Get attachments if requested
-        java.util.List<io.kestra.plugin.microsoft365.outlook.domain.AttachmentInfo> attachmentInfos = new ArrayList<>();
+        java.util.List<AttachmentInfo> attachmentInfos = new ArrayList<>();
         if (rIncludeAttachment && Boolean.TRUE.equals(message.getHasAttachments())) {
             logger.debug("Retrieving attachment information");
 
@@ -130,7 +132,7 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
                 attachments = new ArrayList<>();
             }
             attachmentInfos = attachments.stream()
-                .map(att -> io.kestra.plugin.microsoft365.outlook.domain.AttachmentInfo.builder()
+                .map(att -> AttachmentInfo.builder()
                     .id(att.getId())
                     .name(att.getName())
                     .contentType(att.getContentType())
@@ -139,7 +141,7 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
                 .toList();
         }
 
-        io.kestra.plugin.microsoft365.outlook.domain.MessageDetail detail = io.kestra.plugin.microsoft365.outlook.domain.MessageDetail.builder()
+        MessageDetail detail = MessageDetail.builder()
             .id(message.getId())
             .subject(message.getSubject())
             .bodyContent(Objects.requireNonNull(message.getBody()).getContent())
@@ -173,7 +175,7 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
             title = "Message",
             description = "Email message details"
         )
-private final io.kestra.plugin.microsoft365.outlook.domain.MessageDetail message;
+private final MessageDetail message;
 
 }
 }

@@ -10,7 +10,7 @@ import java.time.OffsetDateTime;
 public class MessageSummary {
     private final String id;
     private final String subject;
-    private final String senderMail;   
+    private final String senderMail;
     private final String fromMail;
     private final OffsetDateTime receivedDateTime;
     private final OffsetDateTime sentDateTime;

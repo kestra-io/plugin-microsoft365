@@ -7,6 +7,7 @@ import com.microsoft.graph.serviceclient.GraphServiceClient;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
+import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.microsoft365.outlook.utils.GraphMailUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,7 +36,7 @@ public class GetTest {
     @BeforeEach
     void setUp() {
         get = Get.builder()
-            .id("get-task")
+            .id("get-task-" + IdUtils.create())
             .type(Get.class.getName())
             .tenantId(Property.ofValue("test"))
             .clientId(Property.ofValue("test"))

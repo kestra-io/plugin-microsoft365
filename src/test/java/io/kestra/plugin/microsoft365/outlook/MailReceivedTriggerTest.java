@@ -44,7 +44,6 @@ import static org.mockito.Mockito.*;
 @KestraTest
 class MailReceivedTriggerTest {
 
-    // ---- Injected Kestra test context ----
     @Inject
     private RunContextFactory runContextFactory;
 

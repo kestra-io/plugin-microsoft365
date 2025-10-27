@@ -3,6 +3,7 @@ package io.kestra.plugin.microsoft365.outlook;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.graph.models.Message;
 import com.microsoft.graph.models.MessageCollectionResponse;
+import io.kestra.plugin.microsoft365.outlook.domain.MessageSummary;
 import io.kestra.plugin.microsoft365.outlook.utils.GraphMailUtils;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -172,9 +173,9 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
         logger.info("Retrieved {} messages", messages.size());
 
         // Convert messages to domain summaries
-        java.util.List<io.kestra.plugin.microsoft365.outlook.domain.MessageSummary> summaries = new ArrayList<>();
+        java.util.List<MessageSummary> summaries = new ArrayList<>();
         for (Message message : messages) {
-            var summary = io.kestra.plugin.microsoft365.outlook.domain.MessageSummary.builder()
+            var summary = MessageSummary.builder()
                 .id(message.getId())
                 .subject(message.getSubject())
                 .senderMail(message.getSender() != null && message.getSender().getEmailAddress() != null ?
@@ -221,11 +222,11 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
         return output.build();
     }
 
-    private File storeMessages(RunContext runContext, java.util.List<io.kestra.plugin.microsoft365.outlook.domain.MessageSummary> messages) throws IOException {
+    private File storeMessages(RunContext runContext, java.util.List<MessageSummary> messages) throws IOException {
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
 
         try (BufferedWriter fileWriter = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)) {
-            Flux<io.kestra.plugin.microsoft365.outlook.domain.MessageSummary> flux = Flux.fromIterable(messages);
+            Flux<MessageSummary> flux = Flux.fromIterable(messages);
             FileSerde.writeAll(fileWriter, flux).block();
         }
 
@@ -238,12 +239,12 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
         @Schema(
             title = "List of messages (when fetchType is FETCH)"
         )
-        private final java.util.List<io.kestra.plugin.microsoft365.outlook.domain.MessageSummary> messages;
+        private final java.util.List<MessageSummary> messages;
 
         @Schema(
             title = "Single message (when fetchType is FETCH_ONE)"
         )
-        private final io.kestra.plugin.microsoft365.outlook.domain.MessageSummary message;
+        private final MessageSummary message;
 
         @Schema(
             title = "URI of the stored messages file (when fetchType is STORE)"
