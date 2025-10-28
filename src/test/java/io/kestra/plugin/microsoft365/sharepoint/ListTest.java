@@ -112,6 +112,7 @@ class ListTest {
 
         // Then
         assertThat(output.getItems(), hasSize(2));
+        assertThat(output.getSize(), is(2));
 
         // Verify first item (file)
         assertThat(output.getItems().getFirst().getId(), is("file-1"));
@@ -179,6 +180,7 @@ class ListTest {
 
         // Then
         assertThat(output.getItems(), hasSize(1));
+        assertThat(output.getSize(), is(1));
         assertThat(output.getItems().getFirst().getId(), is("root-file-1"));
         assertThat(output.getItems().getFirst().getName(), is("readme.md"));
     }
@@ -226,6 +228,7 @@ class ListTest {
 
         // Then
         assertThat(output.getItems(), hasSize(0));
+        assertThat(output.getSize(), is(0));
     }
 
     @Test
@@ -291,6 +294,10 @@ class ListTest {
 
         // Then
         assertThat(output.getItems(), hasSize(1));
+        assertThat(output.getSize(), is(1));
+        assertThat(output.getItem(), is(notNullValue()));
+        assertThat(output.getItem().getId(), is("file-1"));
+        assertThat(output.getItem().getName(), is("first.txt"));
         assertThat(output.getItems().getFirst().getId(), is("file-1"));
         assertThat(output.getItems().getFirst().getName(), is("first.txt"));
         assertThat(output.getUri(), is(nullValue()));
@@ -340,6 +347,8 @@ class ListTest {
 
         // Then
         assertThat(output.getItems(), hasSize(0));
+        assertThat(output.getSize(), is(0));
+        assertThat(output.getItem(), is(nullValue()));
         assertThat(output.getUri(), is(nullValue()));
     }
 
@@ -406,6 +415,7 @@ class ListTest {
 
         // Then
         assertThat(output.getItems(), is(nullValue()));
+        assertThat(output.getSize(), is(2));
         assertThat(output.getUri(), is(notNullValue()));
 
         // Verify the stored file contains the items
@@ -470,6 +480,7 @@ class ListTest {
 
         // Then
         assertThat(output.getItems(), hasSize(0));
+        assertThat(output.getSize(), is(0));
         assertThat(output.getUri(), is(nullValue()));
     }
 }

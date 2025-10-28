@@ -159,18 +159,32 @@ public class List extends AbstractSharepointTask implements RunnableTask<List.Ou
         return switch (rFetchType) {
             case FETCH_ONE -> {
                 if (items.isEmpty()) {
-                    yield Output.builder().items(java.util.List.of()).build();
+                    yield Output.builder()
+                        .items(java.util.List.of())
+                        .size(0)
+                        .build();
                 }
-                yield Output.builder().items(java.util.List.of(items.get(0))).build();
+                yield Output.builder()
+                    .items(java.util.List.of(items.getFirst()))
+                    .item(items.getFirst())
+                    .size(1)
+                    .build();
             }
-            case FETCH -> Output.builder().items(items).build();
+            case FETCH -> Output.builder()
+                .items(items)
+                .size(items.size())
+                .build();
             case STORE -> {
                 File tempFile = this.storeItems(runContext, items);
                 yield Output.builder()
                     .uri(runContext.storage().putFile(tempFile))
+                    .size(items.size())
                     .build();
             }
-            case NONE -> Output.builder().items(java.util.List.of()).build();
+            case NONE -> Output.builder()
+                .items(java.util.List.of())
+                .size(0)
+                .build();
         };
     }
 
@@ -195,9 +209,21 @@ public class List extends AbstractSharepointTask implements RunnableTask<List.Ou
         private final java.util.List<Item> items;
 
         @Schema(
+            title = "Single item",
+            description = "Single item. Only populated when fetchType is FETCH_ONE and an item exists."
+        )
+        private final Item item;
+
+        @Schema(
             title = "URI of the stored items file",
             description = "URI pointing to the file containing all items. Only populated when fetchType is STORE."
         )
         private final URI uri;
+
+        @Schema(
+            title = "Total number of items",
+            description = "Total count of items fetched from the folder."
+        )
+        private final Integer size;
     }
 }
