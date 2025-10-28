@@ -110,6 +110,7 @@ class ListFilesTest extends AbstractOneShareTest {
         assertThat(output, notNullValue());
         assertThat(output.getFiles(), notNullValue());
         assertThat(output.getFiles(), hasSize(3));
+        assertThat(output.getCount(), is(3));
         assertThat(output.getFiles().get(0).getName(), is("document1.txt"));
         assertThat(output.getFiles().get(1).getName(), is("document2.pdf"));
         assertThat(output.getFiles().get(2).getName(), is("spreadsheet.xlsx"));

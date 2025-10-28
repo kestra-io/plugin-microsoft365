@@ -120,7 +120,8 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
         title = "The ID of the parent folder.",
         description = "The ID of the parent folder. If not provided, the root of the drive is used."
     )
-    private Property<String> parentId;
+    @Builder.Default
+    private Property<String> parentId = Property.ofValue("root");
 
     @Schema(
         title = "The name of the file to upload.",

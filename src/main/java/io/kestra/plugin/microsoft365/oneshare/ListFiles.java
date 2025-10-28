@@ -115,7 +115,10 @@ public class ListFiles extends AbstractOneShareTask implements RunnableTask<List
             .map(OneShareFile::of)
             .collect(Collectors.toList());
 
-        return Output.builder().files(files).build();
+        return Output.builder()
+            .files(files)
+            .count(files.size())
+            .build();
     }
 
     /**
@@ -134,5 +137,10 @@ public class ListFiles extends AbstractOneShareTask implements RunnableTask<List
             title = "The list of files."
         )
         private final List<OneShareFile> files;
+
+        @Schema(
+            title = "The number of files."
+        )
+        private final int count;
     }
 }
