@@ -81,7 +81,7 @@ class ExportTest extends AbstractOneShareTest {
             .type(Export.class.getName())
             .driveId(Property.ofValue("test-drive"))
             .itemId(Property.ofValue("item-to-export"))
-            .format(Property.ofValue("pdf"))
+            .format(Property.ofValue(Export.ExportFormat.PDF))
             .tenantId(Property.ofValue("mock-tenant"))
             .clientId(Property.ofValue("mock-client"))
             .clientSecret(Property.ofValue("mock-secret"))
@@ -113,7 +113,7 @@ class ExportTest extends AbstractOneShareTest {
             .type(Export.class.getName())
             .driveId(Property.ofValue("test-drive"))
             .itemId(Property.ofValue("item-to-export"))
-            .format(Property.ofValue("pdf"))
+            .format(Property.ofValue(Export.ExportFormat.PDF))
             .tenantId(Property.ofValue("mock-tenant"))
             .clientId(Property.ofValue("mock-client"))
             .clientSecret(Property.ofValue("mock-secret"))
@@ -142,7 +142,7 @@ class ExportTest extends AbstractOneShareTest {
             .clientSecret(Property.ofValue(clientSecret))
             .driveId(Property.ofValue(driveId))
             .itemId(Property.ofValue(uploadOutput.getFile().getId()))
-            .format(Property.ofValue("pdf"))
+            .format(Property.ofValue(Export.ExportFormat.PDF))
             .build();
 
         Export.Output runOutput = task.run(runContext(task));
