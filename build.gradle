@@ -50,10 +50,10 @@ dependencies {
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
 
+    // Microsoft Graph SDK - latest stable version
     implementation "com.microsoft.graph:microsoft-graph:6.54.0"
     implementation "com.azure:azure-identity:1.18.0"
 }
-
 
 /**********************************************************************************************************************\
  * Test
@@ -94,11 +94,15 @@ dependencies {
     testImplementation group: "io.kestra", name: "repository-memory", version: kestraVersion
     testImplementation group: "io.kestra", name: "runner-memory", version: kestraVersion
     testImplementation group: "io.kestra", name: "storage-local", version: kestraVersion
+    testImplementation group: "io.kestra", name: "scheduler", version: kestraVersion
+
 
     // test
     testImplementation "org.junit.jupiter:junit-jupiter-engine"
     testImplementation "org.hamcrest:hamcrest"
     testImplementation "org.hamcrest:hamcrest-library"
+    testImplementation "org.mockito:mockito-core:5.11.0"
+    testImplementation "org.mockito:mockito-junit-jupiter:5.11.0"
 }
 
 /**********************************************************************************************************************\
