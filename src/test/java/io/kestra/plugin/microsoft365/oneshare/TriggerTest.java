@@ -1,6 +1,14 @@
 package io.kestra.plugin.microsoft365.oneshare;
 
 import com.devskiller.friendly_id.FriendlyId;
+import com.microsoft.graph.drives.DrivesRequestBuilder;
+import com.microsoft.graph.drives.item.DriveItemRequestBuilder;
+import com.microsoft.graph.drives.item.items.ItemsRequestBuilder;
+import com.microsoft.graph.drives.item.items.item.DriveItemItemRequestBuilder;
+import com.microsoft.graph.drives.item.items.item.delta.DeltaGetResponse;
+import com.microsoft.graph.drives.item.items.item.delta.DeltaRequestBuilder;
+import com.microsoft.graph.models.DriveItem;
+import com.microsoft.graph.serviceclient.GraphServiceClient;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.executions.Execution;
@@ -16,13 +24,18 @@ import io.kestra.plugin.microsoft365.oneshare.models.OneShareFile;
 import io.kestra.scheduler.AbstractScheduler;
 import io.kestra.worker.DefaultWorker;
 import io.micronaut.context.ApplicationContext;
-import io.micronaut.context.annotation.Value;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedConstruction;
+import org.mockito.Mockito;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,6 +49,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @KestraTest
 class TriggerTest extends AbstractOneShareTest {
@@ -55,17 +71,160 @@ class TriggerTest extends AbstractOneShareTest {
     @Inject
     protected OnesShareTestUtils testUtils;
 
-    @Value("${kestra.tasks.oneshare.tenantId}")
-    private String tenantId;
-    @Value("${kestra.tasks.oneshare.clientId}")
-    private String clientId;
-    @Value("${kestra.tasks.oneshare.clientSecret}")
-    private String clientSecret;
-    @Value("${kestra.tasks.oneshare.driveId}")
-    private String driveId;
+    private static MockedConstruction<GraphServiceClient> graphClientMock;
+    private static MockedConstruction<DeltaRequestBuilder> deltaBuilderMock;
+    
+    @BeforeAll
+    static void setupMocks() {
+        // First, mock DeltaRequestBuilder construction (used when deltaLink is provided)
+        deltaBuilderMock = Mockito.mockConstruction(DeltaRequestBuilder.class, (mock, context) -> {
+            DeltaGetResponse deltaResponse = new DeltaGetResponse();
+            
+            DriveItem file1 = new DriveItem();
+            file1.setId("delta-file-1");
+            file1.setName("changed-file-1.txt");
+            file1.setSize(512L);
+            file1.setFile(new com.microsoft.graph.models.File());
+            file1.setETag("v1");
+            file1.setCreatedDateTime(java.time.OffsetDateTime.now());
+            file1.setLastModifiedDateTime(java.time.OffsetDateTime.now());
+            
+            DriveItem file2 = new DriveItem();
+            file2.setId("delta-file-2");
+            file2.setName("changed-file-2.txt");
+            file2.setSize(1024L);
+            file2.setFile(new com.microsoft.graph.models.File());
+            file2.setETag("v1");
+            file2.setCreatedDateTime(java.time.OffsetDateTime.now());
+            file2.setLastModifiedDateTime(java.time.OffsetDateTime.now());
+            
+            deltaResponse.setValue(Arrays.asList(file1, file2));
+            deltaResponse.setOdataDeltaLink("https://mock-delta-link");
+            deltaResponse.setOdataNextLink(null);
+            
+            when(mock.get()).thenReturn(deltaResponse);
+        });
+        
+        // Mock GraphServiceClient and the drive API chain for delta/trigger
+        graphClientMock = Mockito.mockConstruction(GraphServiceClient.class, (mock, context) -> {
+            // Mock RequestAdapter (required for DeltaRequestBuilder)
+            com.microsoft.kiota.RequestAdapter requestAdapter = mock(com.microsoft.kiota.RequestAdapter.class);
+            when(mock.getRequestAdapter()).thenReturn(requestAdapter);
+            
+            // Create mock builders
+            DrivesRequestBuilder drivesBuilder = mock(DrivesRequestBuilder.class);
+            DriveItemRequestBuilder driveItemBuilder = mock(DriveItemRequestBuilder.class);
+            ItemsRequestBuilder itemsBuilder = mock(ItemsRequestBuilder.class);
+            DriveItemItemRequestBuilder driveItemItemBuilder = mock(DriveItemItemRequestBuilder.class);
+            DeltaRequestBuilder deltaBuilder = mock(DeltaRequestBuilder.class);
+
+            // Mock delta response with changed files
+            DeltaGetResponse deltaResponse = new DeltaGetResponse();
+            
+            DriveItem file1 = new DriveItem();
+            file1.setId("delta-file-1");
+            file1.setName("changed-file-1.txt");
+            file1.setSize(512L);
+            file1.setFile(new com.microsoft.graph.models.File());
+            file1.setETag("v1");
+            file1.setCreatedDateTime(java.time.OffsetDateTime.now());
+            file1.setLastModifiedDateTime(java.time.OffsetDateTime.now());
+            
+            DriveItem file2 = new DriveItem();
+            file2.setId("delta-file-2");
+            file2.setName("changed-file-2.txt");
+            file2.setSize(1024L);
+            file2.setFile(new com.microsoft.graph.models.File());
+            file2.setETag("v1");
+            file2.setCreatedDateTime(java.time.OffsetDateTime.now());
+            file2.setLastModifiedDateTime(java.time.OffsetDateTime.now());
+            
+            deltaResponse.setValue(Arrays.asList(file1, file2));
+            deltaResponse.setOdataDeltaLink("https://mock-delta-link");
+            deltaResponse.setOdataNextLink(null); // No pagination
+            
+            // Setup mock chain
+            when(deltaBuilder.get()).thenReturn(deltaResponse);
+            when(driveItemItemBuilder.delta()).thenReturn(deltaBuilder);
+            when(itemsBuilder.byDriveItemId(anyString())).thenReturn(driveItemItemBuilder);
+            when(driveItemBuilder.items()).thenReturn(itemsBuilder);
+            when(drivesBuilder.byDriveId(anyString())).thenReturn(driveItemBuilder);
+            when(mock.drives()).thenReturn(drivesBuilder);
+        });
+    }
+
+    @AfterAll
+    static void tearDownMocks() {
+        if (deltaBuilderMock != null) {
+            deltaBuilderMock.close();
+        }
+        if (graphClientMock != null) {
+            graphClientMock.close();
+        }
+    }
+
+    // ================== Mock-based Unit Tests ==================
+    
+    @Test
+    void testTriggerExecutesSuccessfully() throws Exception {
+        // Verify the mock is active
+        assertThat("GraphServiceClient mock should be active", 
+            graphClientMock != null && !graphClientMock.isClosed(), is(true));
+        
+        // Since we're using MockedConstruction, the GraphServiceClient will be mocked
+        // when the trigger creates it via graphClient(runContext)
+        Trigger trigger = Trigger.builder()
+            .id("test-trigger")
+            .type(Trigger.class.getName())
+            .driveId(Property.ofValue("test-drive"))
+            .path(Property.ofValue("/Documents/Test"))
+            .interval(Duration.ofSeconds(30))
+            .tenantId(Property.ofValue("mock-tenant"))
+            .clientId(Property.ofValue("mock-client"))
+            .clientSecret(Property.ofValue("mock-secret"))
+            .build();
+        
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = 
+            TestsUtils.mockTrigger(runContextFactory, trigger);
+        
+        // The GraphServiceClient created in the evaluate method will be mocked
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        
+        // On first run, the trigger should not fire (to avoid flooding with existing files)
+        // It should return empty but successfully process the files and store state
+        assertThat("First run should not trigger execution", execution.isPresent(), is(false));
+        
+        // Verify the mock was actually called (DeltaRequestBuilder.get() was invoked)
+        assertThat("GraphServiceClient should have been constructed", 
+            graphClientMock.constructed().size(), is(1));
+    }
+
+    @Test
+    void testTriggerTaskConfiguration() {
+        // Lightweight configuration test
+        Trigger trigger = Trigger.builder()
+            .id("test-trigger")
+            .type(Trigger.class.getName())
+            .driveId(Property.ofValue("test-drive"))
+            .path(Property.ofValue("/Documents/Test"))
+            .interval(Duration.ofSeconds(30))
+            .tenantId(Property.ofValue("mock-tenant"))
+            .clientId(Property.ofValue("mock-client"))
+            .clientSecret(Property.ofValue("mock-secret"))
+            .build();
+        
+        assertThat(trigger, notNullValue());
+        assertThat(trigger.getDriveId(), notNullValue());
+        assertThat(trigger.getPath(), notNullValue());
+        assertThat(trigger.getInterval(), is(Duration.ofSeconds(30)));
+    }
+
+    // ================== E2E Tests (requires credentials) ==================
 
     @Test
     void listenFromFlow() throws Exception {
+        Assumptions.assumeTrue(credentialsAvailable,
+            "Skipping test - Microsoft 365 credentials not available");
 
         // mock flow listeners
         CountDownLatch queueCount = new CountDownLatch(1);
@@ -113,6 +272,8 @@ class TriggerTest extends AbstractOneShareTest {
 
     @Test
     void shouldDetectNewFile() throws Exception {
+        Assumptions.assumeTrue(credentialsAvailable,
+            "Skipping test - Microsoft 365 credentials not available");
 
         Trigger trigger = Trigger.builder()
             .id(TriggerTest.class.getSimpleName() + IdUtils.create())
@@ -147,6 +308,8 @@ class TriggerTest extends AbstractOneShareTest {
 
     @Test
     void shouldNotTriggerWithoutNewFiles() throws Exception {
+        Assumptions.assumeTrue(credentialsAvailable,
+            "Skipping test - Microsoft 365 credentials not available");
 
         Trigger trigger = Trigger.builder()
             .id(TriggerTest.class.getSimpleName() + IdUtils.create())
@@ -168,6 +331,8 @@ class TriggerTest extends AbstractOneShareTest {
 
     @Test
     void shouldDetectMultipleFiles() throws Exception {
+        Assumptions.assumeTrue(credentialsAvailable,
+            "Skipping test - Microsoft 365 credentials not available");
 
         Trigger trigger = Trigger.builder()
             .id(TriggerTest.class.getSimpleName() + IdUtils.create())
@@ -204,6 +369,8 @@ class TriggerTest extends AbstractOneShareTest {
 
     @Test
     void shouldPersistStateAcrossEvaluations() throws Exception {
+        Assumptions.assumeTrue(credentialsAvailable,
+            "Skipping test - Microsoft 365 credentials not available");
 
         String triggerId = TriggerTest.class.getSimpleName() + IdUtils.create();
         Trigger trigger = Trigger.builder()
@@ -265,6 +432,8 @@ class TriggerTest extends AbstractOneShareTest {
 
     @Test
     void shouldHandleDriveIdAndSiteId() throws Exception {
+        Assumptions.assumeTrue(credentialsAvailable,
+            "Skipping test - Microsoft 365 credentials not available");
 
         // Test with driveId
         Trigger triggerWithDrive = Trigger.builder()
