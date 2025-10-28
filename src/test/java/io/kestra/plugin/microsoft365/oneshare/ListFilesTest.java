@@ -16,9 +16,9 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.TestsUtils;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 
@@ -136,10 +136,8 @@ class ListFilesTest extends AbstractOneShareTest {
     // ================== E2E Tests (requires credentials) ==================
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void run() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         String dir = FriendlyId.createFriendlyId();
 
         // Create parent folder

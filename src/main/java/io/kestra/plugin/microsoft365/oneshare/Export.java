@@ -71,12 +71,6 @@ import java.net.URI;
 public class Export extends AbstractOneShareTask implements RunnableTask<Export.Output> {
 
     @Schema(
-        title = "The ID of the drive."
-    )
-    @NotNull
-    private Property<String> driveId;
-
-    @Schema(
         title = "The ID of the item (file) to export."
     )
     @NotNull

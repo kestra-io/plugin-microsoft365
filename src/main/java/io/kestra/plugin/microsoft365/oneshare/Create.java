@@ -75,12 +75,6 @@ import java.nio.charset.StandardCharsets;
 public class Create extends AbstractOneShareTask implements RunnableTask<Create.Output> {
 
     @Schema(
-        title = "The ID of the drive."
-    )
-    @NotNull
-    private Property<String> driveId;
-
-    @Schema(
         title = "The ID of the parent folder. If not provided, the root of the drive is used."
     )
     private Property<String> parentId;

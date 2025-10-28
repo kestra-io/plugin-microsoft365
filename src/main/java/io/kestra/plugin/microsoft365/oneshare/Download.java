@@ -73,12 +73,6 @@ import java.net.URI;
 public class Download extends AbstractOneShareTask implements RunnableTask<Download.Output> {
 
     @Schema(
-        title = "The ID of the drive."
-    )
-    @NotNull
-    private Property<String> driveId;
-
-    @Schema(
         title = "The ID of the item (file) to download."
     )
     @NotNull

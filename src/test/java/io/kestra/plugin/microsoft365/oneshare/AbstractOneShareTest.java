@@ -37,4 +37,22 @@ public abstract class AbstractOneShareTest {
                                StringUtils.isNotBlank(clientSecret) &&
                                StringUtils.isNotBlank(driveId);
     }
+
+    /**
+     * Condition method for @EnabledIf to enable integration tests only when credentials are available.
+     * This allows integration tests to be skipped automatically when Microsoft 365 credentials are not configured.
+     * 
+     * @return true if all required credentials are configured, false otherwise
+     */
+    protected static boolean isIntegrationTestEnabled() {
+        String tenantId = System.getProperty("kestra.tasks.oneshare.tenantId", System.getenv("KESTRA_TASKS_ONESHARE_TENANTID"));
+        String clientId = System.getProperty("kestra.tasks.oneshare.clientId", System.getenv("KESTRA_TASKS_ONESHARE_CLIENTID"));
+        String clientSecret = System.getProperty("kestra.tasks.oneshare.clientSecret", System.getenv("KESTRA_TASKS_ONESHARE_CLIENTSECRET"));
+        String driveId = System.getProperty("kestra.tasks.oneshare.driveId", System.getenv("KESTRA_TASKS_ONESHARE_DRIVEID"));
+        
+        return StringUtils.isNotBlank(tenantId) &&
+               StringUtils.isNotBlank(clientId) &&
+               StringUtils.isNotBlank(clientSecret) &&
+               StringUtils.isNotBlank(driveId);
+    }
 }

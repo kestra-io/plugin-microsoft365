@@ -16,9 +16,9 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.TestsUtils;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 
@@ -126,10 +126,8 @@ class DownloadTest extends AbstractOneShareTest {
     // ================== E2E Tests (requires credentials) ==================
     
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void fromStorage() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable, 
-            "Skipping test - Microsoft 365 credentials not available");
-
         File file = new File(Objects.requireNonNull(DownloadTest.class.getClassLoader()
             .getResource("application.yml"))
             .toURI());

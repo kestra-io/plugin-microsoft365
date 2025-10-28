@@ -17,9 +17,9 @@ import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.TestsUtils;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 
@@ -175,10 +175,8 @@ class UploadTest extends AbstractOneShareTest {
     // ================== E2E Tests (requires credentials) ==================
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void smallFileUpload() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         // Test small file upload (should use simple PUT content method)
         String fileName = FriendlyId.createFriendlyId() + ".yml";
         Upload.Output run = testUtils.upload("Documents/TestUpload", fileName);
@@ -191,10 +189,8 @@ class UploadTest extends AbstractOneShareTest {
     }
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void uploadToRootFolder() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         // Test uploading to root directory
         File file = new File(Objects.requireNonNull(UploadTest.class.getClassLoader()
             .getResource("application.yml"))
@@ -229,10 +225,8 @@ class UploadTest extends AbstractOneShareTest {
     }
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void uploadWithConflictBehaviorReplace() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         // Upload a file
         String fileName = "conflict-test-" + FriendlyId.createFriendlyId() + ".txt";
         String content1 = "Original content";
@@ -280,10 +274,8 @@ class UploadTest extends AbstractOneShareTest {
     }
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void uploadWithConflictBehaviorRename() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         // Upload a file
         String fileName = "rename-test-" + FriendlyId.createFriendlyId() + ".txt";
         String content = "Test content";
@@ -328,10 +320,8 @@ class UploadTest extends AbstractOneShareTest {
     }
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void largeFileUpload() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         // Test large file upload (should use resumable upload session)
         // Create a file larger than 4MB threshold
         int fileSizeInMB = 5;
@@ -373,10 +363,8 @@ class UploadTest extends AbstractOneShareTest {
     }
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void uploadWithCustomThreshold() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         // Test upload with custom threshold (force small file to use resumable upload)
         File file = new File(Objects.requireNonNull(UploadTest.class.getClassLoader()
             .getResource("application.yml"))

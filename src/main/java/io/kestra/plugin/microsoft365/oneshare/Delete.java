@@ -72,12 +72,6 @@ import lombok.experimental.SuperBuilder;
 public class Delete extends AbstractOneShareTask implements RunnableTask<VoidOutput> {
 
     @Schema(
-        title = "The ID of the drive."
-    )
-    @NotNull
-    private Property<String> driveId;
-
-    @Schema(
         title = "The ID of the item (file or folder) to delete."
     )
     @NotNull

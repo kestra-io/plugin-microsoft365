@@ -11,7 +11,6 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.microsoft365.oneshare.models.OneShareFile;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -71,12 +70,6 @@ import java.util.stream.Collectors;
     }
 )
 public class ListFiles extends AbstractOneShareTask implements RunnableTask<ListFiles.Output> {
-
-    @Schema(
-        title = "The ID of the drive."
-    )
-    @NotNull
-    private Property<String> driveId;
 
     @Schema(
         title = "The ID of the item (folder) to list children from. If not provided, the root of the drive is used."

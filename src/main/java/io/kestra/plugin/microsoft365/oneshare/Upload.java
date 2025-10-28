@@ -117,13 +117,6 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
     private static final int DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 
     @Schema(
-        title = "The ID of the drive.",
-        description = "The unique identifier of the OneDrive or SharePoint drive."
-    )
-    @NotNull
-    private Property<String> driveId;
-
-    @Schema(
         title = "The ID of the parent folder.",
         description = "The ID of the parent folder. If not provided, the root of the drive is used."
     )

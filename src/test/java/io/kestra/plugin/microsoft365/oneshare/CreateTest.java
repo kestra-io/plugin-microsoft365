@@ -16,9 +16,9 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.TestsUtils;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 
@@ -165,10 +165,8 @@ class CreateTest extends AbstractOneShareTest {
     // ================== E2E Tests (requires credentials) ==================
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void createFolder() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         String folderName = "test-folder-" + FriendlyId.createFriendlyId();
 
         Create task = Create.builder()
@@ -191,10 +189,8 @@ class CreateTest extends AbstractOneShareTest {
     }
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void createFile() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         String fileName = "test-file-" + FriendlyId.createFriendlyId() + ".txt";
         String content = "Hello World from Kestra!";
 

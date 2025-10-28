@@ -27,9 +27,9 @@ import io.micronaut.context.ApplicationContext;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 import reactor.core.publisher.Flux;
@@ -222,10 +222,8 @@ class TriggerTest extends AbstractOneShareTest {
     // ================== E2E Tests (requires credentials) ==================
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void listenFromFlow() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         // mock flow listeners
         CountDownLatch queueCount = new CountDownLatch(1);
 
@@ -271,10 +269,8 @@ class TriggerTest extends AbstractOneShareTest {
     }
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void shouldDetectNewFile() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         Trigger trigger = Trigger.builder()
             .id(TriggerTest.class.getSimpleName() + IdUtils.create())
             .type(Trigger.class.getName())
@@ -307,10 +303,8 @@ class TriggerTest extends AbstractOneShareTest {
     }
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void shouldNotTriggerWithoutNewFiles() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         Trigger trigger = Trigger.builder()
             .id(TriggerTest.class.getSimpleName() + IdUtils.create())
             .type(Trigger.class.getName())
@@ -330,10 +324,8 @@ class TriggerTest extends AbstractOneShareTest {
     }
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void shouldDetectMultipleFiles() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         Trigger trigger = Trigger.builder()
             .id(TriggerTest.class.getSimpleName() + IdUtils.create())
             .type(Trigger.class.getName())
@@ -368,10 +360,8 @@ class TriggerTest extends AbstractOneShareTest {
     }
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void shouldPersistStateAcrossEvaluations() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         String triggerId = TriggerTest.class.getSimpleName() + IdUtils.create();
         Trigger trigger = Trigger.builder()
             .id(triggerId)
@@ -431,10 +421,8 @@ class TriggerTest extends AbstractOneShareTest {
     }
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void shouldHandleDriveIdAndSiteId() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         // Test with driveId
         Trigger triggerWithDrive = Trigger.builder()
             .id(TriggerTest.class.getSimpleName() + IdUtils.create())

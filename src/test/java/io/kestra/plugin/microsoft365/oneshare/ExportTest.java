@@ -16,9 +16,9 @@ import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.TestsUtils;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 
@@ -128,10 +128,8 @@ class ExportTest extends AbstractOneShareTest {
     // ================== E2E Tests (requires credentials) ==================
 
     @Test
+    @EnabledIf("isIntegrationTestEnabled")
     void run() throws Exception {
-        Assumptions.assumeTrue(credentialsAvailable,
-            "Skipping test - Microsoft 365 credentials not available");
-
         // First, upload a file to export
         String fileName = FriendlyId.createFriendlyId() + ".yml";
         Upload.Output uploadOutput = testUtils.upload("Documents/TestExport", fileName);
