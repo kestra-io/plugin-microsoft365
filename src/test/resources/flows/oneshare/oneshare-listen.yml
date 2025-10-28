@@ -12,6 +12,6 @@ triggers:
     interval: PT10S
 
 tasks:
-  - id: end
-    type: io.kestra.plugin.core.debug.Return
-    format: "Detected new file: {{ trigger.files | jq('.[].name') }}"
+  - id: log_files
+    type: io.kestra.plugin.core.log.Log
+    message: "Detected {{ trigger.count }} new file(s): {{ trigger.files | jq('.[].name') | join(', ') }}"

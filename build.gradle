@@ -29,7 +29,7 @@ java {
 }
 
 group = "io.kestra.plugin"
-description = 'Plugin for Microsoft 365 services like OneDrive and SharePoint.'
+description = 'Microsoft 365 plugin for Kestra'
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
@@ -70,7 +70,6 @@ dependencies {
         exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-guava'
     }
 }
-
 
 /**********************************************************************************************************************\
  * Test
@@ -122,7 +121,8 @@ dependencies {
     testImplementation "org.hamcrest:hamcrest-library"
 
     testImplementation group: 'com.devskiller.friendly-id', name: 'friendly-id'
-    testImplementation 'org.mockito:mockito-junit-jupiter'
+    testImplementation "org.mockito:mockito-core:5.11.0"
+    testImplementation "org.mockito:mockito-junit-jupiter:5.11.0"
 }
 
 /**********************************************************************************************************************\
