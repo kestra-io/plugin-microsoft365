@@ -10,15 +10,22 @@ import com.microsoft.graph.models.File;
 import com.microsoft.graph.models.Folder;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import io.kestra.core.models.property.Property;
+import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
+import io.kestra.core.serializers.FileSerde;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Flux;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -219,5 +226,250 @@ class ListTest {
 
         // Then
         assertThat(output.getItems(), hasSize(0));
+    }
+
+    @Test
+    void shouldReturnOnlyFirstItemWhenFetchTypeIsFetchOne() throws Exception {
+        // Given
+        List listTask = List.builder()
+            .tenantId(Property.ofValue("test-tenant-id"))
+            .clientId(Property.ofValue("test-client-id"))
+            .clientSecret(Property.ofValue("test-client-secret"))
+            .siteId(Property.ofValue("test-site-id"))
+            .driveId(Property.ofValue("test-drive-id"))
+            .folderId(Property.ofValue("folder-id"))
+            .fetchType(Property.ofValue(FetchType.FETCH_ONE))
+            .build();
+
+        // Mock the SharePoint connection
+        when(mockConnection.createClient(any())).thenReturn(mockClient);
+        when(mockConnection.getSiteId(any())).thenReturn("test-site-id");
+        when(mockConnection.getDriveId(any(), any())).thenReturn("test-drive-id");
+
+        // Mock the Graph API chain
+        DrivesRequestBuilder mockDrives = mock(DrivesRequestBuilder.class);
+        DriveItemRequestBuilder mockDriveItems = mock(DriveItemRequestBuilder.class);
+        DriveItemItemRequestBuilder mockDriveItem = mock(DriveItemItemRequestBuilder.class);
+        ChildrenRequestBuilder mockChildren = mock(ChildrenRequestBuilder.class);
+
+        when(mockClient.drives()).thenReturn(mockDrives);
+        when(mockDrives.byDriveId(anyString())).thenReturn(mockDriveItems);
+        when(mockDriveItems.items()).thenReturn(mock(com.microsoft.graph.drives.item.items.ItemsRequestBuilder.class));
+        when(mockDriveItems.items().byDriveItemId(anyString())).thenReturn(mockDriveItem);
+        when(mockDriveItem.children()).thenReturn(mockChildren);
+
+        // Create mock drive items
+        DriveItem file1 = new DriveItem();
+        file1.setId("file-1");
+        file1.setName("first.txt");
+        file1.setSize(1024L);
+        file1.setWebUrl("https://contoso.sharepoint.com/first.txt");
+        file1.setCreatedDateTime(OffsetDateTime.now());
+        file1.setLastModifiedDateTime(OffsetDateTime.now());
+        file1.setFile(new File());
+
+        DriveItem file2 = new DriveItem();
+        file2.setId("file-2");
+        file2.setName("second.txt");
+        file2.setSize(2048L);
+        file2.setWebUrl("https://contoso.sharepoint.com/second.txt");
+        file2.setCreatedDateTime(OffsetDateTime.now());
+        file2.setLastModifiedDateTime(OffsetDateTime.now());
+        file2.setFile(new File());
+
+        DriveItemCollectionResponse mockResponse = new DriveItemCollectionResponse();
+        mockResponse.setValue(Arrays.asList(file1, file2));
+
+        when(mockChildren.get()).thenReturn(mockResponse);
+
+        // Create a spy of the task to override connection method
+        List testTask = spy(listTask);
+        doReturn(mockConnection).when(testTask).connection(any(RunContext.class));
+
+        // When
+        List.Output output = testTask.run(runContext);
+
+        // Then
+        assertThat(output.getItems(), hasSize(1));
+        assertThat(output.getItems().getFirst().getId(), is("file-1"));
+        assertThat(output.getItems().getFirst().getName(), is("first.txt"));
+        assertThat(output.getUri(), is(nullValue()));
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenFetchTypeIsFetchOneButNoItems() throws Exception {
+        // Given
+        List listTask = List.builder()
+            .tenantId(Property.ofValue("test-tenant-id"))
+            .clientId(Property.ofValue("test-client-id"))
+            .clientSecret(Property.ofValue("test-client-secret"))
+            .siteId(Property.ofValue("test-site-id"))
+            .driveId(Property.ofValue("test-drive-id"))
+            .folderId(Property.ofValue("empty-folder-id"))
+            .fetchType(Property.ofValue(FetchType.FETCH_ONE))
+            .build();
+
+        // Mock the SharePoint connection
+        when(mockConnection.createClient(any())).thenReturn(mockClient);
+        when(mockConnection.getSiteId(any())).thenReturn("test-site-id");
+        when(mockConnection.getDriveId(any(), any())).thenReturn("test-drive-id");
+
+        // Mock the Graph API chain
+        DrivesRequestBuilder mockDrives = mock(DrivesRequestBuilder.class);
+        DriveItemRequestBuilder mockDriveItems = mock(DriveItemRequestBuilder.class);
+        DriveItemItemRequestBuilder mockDriveItem = mock(DriveItemItemRequestBuilder.class);
+        ChildrenRequestBuilder mockChildren = mock(ChildrenRequestBuilder.class);
+
+        when(mockClient.drives()).thenReturn(mockDrives);
+        when(mockDrives.byDriveId(anyString())).thenReturn(mockDriveItems);
+        when(mockDriveItems.items()).thenReturn(mock(com.microsoft.graph.drives.item.items.ItemsRequestBuilder.class));
+        when(mockDriveItems.items().byDriveItemId(anyString())).thenReturn(mockDriveItem);
+        when(mockDriveItem.children()).thenReturn(mockChildren);
+
+        DriveItemCollectionResponse mockResponse = new DriveItemCollectionResponse();
+        mockResponse.setValue(Arrays.asList());
+
+        when(mockChildren.get()).thenReturn(mockResponse);
+
+        // Create a spy of the task to override connection method
+        List testTask = spy(listTask);
+        doReturn(mockConnection).when(testTask).connection(any(RunContext.class));
+
+        // When
+        List.Output output = testTask.run(runContext);
+
+        // Then
+        assertThat(output.getItems(), hasSize(0));
+        assertThat(output.getUri(), is(nullValue()));
+    }
+
+    @Test
+    void shouldStoreItemsToFileWhenFetchTypeIsStore() throws Exception {
+        // Given
+        List listTask = List.builder()
+            .tenantId(Property.ofValue("test-tenant-id"))
+            .clientId(Property.ofValue("test-client-id"))
+            .clientSecret(Property.ofValue("test-client-secret"))
+            .siteId(Property.ofValue("test-site-id"))
+            .driveId(Property.ofValue("test-drive-id"))
+            .folderId(Property.ofValue("folder-id"))
+            .fetchType(Property.ofValue(FetchType.STORE))
+            .build();
+
+        // Mock the SharePoint connection
+        when(mockConnection.createClient(any())).thenReturn(mockClient);
+        when(mockConnection.getSiteId(any())).thenReturn("test-site-id");
+        when(mockConnection.getDriveId(any(), any())).thenReturn("test-drive-id");
+
+        // Mock the Graph API chain
+        DrivesRequestBuilder mockDrives = mock(DrivesRequestBuilder.class);
+        DriveItemRequestBuilder mockDriveItems = mock(DriveItemRequestBuilder.class);
+        DriveItemItemRequestBuilder mockDriveItem = mock(DriveItemItemRequestBuilder.class);
+        ChildrenRequestBuilder mockChildren = mock(ChildrenRequestBuilder.class);
+
+        when(mockClient.drives()).thenReturn(mockDrives);
+        when(mockDrives.byDriveId(anyString())).thenReturn(mockDriveItems);
+        when(mockDriveItems.items()).thenReturn(mock(com.microsoft.graph.drives.item.items.ItemsRequestBuilder.class));
+        when(mockDriveItems.items().byDriveItemId(anyString())).thenReturn(mockDriveItem);
+        when(mockDriveItem.children()).thenReturn(mockChildren);
+
+        // Create mock drive items
+        DriveItem file1 = new DriveItem();
+        file1.setId("file-1");
+        file1.setName("document.txt");
+        file1.setSize(1024L);
+        file1.setWebUrl("https://contoso.sharepoint.com/document.txt");
+        file1.setCreatedDateTime(OffsetDateTime.now());
+        file1.setLastModifiedDateTime(OffsetDateTime.now());
+        file1.setFile(new File());
+
+        DriveItem folder1 = new DriveItem();
+        folder1.setId("folder-1");
+        folder1.setName("Subfolder");
+        folder1.setSize(0L);
+        folder1.setWebUrl("https://contoso.sharepoint.com/Subfolder");
+        folder1.setCreatedDateTime(OffsetDateTime.now());
+        folder1.setLastModifiedDateTime(OffsetDateTime.now());
+        folder1.setFolder(new Folder());
+
+        DriveItemCollectionResponse mockResponse = new DriveItemCollectionResponse();
+        mockResponse.setValue(Arrays.asList(file1, folder1));
+
+        when(mockChildren.get()).thenReturn(mockResponse);
+
+        // Create a spy of the task to override connection method
+        List testTask = spy(listTask);
+        doReturn(mockConnection).when(testTask).connection(any(RunContext.class));
+
+        // When
+        List.Output output = testTask.run(runContext);
+
+        // Then
+        assertThat(output.getItems(), is(nullValue()));
+        assertThat(output.getUri(), is(notNullValue()));
+
+        // Verify the stored file contains the items
+        var items = Flux.from(FileSerde.readAll(
+            new BufferedReader(new InputStreamReader(runContext.storage().getFile(output.getUri())))
+        )).collectList().block();
+        
+        assertThat(items, hasSize(2));
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenFetchTypeIsNone() throws Exception {
+        // Given
+        List listTask = List.builder()
+            .tenantId(Property.ofValue("test-tenant-id"))
+            .clientId(Property.ofValue("test-client-id"))
+            .clientSecret(Property.ofValue("test-client-secret"))
+            .siteId(Property.ofValue("test-site-id"))
+            .driveId(Property.ofValue("test-drive-id"))
+            .folderId(Property.ofValue("folder-id"))
+            .fetchType(Property.ofValue(FetchType.NONE))
+            .build();
+
+        // Mock the SharePoint connection
+        when(mockConnection.createClient(any())).thenReturn(mockClient);
+        when(mockConnection.getSiteId(any())).thenReturn("test-site-id");
+        when(mockConnection.getDriveId(any(), any())).thenReturn("test-drive-id");
+
+        // Mock the Graph API chain
+        DrivesRequestBuilder mockDrives = mock(DrivesRequestBuilder.class);
+        DriveItemRequestBuilder mockDriveItems = mock(DriveItemRequestBuilder.class);
+        DriveItemItemRequestBuilder mockDriveItem = mock(DriveItemItemRequestBuilder.class);
+        ChildrenRequestBuilder mockChildren = mock(ChildrenRequestBuilder.class);
+
+        when(mockClient.drives()).thenReturn(mockDrives);
+        when(mockDrives.byDriveId(anyString())).thenReturn(mockDriveItems);
+        when(mockDriveItems.items()).thenReturn(mock(com.microsoft.graph.drives.item.items.ItemsRequestBuilder.class));
+        when(mockDriveItems.items().byDriveItemId(anyString())).thenReturn(mockDriveItem);
+        when(mockDriveItem.children()).thenReturn(mockChildren);
+
+        // Create mock drive items
+        DriveItem file1 = new DriveItem();
+        file1.setId("file-1");
+        file1.setName("document.txt");
+        file1.setSize(1024L);
+        file1.setWebUrl("https://contoso.sharepoint.com/document.txt");
+        file1.setCreatedDateTime(OffsetDateTime.now());
+        file1.setLastModifiedDateTime(OffsetDateTime.now());
+        file1.setFile(new File());
+
+        DriveItemCollectionResponse mockResponse = new DriveItemCollectionResponse();
+        mockResponse.setValue(Arrays.asList(file1));
+
+        when(mockChildren.get()).thenReturn(mockResponse);
+
+        // Create a spy of the task to override connection method
+        List testTask = spy(listTask);
+        doReturn(mockConnection).when(testTask).connection(any(RunContext.class));
+
+        // When
+        List.Output output = testTask.run(runContext);
+
+        // Then
+        assertThat(output.getItems(), hasSize(0));
+        assertThat(output.getUri(), is(nullValue()));
     }
 }

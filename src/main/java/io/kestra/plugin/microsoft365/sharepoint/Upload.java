@@ -4,7 +4,7 @@ import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
-import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -76,14 +76,14 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
         description = "The URI of the file to upload from Kestra's internal storage"
     )
     @NotNull
-    private String from;
+    private Property<String> from;
 
     @Schema(
         title = "Destination filename",
         description = "The name of the file in SharePoint"
     )
     @NotNull
-    private String to;
+    private Property<String> to;
 
     @Schema(
         title = "Parent folder ID",
@@ -91,7 +91,7 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
     )
     @NotNull
     @Builder.Default
-    private String parentId = "root";
+    private Property<String> parentId = Property.ofValue("root");
 
     @Schema(
         title = "Conflict behavior",
@@ -104,9 +104,8 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
         title = "Chunk size for large files",
         description = "The size of each chunk in bytes for large file uploads. Default is 5MB."
     )
-    @PluginProperty
     @Builder.Default
-    private Long chunkSize = 5L * 1024 * 1024; // 5MB
+    private Property<Long> chunkSize = Property.ofValue(5L * 1024 * 1024); // 5MB
 
     private static final long SIMPLE_UPLOAD_SIZE_LIMIT = 4L * 1024 * 1024; // 4MB
 
@@ -116,9 +115,9 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
         GraphServiceClient client = connection.createClient(runContext);
         String driveId = connection.getDriveId(runContext, client);
 
-        String rTo = runContext.render(to);
-        String rParentId = runContext.render(parentId);
-        URI fromUri = new URI(runContext.render(from));
+        String rTo = runContext.render(to).as(String.class).orElseThrow();
+        String rParentId = runContext.render(parentId).as(String.class).orElse("root");
+        URI fromUri = new URI(runContext.render(from).as(String.class).orElseThrow());
 
         // Get the file from storage
         InputStream fileStream = runContext.storage().getFile(fromUri);

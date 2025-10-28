@@ -11,14 +11,22 @@ import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
+import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.microsoft365.sharepoint.models.Item;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
+import reactor.core.publisher.Flux;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.URI;
 import java.util.Objects;
 
 @SuperBuilder
@@ -87,11 +95,24 @@ public class List extends AbstractSharepointTask implements RunnableTask<List.Ou
     @Builder.Default
     private Property<String> folderId = Property.ofValue("root");
 
+    @Schema(
+        title = "The way you want to store the data",
+        description = """
+            FETCH - outputs the messages as an output
+            FETCH_ONE - outputs the first message only as an output
+            STORE - stores all messages to a file
+            NONE - no output"""
+    )
+    @NotNull
+    @Builder.Default
+    private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
+
     @Override
     public Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
         String rFolderId = runContext.render(folderId).as(String.class).orElse("root");
+        FetchType rFetchType = runContext.render(fetchType).as(FetchType.class).orElse(FetchType.FETCH);
 
         // Establish SharePoint connection and client
         SharepointConnection connection = this.connection(runContext);
@@ -135,18 +156,48 @@ public class List extends AbstractSharepointTask implements RunnableTask<List.Ou
         runContext.metric(Counter.of("count", items.size()));
         logger.info("Fetched {} items from SharePoint folder '{}'", items.size(), rFolderId);
 
-        return Output.builder()
-            .items(items)
-            .build();
+        return switch (rFetchType) {
+            case FETCH_ONE -> {
+                if (items.isEmpty()) {
+                    yield Output.builder().items(java.util.List.of()).build();
+                }
+                yield Output.builder().items(java.util.List.of(items.get(0))).build();
+            }
+            case FETCH -> Output.builder().items(items).build();
+            case STORE -> {
+                File tempFile = this.storeItems(runContext, items);
+                yield Output.builder()
+                    .uri(runContext.storage().putFile(tempFile))
+                    .build();
+            }
+            case NONE -> Output.builder().items(java.util.List.of()).build();
+        };
+    }
+
+    private File storeItems(RunContext runContext, java.util.List<Item> items) throws IOException {
+        File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
+
+        try (BufferedWriter fileWriter = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)) {
+            Flux<Item> flux = Flux.fromIterable(items);
+            FileSerde.writeAll(fileWriter, flux).block();
+        }
+
+        return tempFile;
     }
 
     @Builder
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The list of items.",
-            description = "List of files and folders in the SharePoint location."
+            title = "The list of items",
+            description = "List of files and folders. Only populated when fetchType is FETCH or FETCH_ONE."
         )
         private final java.util.List<Item> items;
+
+        @Schema(
+            title = "URI of the stored items file",
+            description = "URI pointing to the file containing all items. Only populated when fetchType is STORE."
+        )
+        private final URI uri;
     }
 }

@@ -56,9 +56,9 @@ class UploadTest {
             .clientSecret(Property.ofValue("test-client-secret"))
             .siteId(Property.ofValue("test-site-id"))
             .driveId(Property.ofValue("test-drive-id"))
-            .from(fileUri.toString())
-            .to("uploaded-file.txt")
-            .parentId("parent-folder-id")
+            .from(Property.ofValue(fileUri.toString()))
+            .to(Property.ofValue("uploaded-file.txt"))
+            .parentId(Property.ofValue("parent-folder-id"))
             .build();
 
         // Mock the SharePoint connection
@@ -116,9 +116,9 @@ class UploadTest {
             .clientSecret(Property.ofValue("test-client-secret"))
             .siteId(Property.ofValue("test-site-id"))
             .driveId(Property.ofValue("test-drive-id"))
-            .from(fileUri.toString())
-            .to("root-file.txt")
-            .parentId("root")
+            .from(Property.ofValue(fileUri.toString()))
+            .to(Property.ofValue("root-file.txt"))
+            .parentId(Property.ofValue("root"))
             .build();
 
         // Mock the SharePoint connection
@@ -172,9 +172,9 @@ class UploadTest {
             .clientSecret(Property.ofValue("test-client-secret"))
             .siteId(Property.ofValue("test-site-id"))
             .driveId(Property.ofValue("test-drive-id"))
-            .from(fileUri.toString())
-            .to("large-file.pdf")
-            .parentId("documents")
+            .from(Property.ofValue(fileUri.toString()))
+            .to(Property.ofValue("large-file.pdf"))
+            .parentId(Property.ofValue("documents"))
             .build();
 
         // Mock the SharePoint connection
