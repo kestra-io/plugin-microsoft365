@@ -50,8 +50,8 @@ dependencies {
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
 
-    implementation "com.microsoft.graph:microsoft-graph:6.55.0"
-    implementation "com.azure:azure-identity:1.18.1"
+    implementation "com.microsoft.graph:microsoft-graph:6.54.0"
+    implementation "com.azure:azure-identity:1.18.0"
 }
 
 
@@ -176,7 +176,7 @@ jar {
         attributes(
                 "X-Kestra-Name": project.name,
                 "X-Kestra-Title": "Microsoft 365",
-                "X-Kestra-Group": project.group + ".microsoft 365",
+                "X-Kestra-Group": project.group + ".microsoft365",
                 "X-Kestra-Description": project.description,
                 "X-Kestra-Version": project.version
         )
