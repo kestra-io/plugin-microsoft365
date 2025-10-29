@@ -88,7 +88,7 @@ public class Create extends AbstractSharepointTask implements RunnableTask<Creat
     )
     @NotNull
     @Builder.Default
-    private Property<ItemType> itemType = Property.of(ItemType.FILE);
+    private Property<ItemType> itemType = Property.ofValue(ItemType.FILE);
 
     @Schema(
         title = "The content of the file.",
@@ -127,9 +127,9 @@ public class Create extends AbstractSharepointTask implements RunnableTask<Creat
             // Create a file using simple upload
             // For small files, use PUT to /drives/{drive-id}/items/{parent-id}:/{filename}:/content
             byte[] contentBytes = (rContent != null) ? rContent.getBytes() : new byte[0];
-            
+
             java.io.ByteArrayInputStream inputStream = new java.io.ByteArrayInputStream(contentBytes);
-            
+
             createdItem = client.drives().byDriveId(driveId)
                 .items().byDriveItemId(rParentId + ":/" + rName + ":")
                 .content()

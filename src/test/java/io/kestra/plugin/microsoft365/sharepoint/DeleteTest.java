@@ -4,6 +4,7 @@ import com.microsoft.graph.drives.item.items.item.DriveItemItemRequestBuilder;
 import com.microsoft.graph.drives.item.DriveItemRequestBuilder;
 import com.microsoft.graph.drives.DrivesRequestBuilder;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
@@ -19,7 +20,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.doReturn;
 
-@MicronautTest
+@KestraTest
 class DeleteTest {
     @Inject
     private RunContextFactory runContextFactory;

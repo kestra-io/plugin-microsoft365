@@ -88,31 +88,23 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
         String driveId = connection.getDriveId(runContext, client);
 
         // Get the file metadata with downloadUrl
-        DriveItemCollectionResponse driveItem;
+        DriveItem driveItem;
         if (itemId != null) {
             String rItemId = runContext.render(itemId).as(String.class).orElseThrow();
             driveItem = client.drives().byDriveId(driveId)
                 .items().byDriveItemId(rItemId)
-                .children().get(
-                );
+                .get();
         } else if (itemPath != null) {
             String rItemPath = runContext.render(itemPath).as(String.class).orElseThrow();
             driveItem = client.drives().byDriveId(driveId)
                 .items().byDriveItemId("root:" + rItemPath + ":")
-                .children().get(
-                );
+                .get();
         } else {
             throw new IllegalArgumentException("Either itemId or itemPath must be provided");
         }
 
-        // Extract the first item from the collection response
-        if (driveItem.getValue() == null || driveItem.getValue().isEmpty()) {
-            throw new RuntimeException("No items found in the response");
-        }
-        DriveItem firstItem = driveItem.getValue().getFirst();
-
         // Get the download URL from the drive item metadata
-        Object downloadUrlObj = firstItem.getAdditionalData().get("@microsoft.graph.downloadUrl");
+        Object downloadUrlObj = driveItem.getAdditionalData().get("@microsoft.graph.downloadUrl");
         if (downloadUrlObj == null) {
             throw new RuntimeException("Download URL not available. The file might be too large or unavailable.");
         }
@@ -134,14 +126,14 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
 
         InputStream fileStream = response.body();
 
-        URI fileUri = runContext.storage().putFile(fileStream, firstItem.getName());
+        URI fileUri = runContext.storage().putFile(fileStream, driveItem.getName());
 
         return Output.builder()
-            .itemId(firstItem.getId())
-            .name(firstItem.getName())
+            .itemId(driveItem.getId())
+            .name(driveItem.getName())
             .uri(fileUri.toString())
-            .size(firstItem.getSize())
-            .webUrl(firstItem.getWebUrl())
+            .size(driveItem.getSize())
+            .webUrl(driveItem.getWebUrl())
             .build();
     }
 

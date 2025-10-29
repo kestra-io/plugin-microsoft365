@@ -9,6 +9,7 @@ import com.microsoft.graph.models.DriveItemCollectionResponse;
 import com.microsoft.graph.models.File;
 import com.microsoft.graph.models.Folder;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
@@ -21,11 +22,9 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
-import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -34,7 +33,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.doReturn;
 
-@MicronautTest
+@KestraTest
 class ListTest {
     @Inject
     private RunContextFactory runContextFactory;
@@ -422,7 +421,7 @@ class ListTest {
         var items = Flux.from(FileSerde.readAll(
             new BufferedReader(new InputStreamReader(runContext.storage().getFile(output.getUri())))
         )).collectList().block();
-        
+
         assertThat(items, hasSize(2));
     }
 
