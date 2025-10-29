@@ -1,10 +1,8 @@
 package io.kestra.plugin.microsoft365.sharepoint;
 
 import com.microsoft.graph.models.DriveItem;
-import com.microsoft.graph.models.DriveItemCollectionResponse;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import io.kestra.core.http.HttpRequest;
-import io.kestra.core.http.HttpResponse;
 import io.kestra.core.http.client.HttpClient;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -112,16 +110,16 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
 
         // Download the file using Kestra's HttpClient
         URI[] fileUriHolder = new URI[1];
-        
+
         try (HttpClient httpClient = HttpClient.builder()
             .runContext(runContext)
             .build()) {
-            
+
             HttpRequest request = HttpRequest.builder()
                 .uri(URI.create(downloadUrl))
                 .method("GET")
                 .build();
-            
+
             httpClient.request(request, httpResponse -> {
                 try (InputStream fileStream = httpResponse.getBody()) {
                     fileUriHolder[0] = runContext.storage().putFile(fileStream, driveItem.getName());
@@ -130,7 +128,7 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
                 }
             });
         }
-        
+
         return Output.builder()
             .itemId(driveItem.getId())
             .name(driveItem.getName())
