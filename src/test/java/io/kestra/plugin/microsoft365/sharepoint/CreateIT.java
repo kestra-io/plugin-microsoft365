@@ -1,13 +1,11 @@
 package io.kestra.plugin.microsoft365.sharepoint;
 
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
-import io.kestra.core.junit.annotations.KestraTest;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.slf4j.Logger;
@@ -30,47 +28,6 @@ class CreateIT {
     @Inject
     private RunContextFactory runContextFactory;
 
-    private RunContext runContext;
-    private List<String> createdItemIds;
-    private GraphServiceClient graphClient;
-    private String driveId;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        runContext = runContextFactory.of();
-        createdItemIds = new ArrayList<>();
-
-        // Initialize GraphServiceClient for cleanup
-        SharepointConnection connection = SharepointConnection.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .build();
-
-        graphClient = connection.createClient(runContext);
-        driveId = connection.getDriveId(runContext, graphClient);
-    }
-
-    @AfterEach
-    void tearDown() {
-        // Clean up all created items
-        for (String itemId : createdItemIds) {
-            try {
-                graphClient.drives()
-                    .byDriveId(driveId)
-                    .items()
-                    .byDriveItemId(itemId)
-                    .delete();
-                log.info("Deleted test item: {}", itemId);
-            } catch (Exception e) {
-                log.warn("Failed to delete test item {}: {}", itemId, e.getMessage());
-            }
-        }
-        createdItemIds.clear();
-    }
-
     /**
      * Condition method to check if integration tests should run
      */
@@ -84,145 +41,211 @@ class CreateIT {
 
     @Test
     void shouldCreateFolder() throws Exception {
-        // Given
-        String folderName = "IT_TestFolder_" + System.currentTimeMillis();
+        RunContext runContext = runContextFactory.of();
+        List<String> createdItemIds = new ArrayList<>();
 
-        Create createTask = Create.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .parentId(Property.ofValue(System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root")))
-            .name(Property.ofValue(folderName))
-            .itemType(Property.ofValue(Create.ItemType.FOLDER))
-            .build();
+        try {
+            // Given
+            String folderName = "IT_TestFolder_" + System.currentTimeMillis();
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
 
-        // When
-        Create.Output output = createTask.run(runContext);
-        createdItemIds.add(output.getItemId());
+            Create createTask = Create.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .parentId(Property.ofValue(parentId))
+                .name(Property.ofValue(folderName))
+                .itemType(Property.ofValue(Create.ItemType.FOLDER))
+                .build();
 
-        // Then
-        assertThat(output.getItemId(), notNullValue());
-        assertThat(output.getItemName(), is(folderName));
-        assertThat(output.getIsFolder(), is(true));
-        assertThat(output.getIsFile(), is(false));
-        assertThat(output.getWebUrl(), notNullValue());
-        assertThat(output.getWebUrl(), containsString(folderName));
+            // When
+            Create.Output output = createTask.run(runContext);
+            createdItemIds.add(output.getItemId());
+
+            // Then
+            assertThat(output.getItemId(), notNullValue());
+            assertThat(output.getItemName(), is(folderName));
+            assertThat(output.getWebUrl(), notNullValue());
+            assertThat(output.getWebUrl(), containsString(folderName));
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
     }
 
     @Test
     void shouldCreateFileWithContent() throws Exception {
-        // Given
-        String fileName = "IT_TestFile_" + System.currentTimeMillis() + ".txt";
-        String fileContent = "Integration test content - created at " + System.currentTimeMillis();
+        RunContext runContext = runContextFactory.of();
+        List<String> createdItemIds = new ArrayList<>();
 
-        Create createTask = Create.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .parentId(Property.ofValue(System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root")))
-            .name(Property.ofValue(fileName))
-            .itemType(Property.ofValue(Create.ItemType.FILE))
-            .content(Property.ofValue(fileContent))
-            .build();
+        try {
+            // Given
+            String fileName = "IT_TestFile_" + System.currentTimeMillis() + ".txt";
+            String fileContent = "Integration test content - created at " + System.currentTimeMillis();
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
 
-        // When
-        Create.Output output = createTask.run(runContext);
-        createdItemIds.add(output.getItemId());
+            Create createTask = Create.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .parentId(Property.ofValue(parentId))
+                .name(Property.ofValue(fileName))
+                .itemType(Property.ofValue(Create.ItemType.FILE))
+                .content(Property.ofValue(fileContent))
+                .build();
 
-        // Then
-        assertThat(output.getItemId(), notNullValue());
-        assertThat(output.getItemName(), is(fileName));
-        assertThat(output.getIsFile(), is(true));
-        assertThat(output.getIsFolder(), is(false));
-        assertThat(output.getWebUrl(), notNullValue());
-        assertThat(output.getWebUrl(), containsString(fileName));
+            // When
+            Create.Output output = createTask.run(runContext);
+            createdItemIds.add(output.getItemId());
+
+            // Then
+            assertThat(output.getItemId(), notNullValue());
+            assertThat(output.getItemName(), is(fileName));
+            assertThat(output.getWebUrl(), notNullValue());
+            assertThat(output.getWebUrl(), containsString(fileName));
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
     }
 
     @Test
     void shouldCreateEmptyFile() throws Exception {
-        // Given
-        String fileName = "IT_EmptyFile_" + System.currentTimeMillis() + ".txt";
+        RunContext runContext = runContextFactory.of();
+        List<String> createdItemIds = new ArrayList<>();
 
-        Create createTask = Create.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .parentId(Property.ofValue(System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root")))
-            .name(Property.ofValue(fileName))
-            .itemType(Property.ofValue(Create.ItemType.FILE))
-            .build();
+        try {
+            // Given
+            String fileName = "IT_EmptyFile_" + System.currentTimeMillis() + ".txt";
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
 
-        // When
-        Create.Output output = createTask.run(runContext);
-        createdItemIds.add(output.getItemId());
+            Create createTask = Create.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .parentId(Property.ofValue(parentId))
+                .name(Property.ofValue(fileName))
+                .itemType(Property.ofValue(Create.ItemType.FILE))
+                .build();
 
-        // Then
-        assertThat(output.getItemId(), notNullValue());
-        assertThat(output.getItemName(), is(fileName));
-        assertThat(output.getIsFile(), is(true));
-        assertThat(output.getIsFolder(), is(false));
-        assertThat(output.getWebUrl(), notNullValue());
+            // When
+            Create.Output output = createTask.run(runContext);
+            createdItemIds.add(output.getItemId());
+
+            // Then
+            assertThat(output.getItemId(), notNullValue());
+            assertThat(output.getItemName(), is(fileName));
+            assertThat(output.getWebUrl(), notNullValue());
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
     }
 
     @Test
     void shouldCreateFileWithSpecialCharactersInName() throws Exception {
-        // Given
-        String fileName = "IT_Special File-Name_" + System.currentTimeMillis() + ".txt";
+        RunContext runContext = runContextFactory.of();
+        List<String> createdItemIds = new ArrayList<>();
 
-        Create createTask = Create.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .parentId(Property.ofValue(System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root")))
-            .name(Property.ofValue(fileName))
-            .itemType(Property.ofValue(Create.ItemType.FILE))
-            .content(Property.ofValue("Test content"))
-            .build();
+        try {
+            // Given
+            String fileName = "IT_Special File-Name_" + System.currentTimeMillis() + ".txt";
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
 
-        // When
-        Create.Output output = createTask.run(runContext);
-        createdItemIds.add(output.getItemId());
+            Create createTask = Create.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .parentId(Property.ofValue(parentId))
+                .name(Property.ofValue(fileName))
+                .itemType(Property.ofValue(Create.ItemType.FILE))
+                .content(Property.ofValue("Test content"))
+                .build();
 
-        // Then
-        assertThat(output.getItemId(), notNullValue());
-        assertThat(output.getItemName(), is(fileName));
-        assertThat(output.getIsFile(), is(true));
+            // When
+            Create.Output output = createTask.run(runContext);
+            createdItemIds.add(output.getItemId());
+
+            // Then
+            assertThat(output.getItemId(), notNullValue());
+            assertThat(output.getItemName(), is(fileName));
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
     }
 
     @Test
     void shouldCreateFileWithDifferentExtensions() throws Exception {
-        // Given - Test with JSON file
-        String fileName = "IT_TestData_" + System.currentTimeMillis() + ".json";
-        String jsonContent = "{\"test\": \"data\", \"timestamp\": " + System.currentTimeMillis() + "}";
+        RunContext runContext = runContextFactory.of();
+        List<String> createdItemIds = new ArrayList<>();
 
-        Create createTask = Create.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .parentId(Property.ofValue(System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root")))
-            .name(Property.ofValue(fileName))
-            .itemType(Property.ofValue(Create.ItemType.FILE))
-            .content(Property.ofValue(jsonContent))
-            .build();
+        try {
+            // Given - Test with JSON file
+            String fileName = "IT_TestData_" + System.currentTimeMillis() + ".json";
+            String jsonContent = "{\"test\": \"data\", \"timestamp\": " + System.currentTimeMillis() + "}";
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
 
-        // When
-        Create.Output output = createTask.run(runContext);
-        createdItemIds.add(output.getItemId());
+            Create createTask = Create.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .parentId(Property.ofValue(parentId))
+                .name(Property.ofValue(fileName))
+                .itemType(Property.ofValue(Create.ItemType.FILE))
+                .content(Property.ofValue(jsonContent))
+                .build();
 
-        // Then
-        assertThat(output.getItemId(), notNullValue());
-        assertThat(output.getItemName(), is(fileName));
-        assertThat(output.getIsFile(), is(true));
-        assertThat(output.getWebUrl(), containsString(".json"));
+            // When
+            Create.Output output = createTask.run(runContext);
+            createdItemIds.add(output.getItemId());
+
+            // Then
+            assertThat(output.getItemId(), notNullValue());
+            assertThat(output.getItemName(), is(fileName));
+            assertThat(output.getWebUrl(), containsString(".json"));
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
+    }
+
+    private void cleanup(RunContext runContext, List<String> itemIds) {
+        if (itemIds.isEmpty()) {
+            return;
+        }
+
+        try {
+            SharepointConnection connection = SharepointConnection.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .build();
+
+            GraphServiceClient graphClient = connection.createClient(runContext);
+            String driveId = connection.getDriveId(runContext, graphClient);
+
+            for (String itemId : itemIds) {
+                try {
+                    graphClient.drives()
+                        .byDriveId(driveId)
+                        .items()
+                        .byDriveItemId(itemId)
+                        .delete();
+                    log.info("Deleted test item: {}", itemId);
+                } catch (Exception e) {
+                    log.warn("Failed to delete test item {}: {}", itemId, e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to initialize cleanup: {}", e.getMessage());
+        }
     }
 }

@@ -38,20 +38,13 @@ class ListTest {
     @Inject
     private RunContextFactory runContextFactory;
 
-    private RunContext runContext;
-    private SharepointConnection mockConnection;
-    private GraphServiceClient mockClient;
-
-    @BeforeEach
-    void setUp() {
-        runContext = runContextFactory.of();
-        mockConnection = mock(SharepointConnection.class);
-        mockClient = mock(GraphServiceClient.class);
-    }
-
     @Test
     void shouldListItemsInFolder() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         List listTask = List.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -129,6 +122,10 @@ class ListTest {
     @Test
     void shouldListItemsInRoot() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         List listTask = List.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -187,6 +184,10 @@ class ListTest {
     @Test
     void shouldReturnEmptyListWhenFolderIsEmpty() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         List listTask = List.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -233,6 +234,10 @@ class ListTest {
     @Test
     void shouldReturnOnlyFirstItemWhenFetchTypeIsFetchOne() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         List listTask = List.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -305,6 +310,10 @@ class ListTest {
     @Test
     void shouldReturnEmptyListWhenFetchTypeIsFetchOneButNoItems() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         List listTask = List.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -354,6 +363,10 @@ class ListTest {
     @Test
     void shouldStoreItemsToFileWhenFetchTypeIsStore() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         List listTask = List.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -428,6 +441,10 @@ class ListTest {
     @Test
     void shouldReturnEmptyListWhenFetchTypeIsNone() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         List listTask = List.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))

@@ -7,7 +7,6 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.slf4j.Logger;
@@ -30,31 +29,6 @@ class DeleteIT {
     @Inject
     private RunContextFactory runContextFactory;
 
-    private RunContext runContext;
-    private java.util.List<String> createdItemIds;
-    private GraphServiceClient graphClient;
-    private String driveId;
-    private String parentId;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        runContext = runContextFactory.of();
-        createdItemIds = new ArrayList<>();
-
-        // Initialize GraphServiceClient for setup
-        SharepointConnection connection = SharepointConnection.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .build();
-
-        graphClient = connection.createClient(runContext);
-        driveId = connection.getDriveId(runContext, graphClient);
-        parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
-    }
-
     /**
      * Condition method to check if integration tests should run
      */
@@ -68,11 +42,13 @@ class DeleteIT {
 
     @Test
     void shouldDeleteFile() throws Exception {
-        // Given - Create a file to delete
+        // Given
+        RunContext runContext = runContextFactory.of();
+        String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
         String fileName = "IT_DeleteFile_" + System.currentTimeMillis() + ".txt";
         String content = "File to be deleted";
 
-        Create.Output file = createFile(parentId, fileName, content);
+        Create.Output file = createFile(runContext, parentId, fileName, content);
         String fileId = file.getItemId();
 
         // When - Delete the file
@@ -91,6 +67,16 @@ class DeleteIT {
         assertThat(output.getItemId(), is(fileId));
 
         // Verify file no longer exists
+        SharepointConnection connection = SharepointConnection.builder()
+            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+            .build();
+        GraphServiceClient graphClient = connection.createClient(runContext);
+        String driveId = connection.getDriveId(runContext, graphClient);
+
         assertThrows(ODataError.class, () -> {
             graphClient.drives()
                 .byDriveId(driveId)
@@ -104,10 +90,13 @@ class DeleteIT {
 
     @Test
     void shouldDeleteFolder() throws Exception {
+        RunContext runContext = runContextFactory.of();
+
         // Given - Create a folder to delete
         String folderName = "IT_DeleteFolder_" + System.currentTimeMillis();
+        String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
 
-        Create.Output folder = createFolder(parentId, folderName);
+        Create.Output folder = createFolder(runContext, parentId, folderName);
         String folderId = folder.getItemId();
 
         // When - Delete the folder
@@ -125,6 +114,16 @@ class DeleteIT {
         // Then
         assertThat(output.getItemId(), is(folderId));
 
+        SharepointConnection connection = SharepointConnection.builder()
+            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+            .build();
+        GraphServiceClient graphClient = connection.createClient(runContext);
+        String driveId = connection.getDriveId(runContext, graphClient);
+
         // Verify folder no longer exists
         assertThrows(ODataError.class, () -> {
             graphClient.drives()
@@ -137,16 +136,18 @@ class DeleteIT {
 
     @Test
     void shouldDeleteFolderWithContents() throws Exception {
+        RunContext runContext = runContextFactory.of();
+        String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
         // Given - Create a folder with files inside
         String folderName = "IT_DeleteFolderWithFiles_" + System.currentTimeMillis();
-        Create.Output folder = createFolder(parentId, folderName);
+        Create.Output folder = createFolder(runContext, parentId, folderName);
         String folderId = folder.getItemId();
 
         // Add files to the folder
         String fileName1 = "IT_FileInFolder1_" + System.currentTimeMillis() + ".txt";
         String fileName2 = "IT_FileInFolder2_" + System.currentTimeMillis() + ".txt";
-        createFile(folderId, fileName1, "Content 1");
-        createFile(folderId, fileName2, "Content 2");
+        createFile(runContext,folderId, fileName1, "Content 1");
+        createFile(runContext,folderId, fileName2, "Content 2");
 
         // When - Delete the folder (should delete contents too)
         Delete deleteTask = Delete.builder()
@@ -163,6 +164,16 @@ class DeleteIT {
         // Then
         assertThat(output.getItemId(), is(folderId));
 
+        SharepointConnection connection = SharepointConnection.builder()
+            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+            .build();
+        GraphServiceClient graphClient = connection.createClient(runContext);
+        String driveId = connection.getDriveId(runContext, graphClient);
+
         // Verify folder and all contents are deleted
         assertThrows(ODataError.class, () -> {
             graphClient.drives()
@@ -175,11 +186,13 @@ class DeleteIT {
 
     @Test
     void shouldDeleteMultipleFilesSequentially() throws Exception {
+        RunContext runContext = runContextFactory.of();
+        String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
         // Given - Create multiple files
         java.util.List<String> fileIds = new ArrayList<>();
         for (int i = 1; i <= 3; i++) {
             String fileName = "IT_MultiDelete_" + System.currentTimeMillis() + "_" + i + ".txt";
-            Create.Output file = createFile(parentId, fileName, "Content " + i);
+            Create.Output file = createFile(runContext, parentId, fileName, "Content " + i);
             fileIds.add(file.getItemId());
         }
 
@@ -200,6 +213,16 @@ class DeleteIT {
             assertThat(output.getItemId(), is(fileId));
         }
 
+        SharepointConnection connection = SharepointConnection.builder()
+            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+            .build();
+        GraphServiceClient graphClient = connection.createClient(runContext);
+        String driveId = connection.getDriveId(runContext, graphClient);
+
         // Verify all files are deleted
         for (String fileId : fileIds) {
             assertThrows(ODataError.class, () -> {
@@ -214,13 +237,17 @@ class DeleteIT {
 
     @Test
     void shouldDeleteFileFromSubfolder() throws Exception {
+        RunContext runContext = runContextFactory.of();
+        String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
         // Given - Create a folder with a file
         String folderName = "IT_SubfolderDelete_" + System.currentTimeMillis();
-        Create.Output folder = createFolder(parentId, folderName);
+        Create.Output folder = createFolder(runContext, parentId, folderName);
+        java.util.List<String> createdItemIds = new ArrayList<>();;
+
         createdItemIds.add(folder.getItemId());
 
         String fileName = "IT_FileInSubfolder_" + System.currentTimeMillis() + ".txt";
-        Create.Output file = createFile(folder.getItemId(), fileName, "Content in subfolder");
+        Create.Output file = createFile(runContext, folder.getItemId(), fileName, "Content in subfolder");
         String fileId = file.getItemId();
 
         // When - Delete only the file
@@ -237,6 +264,16 @@ class DeleteIT {
 
         // Then
         assertThat(output.getItemId(), is(fileId));
+
+        SharepointConnection connection = SharepointConnection.builder()
+            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+            .build();
+        GraphServiceClient graphClient = connection.createClient(runContext);
+        String driveId = connection.getDriveId(runContext, graphClient);
 
         // Verify file is deleted
         assertThrows(ODataError.class, () -> {
@@ -259,6 +296,9 @@ class DeleteIT {
 
     @Test
     void shouldDeleteLargeFile() throws Exception {
+        RunContext runContext = runContextFactory.of();
+        String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+
         // Given - Create and upload a large file
         int fileSize = 5 * 1024 * 1024; // 5MB
         byte[] largeContent = new byte[fileSize];
@@ -299,6 +339,16 @@ class DeleteIT {
         // Then
         assertThat(output.getItemId(), is(fileId));
 
+        SharepointConnection connection = SharepointConnection.builder()
+            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+            .build();
+        GraphServiceClient graphClient = connection.createClient(runContext);
+        String driveId = connection.getDriveId(runContext, graphClient);
+
         // Verify deletion
         assertThrows(ODataError.class, () -> {
             graphClient.drives()
@@ -313,6 +363,7 @@ class DeleteIT {
 
     @Test
     void shouldFailWhenDeletingNonExistentItem() throws Exception {
+        RunContext runContext = runContextFactory.of();
         // Given - A non-existent item ID
         String nonExistentId = "non-existent-item-id-" + System.currentTimeMillis();
 
@@ -331,9 +382,12 @@ class DeleteIT {
 
     @Test
     void shouldDeleteEmptyFile() throws Exception {
+        RunContext runContext = runContextFactory.of();
+        String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+
         // Given - Create an empty file
         String fileName = "IT_DeleteEmptyFile_" + System.currentTimeMillis() + ".txt";
-        Create.Output file = createFile(parentId, fileName, "");
+        Create.Output file = createFile(runContext, parentId, fileName, "");
         String fileId = file.getItemId();
 
         // When - Delete the empty file
@@ -351,6 +405,16 @@ class DeleteIT {
         // Then
         assertThat(output.getItemId(), is(fileId));
 
+        SharepointConnection connection = SharepointConnection.builder()
+            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+            .build();
+        GraphServiceClient graphClient = connection.createClient(runContext);
+        String driveId = connection.getDriveId(runContext, graphClient);
+
         // Verify deletion
         assertThrows(ODataError.class, () -> {
             graphClient.drives()
@@ -363,16 +427,19 @@ class DeleteIT {
 
     @Test
     void shouldDeleteNestedFolderStructure() throws Exception {
+        RunContext runContext = runContextFactory.of();
+        String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+
         // Given - Create nested folder structure
         String parentFolderName = "IT_ParentFolder_" + System.currentTimeMillis();
-        Create.Output parentFolder = createFolder(parentId, parentFolderName);
+        Create.Output parentFolder = createFolder(runContext, parentId, parentFolderName);
         String parentFolderId = parentFolder.getItemId();
 
         String childFolderName = "IT_ChildFolder_" + System.currentTimeMillis();
-        Create.Output childFolder = createFolder(parentFolderId, childFolderName);
+        Create.Output childFolder = createFolder(runContext,parentFolderId, childFolderName);
 
         String fileName = "IT_NestedFile_" + System.currentTimeMillis() + ".txt";
-        createFile(childFolder.getItemId(), fileName, "Nested content");
+        createFile(runContext,childFolder.getItemId(), fileName, "Nested content");
 
         // When - Delete parent folder (should delete all nested items)
         Delete deleteTask = Delete.builder()
@@ -389,6 +456,16 @@ class DeleteIT {
         // Then
         assertThat(output.getItemId(), is(parentFolderId));
 
+        SharepointConnection connection = SharepointConnection.builder()
+            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+            .build();
+        GraphServiceClient graphClient = connection.createClient(runContext);
+        String driveId = connection.getDriveId(runContext, graphClient);
+
         // Verify entire structure is deleted
         assertThrows(ODataError.class, () -> {
             graphClient.drives()
@@ -401,9 +478,12 @@ class DeleteIT {
 
     @Test
     void shouldDeleteFileWithSpecialCharacters() throws Exception {
+        RunContext runContext = runContextFactory.of();
+        String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+
         // Given - Create file with special characters
         String fileName = "IT_Special-File_Name_" + System.currentTimeMillis() + " (1).txt";
-        Create.Output file = createFile(parentId, fileName, "Special content");
+        Create.Output file = createFile(runContext,parentId, fileName, "Special content");
         String fileId = file.getItemId();
 
         // When - Delete the file
@@ -421,6 +501,16 @@ class DeleteIT {
         // Then
         assertThat(output.getItemId(), is(fileId));
 
+        SharepointConnection connection = SharepointConnection.builder()
+            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+            .build();
+        GraphServiceClient graphClient = connection.createClient(runContext);
+        String driveId = connection.getDriveId(runContext, graphClient);
+
         // Verify deletion
         assertThrows(ODataError.class, () -> {
             graphClient.drives()
@@ -432,7 +522,7 @@ class DeleteIT {
     }
 
     // Helper methods
-    private Create.Output createFile(String parentFolderId, String fileName, String content) throws Exception {
+    private Create.Output createFile(RunContext runContext, String parentFolderId, String fileName, String content) throws Exception {
         Create createTask = Create.builder()
             .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
             .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
@@ -448,7 +538,7 @@ class DeleteIT {
         return createTask.run(runContext);
     }
 
-    private Create.Output createFolder(String parentFolderId, String folderName) throws Exception {
+    private Create.Output createFolder(RunContext runContext, String parentFolderId, String folderName) throws Exception {
         Create createTask = Create.builder()
             .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
             .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))

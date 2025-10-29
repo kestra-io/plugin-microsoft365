@@ -31,23 +31,13 @@ class ExportTest {
     @Inject
     private RunContextFactory runContextFactory;
 
-    @Inject
-    private StorageInterface storageInterface;
-
-    private RunContext runContext;
-    private SharepointConnection mockConnection;
-    private GraphServiceClient mockClient;
-
-    @BeforeEach
-    void setUp() {
-        runContext = runContextFactory.of();
-        mockConnection = mock(SharepointConnection.class);
-        mockClient = mock(GraphServiceClient.class);
-    }
-
     @Test
     void shouldExportWordDocumentToPdf() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         Export exportTask = Export.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -111,6 +101,10 @@ class ExportTest {
     @Test
     void shouldExportExcelToPdf() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         Export exportTask = Export.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -172,6 +166,10 @@ class ExportTest {
     @Test
     void shouldExportPowerPointToPdf() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         Export exportTask = Export.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -231,6 +229,10 @@ class ExportTest {
     @Test
     void shouldExportDocumentToHtml() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         Export exportTask = Export.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))

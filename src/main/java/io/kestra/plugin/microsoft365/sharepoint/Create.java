@@ -114,36 +114,46 @@ public class Create extends AbstractSharepointTask implements RunnableTask<Creat
         DriveItem createdItem;
 
         if (rItemType == ItemType.FOLDER) {
-            DriveItem newFolder = new DriveItem();
-            newFolder.setName(rName);
-            newFolder.setFolder(new Folder());
-
-            createdItem = client.drives().byDriveId(driveId)
-                .items().byDriveItemId(rParentId)
-                .children()
-                .post(newFolder);
-            logger.info("Created folder '{}' in parent '{}'", rName, rParentId);
+            createdItem = createFolder(client, driveId, rParentId, rName, logger);
         } else {
-            // Create a file using simple upload
-            // For small files, use PUT to /drives/{drive-id}/items/{parent-id}:/{filename}:/content
-            byte[] contentBytes = (rContent != null) ? rContent.getBytes() : new byte[0];
-
-            java.io.ByteArrayInputStream inputStream = new java.io.ByteArrayInputStream(contentBytes);
-
-            createdItem = client.drives().byDriveId(driveId)
-                .items().byDriveItemId(rParentId + ":/" + rName + ":")
-                .content()
-                .put(inputStream);
-            logger.info("Created file '{}' in parent '{}'", rName, rParentId);
+            createdItem = createFile(client, driveId, rParentId, rName, rContent, logger);
         }
 
         return Output.builder()
             .itemId(createdItem.getId())
             .itemName(createdItem.getName())
             .webUrl(createdItem.getWebUrl())
-            .isFolder(createdItem.getFolder() != null)
-            .isFile(createdItem.getFile() != null)
             .build();
+    }
+
+    private DriveItem createFolder(GraphServiceClient client, String driveId, String parentId, String folderName, Logger logger) {
+        DriveItem newFolder = new DriveItem();
+        newFolder.setName(folderName);
+        newFolder.setFolder(new Folder());
+
+        DriveItem createdItem = client.drives().byDriveId(driveId)
+            .items().byDriveItemId(parentId)
+            .children()
+            .post(newFolder);
+        logger.info("Created folder '{}' in parent '{}'", folderName, parentId);
+        
+        return createdItem;
+    }
+
+    private DriveItem createFile(GraphServiceClient client, String driveId, String parentId, String fileName, String content, Logger logger) {
+        // Create a file using simple upload
+        // For small files, use PUT to /drives/{drive-id}/items/{parent-id}:/{filename}:/content
+        byte[] contentBytes = (content != null) ? content.getBytes() : new byte[0];
+
+        java.io.ByteArrayInputStream inputStream = new java.io.ByteArrayInputStream(contentBytes);
+
+        DriveItem createdItem = client.drives().byDriveId(driveId)
+            .items().byDriveItemId(parentId + ":/" + fileName + ":")
+            .content()
+            .put(inputStream);
+        logger.info("Created file '{}' in parent '{}'", fileName, parentId);
+        
+        return createdItem;
     }
 
     public enum ItemType {
@@ -168,15 +178,5 @@ public class Create extends AbstractSharepointTask implements RunnableTask<Creat
             title = "The web URL of the created item."
         )
         private final String webUrl;
-
-        @Schema(
-            title = "Whether the created item is a folder."
-        )
-        private final Boolean isFolder;
-
-        @Schema(
-            title = "Whether the created item is a file."
-        )
-        private final Boolean isFile;
     }
 }

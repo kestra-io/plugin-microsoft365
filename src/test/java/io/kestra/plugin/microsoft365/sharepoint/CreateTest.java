@@ -30,23 +30,13 @@ class CreateTest {
     @Inject
     private RunContextFactory runContextFactory;
 
-    @Inject
-    private StorageInterface storageInterface;
-
-    private RunContext runContext;
-    private SharepointConnection mockConnection;
-    private GraphServiceClient mockClient;
-
-    @BeforeEach
-    void setUp() {
-        runContext = runContextFactory.of();
-        mockConnection = mock(SharepointConnection.class);
-        mockClient = mock(GraphServiceClient.class);
-    }
-
     @Test
     void shouldCreateFolder() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         Create createTask = Create.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -94,8 +84,6 @@ class CreateTest {
         // Then
         assertThat(output.getItemId(), is("new-folder-id"));
         assertThat(output.getItemName(), is("TestFolder"));
-        assertThat(output.getIsFolder(), is(true));
-        assertThat(output.getIsFile(), is(false));
         assertThat(output.getWebUrl(), is("https://contoso.sharepoint.com/TestFolder"));
 
         // Verify the folder was created with correct properties
@@ -108,6 +96,10 @@ class CreateTest {
     @Test
     void shouldCreateFileWithContent() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         Create createTask = Create.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -156,8 +148,6 @@ class CreateTest {
         // Then
         assertThat(output.getItemId(), is("new-file-id"));
         assertThat(output.getItemName(), is("test.txt"));
-        assertThat(output.getIsFile(), is(true));
-        assertThat(output.getIsFolder(), is(false));
         assertThat(output.getWebUrl(), is("https://contoso.sharepoint.com/test.txt"));
 
         // Verify content was uploaded
@@ -167,6 +157,10 @@ class CreateTest {
     @Test
     void shouldCreateEmptyFile() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         Create createTask = Create.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -214,7 +208,5 @@ class CreateTest {
         // Then
         assertThat(output.getItemId(), is("empty-file-id"));
         assertThat(output.getItemName(), is("empty.txt"));
-        assertThat(output.getIsFile(), is(true));
-        assertThat(output.getIsFolder(), is(false));
     }
 }

@@ -25,20 +25,13 @@ class DeleteTest {
     @Inject
     private RunContextFactory runContextFactory;
 
-    private RunContext runContext;
-    private SharepointConnection mockConnection;
-    private GraphServiceClient mockClient;
-
-    @BeforeEach
-    void setUp() {
-        runContext = runContextFactory.of();
-        mockConnection = mock(SharepointConnection.class);
-        mockClient = mock(GraphServiceClient.class);
-    }
-
     @Test
     void shouldDeleteItem() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         Delete deleteTask = Delete.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -83,6 +76,10 @@ class DeleteTest {
     @Test
     void shouldDeleteItemFromRoot() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         Delete deleteTask = Delete.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))

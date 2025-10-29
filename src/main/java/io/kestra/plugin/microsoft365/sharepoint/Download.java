@@ -3,6 +3,9 @@ package io.kestra.plugin.microsoft365.sharepoint;
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.models.DriveItemCollectionResponse;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.kestra.core.http.HttpRequest;
+import io.kestra.core.http.HttpResponse;
+import io.kestra.core.http.client.HttpClient;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
@@ -14,9 +17,6 @@ import lombok.experimental.SuperBuilder;
 
 import java.io.InputStream;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 
 @SuperBuilder
 @ToString
@@ -110,28 +110,31 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
         }
         String downloadUrl = downloadUrlObj.toString();
 
-        // Use standard HTTP client to download the file
-        HttpClient httpClient = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(downloadUrl))
-            .GET()
-            .build();
-
-        HttpResponse<InputStream> response = httpClient.send(request,
-            HttpResponse.BodyHandlers.ofInputStream());
-
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("Failed to download file. Status code: " + response.statusCode());
+        // Download the file using Kestra's HttpClient
+        URI[] fileUriHolder = new URI[1];
+        
+        try (HttpClient httpClient = HttpClient.builder()
+            .runContext(runContext)
+            .build()) {
+            
+            HttpRequest request = HttpRequest.builder()
+                .uri(URI.create(downloadUrl))
+                .method("GET")
+                .build();
+            
+            httpClient.request(request, httpResponse -> {
+                try (InputStream fileStream = httpResponse.getBody()) {
+                    fileUriHolder[0] = runContext.storage().putFile(fileStream, driveItem.getName());
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to store downloaded file", e);
+                }
+            });
         }
-
-        InputStream fileStream = response.body();
-
-        URI fileUri = runContext.storage().putFile(fileStream, driveItem.getName());
-
+        
         return Output.builder()
             .itemId(driveItem.getId())
             .name(driveItem.getName())
-            .uri(fileUri.toString())
+            .uri(fileUriHolder[0].toString())
             .size(driveItem.getSize())
             .webUrl(driveItem.getWebUrl())
             .build();

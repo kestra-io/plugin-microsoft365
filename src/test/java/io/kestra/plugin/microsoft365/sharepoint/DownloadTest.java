@@ -35,23 +35,12 @@ class DownloadTest {
     @Inject
     private RunContextFactory runContextFactory;
 
-    @Inject
-    private StorageInterface storageInterface;
-
-    private RunContext runContext;
-    private SharepointConnection mockConnection;
-    private GraphServiceClient mockClient;
-
-    @BeforeEach
-    void setUp() {
-        runContext = runContextFactory.of();
-        mockConnection = mock(SharepointConnection.class);
-        mockClient = mock(GraphServiceClient.class);
-    }
-
     @Test
     void shouldDownloadFileByItemId() throws Exception {
         // Given
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         Download downloadTask = Download.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -111,6 +100,9 @@ class DownloadTest {
     @Test
     void shouldDownloadFileByPath() throws Exception {
         // Given
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         Download downloadTask = Download.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -166,6 +158,9 @@ class DownloadTest {
     @Test
     void shouldDownloadLargeFile() throws Exception {
         // Given
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         Download downloadTask = Download.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))

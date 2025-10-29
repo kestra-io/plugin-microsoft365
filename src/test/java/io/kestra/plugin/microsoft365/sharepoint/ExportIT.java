@@ -31,49 +31,6 @@ class ExportIT {
     @Inject
     private RunContextFactory runContextFactory;
 
-    private RunContext runContext;
-    private java.util.List<String> createdItemIds;
-    private GraphServiceClient graphClient;
-    private String driveId;
-    private String parentId;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        runContext = runContextFactory.of();
-        createdItemIds = new ArrayList<>();
-
-        // Initialize GraphServiceClient for setup and cleanup
-        SharepointConnection connection = SharepointConnection.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .build();
-
-        graphClient = connection.createClient(runContext);
-        driveId = connection.getDriveId(runContext, graphClient);
-        parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
-    }
-
-    @AfterEach
-    void tearDown() {
-        // Clean up all created items
-        for (String itemId : createdItemIds) {
-            try {
-                graphClient.drives()
-                    .byDriveId(driveId)
-                    .items()
-                    .byDriveItemId(itemId)
-                    .delete();
-                log.info("Deleted test item: {}", itemId);
-            } catch (Exception e) {
-                log.warn("Failed to delete test item {}: {}", itemId, e.getMessage());
-            }
-        }
-        createdItemIds.clear();
-    }
-
     /**
      * Condition method to check if integration tests should run
      */
@@ -88,12 +45,17 @@ class ExportIT {
 
     @Test
     void shouldExportMarkdownToHtml() throws Exception {
-        // Given - Create a Markdown file
-        String fileName = "IT_MdExport_" + System.currentTimeMillis() + ".md";
-        String content = "# Heading\n\nThis is **bold** text and this is *italic* text.";
+        RunContext runContext = runContextFactory.of();
+        java.util.List<String> createdItemIds = new ArrayList<>();
 
-        Create.Output file = createFile(parentId, fileName, content);
-        createdItemIds.add(file.getItemId());
+        try {
+            // Given - Create a Markdown file
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+            String fileName = "IT_MdExport_" + System.currentTimeMillis() + ".md";
+            String content = "# Heading\n\nThis is **bold** text and this is *italic* text.";
+
+            Create.Output file = createFile(runContext, parentId, fileName, content);
+            createdItemIds.add(file.getItemId());
 
         // When
         Export exportTask = Export.builder()
@@ -114,23 +76,31 @@ class ExportIT {
         assertThat(output.getFormat(), is("html"));
         assertThat(output.getUri(), notNullValue());
 
-        // Verify the HTML content was stored
-        URI uri = new URI(output.getUri());
-        try (InputStream stream = runContext.storage().getFile(uri)) {
-            byte[] htmlContent = stream.readAllBytes();
-            assertThat(htmlContent.length, greaterThan(0));
+            // Verify the HTML content was stored
+            URI uri = new URI(output.getUri());
+            try (InputStream stream = runContext.storage().getFile(uri)) {
+                byte[] htmlContent = stream.readAllBytes();
+                assertThat(htmlContent.length, greaterThan(0));
+            }
+        } finally {
+            cleanup(runContext, createdItemIds);
         }
     }
 
 
     @Test
     void shouldExportRtfToPdf() throws Exception {
-        // Given - Create an RTF file
-        String fileName = "IT_RtfExport_" + System.currentTimeMillis() + ".rtf";
-        String content = "{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}\\f0\\fs60 Hello, World!}";
+        RunContext runContext = runContextFactory.of();
+        java.util.List<String> createdItemIds = new ArrayList<>();
 
-        Create.Output file = createFile(parentId, fileName, content);
-        createdItemIds.add(file.getItemId());
+        try {
+            // Given - Create an RTF file
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+            String fileName = "IT_RtfExport_" + System.currentTimeMillis() + ".rtf";
+            String content = "{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}\\f0\\fs60 Hello, World!}";
+
+            Create.Output file = createFile(runContext, parentId, fileName, content);
+            createdItemIds.add(file.getItemId());
 
         // When
         Export exportTask = Export.builder()
@@ -145,15 +115,18 @@ class ExportIT {
 
         Export.Output output = exportTask.run(runContext);
 
-        // Then
-        assertThat(output.getOriginalName(), is(fileName));
-        assertThat(output.getName(), is(fileName.replace(".rtf", ".pdf")));
-        assertThat(output.getFormat(), is("pdf"));
-        assertThat(output.getUri(), notNullValue());
+            // Then
+            assertThat(output.getOriginalName(), is(fileName));
+            assertThat(output.getName(), is(fileName.replace(".rtf", ".pdf")));
+            assertThat(output.getFormat(), is("pdf"));
+            assertThat(output.getUri(), notNullValue());
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
     }
 
     // Helper method to create test files
-    private Create.Output createFile(String parentFolderId, String fileName, String content) throws Exception {
+    private Create.Output createFile(RunContext runContext, String parentFolderId, String fileName, String content) throws Exception {
         Create createTask = Create.builder()
             .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
             .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
@@ -167,5 +140,39 @@ class ExportIT {
             .build();
 
         return createTask.run(runContext);
+    }
+
+    private void cleanup(RunContext runContext, java.util.List<String> itemIds) {
+        if (itemIds.isEmpty()) {
+            return;
+        }
+
+        try {
+            SharepointConnection connection = SharepointConnection.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .build();
+
+            GraphServiceClient graphClient = connection.createClient(runContext);
+            String driveId = connection.getDriveId(runContext, graphClient);
+
+            for (String itemId : itemIds) {
+                try {
+                    graphClient.drives()
+                        .byDriveId(driveId)
+                        .items()
+                        .byDriveItemId(itemId)
+                        .delete();
+                    log.info("Deleted test item: {}", itemId);
+                } catch (Exception e) {
+                    log.warn("Failed to delete test item {}: {}", itemId, e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to initialize cleanup: {}", e.getMessage());
+        }
     }
 }

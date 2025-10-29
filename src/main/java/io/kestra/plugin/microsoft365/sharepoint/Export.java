@@ -81,7 +81,7 @@ public class Export extends AbstractSharepointTask implements RunnableTask<Expor
 
     @Schema(
         title = "Output format",
-        description = "The format to convert the file to. Supported values: 'pdf' or 'html'. Supported source extensions for PDF: doc, docx, dot, dotx, dotm, dsn, dwg, eml, epub, fluidframework, form, htm, html, loop, loot, markdown, md, msg, note, odp, ods, odt, page, pps, ppsx, ppt, pptx, pulse, rtf, task, tif, tiff, wbtx, whiteboard, xls, xlsm, xlsx. For HTML: loop, fluid, wbtx."
+        description = "The format to convert the file to. Supported values: 'pdf' or 'html'."
     )
     @NotNull
     private Property<String> format;

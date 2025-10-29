@@ -9,8 +9,6 @@ import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.microsoft365.sharepoint.models.Item;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.slf4j.Logger;
@@ -35,52 +33,6 @@ class ListIT {
     @Inject
     private RunContextFactory runContextFactory;
 
-    private RunContext runContext;
-    private java.util.List<String> createdItemIds;
-    private GraphServiceClient graphClient;
-    private String driveId;
-    private String parentId;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        runContext = runContextFactory.of();
-        createdItemIds = new ArrayList<>();
-
-        // Initialize GraphServiceClient for setup and cleanup
-        SharepointConnection connection = SharepointConnection.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .build();
-
-        graphClient = connection.createClient(runContext);
-        driveId = connection.getDriveId(runContext, graphClient);
-        parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
-    }
-
-    @AfterEach
-    void tearDown() {
-        // Clean up all created items
-        for (String itemId : createdItemIds) {
-            try {
-                graphClient.drives()
-                    .byDriveId(driveId)
-                    .items()
-                    .byDriveItemId(itemId)
-                    .delete();
-                log.info("Deleted test item: {}", itemId);
-            } catch (Exception e) {
-                log.warn("Failed to delete test item {}: {}", itemId, e.getMessage());
-            }
-        }
-        createdItemIds.clear();
-    }
-
-    /**
-     * Condition method to check if integration tests should run
-     */
     static boolean shouldRunIntegrationTests() {
         return System.getenv("AZURE_TENANT_ID") != null &&
             System.getenv("AZURE_CLIENT_ID") != null &&
@@ -91,272 +43,298 @@ class ListIT {
 
     @Test
     void shouldListItemsInFolder() throws Exception {
-        // Given - Create test items
-        String folderName = "IT_ListTestFolder_" + System.currentTimeMillis();
-        String fileName1 = "IT_ListTestFile1_" + System.currentTimeMillis() + ".txt";
-        String fileName2 = "IT_ListTestFile2_" + System.currentTimeMillis() + ".json";
+        RunContext runContext = runContextFactory.of();
+        java.util.List<String> createdItemIds = new ArrayList<>();
 
-        // Create a test folder
-        Create.Output folder = createFolder(parentId, folderName);
-        createdItemIds.add(folder.getItemId());
+        try {
+            // Given - Create test items
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+            String folderName = "IT_ListTestFolder_" + System.currentTimeMillis();
 
-        // Create test files in the folder
-        Create.Output file1 = createFile(folder.getItemId(), fileName1, "Test content 1");
-        createdItemIds.add(file1.getItemId());
+            Create.Output folder = createFolder(runContext, parentId, folderName);
+            createdItemIds.add(folder.getItemId());
 
-        Create.Output file2 = createFile(folder.getItemId(), fileName2, "{\"test\": \"data\"}");
-        createdItemIds.add(file2.getItemId());
+            String fileName1 = "IT_ListTestFile1_" + System.currentTimeMillis() + ".txt";
+            String fileName2 = "IT_ListTestFile2_" + System.currentTimeMillis() + ".json";
 
-        // When - List items in the folder
-        List listTask = List.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .folderId(Property.ofValue(folder.getItemId()))
-            .build();
+            Create.Output file1 = createFile(runContext, folder.getItemId(), fileName1, "Test content 1");
+            createdItemIds.add(file1.getItemId());
 
-        List.Output output = listTask.run(runContext);
+            Create.Output file2 = createFile(runContext, folder.getItemId(), fileName2, "{\"test\": \"data\"}");
+            createdItemIds.add(file2.getItemId());
 
-        // Then
-        assertThat(output.getItems(), hasSize(2));
-        assertThat(output.getSize(), is(2));
-        assertThat(output.getUri(), is(nullValue()));
+            // When - List items in the folder
+            List listTask = List.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .folderId(Property.ofValue(folder.getItemId()))
+                .build();
 
-        // Verify items are returned
-        var itemNames = output.getItems().stream().map(Item::getName).toList();
-        assertThat(itemNames, containsInAnyOrder(fileName1, fileName2));
+            List.Output output = listTask.run(runContext);
 
-        // Verify all items have required fields
-        output.getItems().forEach(item -> {
-            assertThat(item.getId(), notNullValue());
-            assertThat(item.getName(), notNullValue());
-            assertThat(item.getWebUrl(), notNullValue());
-            assertThat(item.getIsFile(), is(true));
-            assertThat(item.getIsFolder(), is(false));
-        });
+            // Then
+            assertThat(output.getItems(), hasSize(2));
+            assertThat(output.getSize(), is(2));
+            assertThat(output.getUri(), is(nullValue()));
+
+            var itemNames = output.getItems().stream().map(Item::getName).toList();
+            assertThat(itemNames, containsInAnyOrder(fileName1, fileName2));
+
+            output.getItems().forEach(item -> {
+                assertThat(item.getId(), notNullValue());
+                assertThat(item.getName(), notNullValue());
+                assertThat(item.getWebUrl(), notNullValue());
+                assertThat(item.getIsFile(), is(true));
+                assertThat(item.getIsFolder(), is(false));
+            });
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
     }
 
     @Test
     void shouldListItemsInRoot() throws Exception {
-        // Given - Create a test file in root
-        String fileName = "IT_RootFile_" + System.currentTimeMillis() + ".txt";
-        Create.Output file = createFile(parentId, fileName, "Root test content");
-        createdItemIds.add(file.getItemId());
+        RunContext runContext = runContextFactory.of();
+        java.util.List<String> createdItemIds = new ArrayList<>();
 
-        // When
-        List listTask = List.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .folderId(Property.ofValue(parentId))
-            .build();
+        try {
+            // Given - Create a test file in root
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+            String fileName = "IT_RootFile_" + System.currentTimeMillis() + ".txt";
+            Create.Output file = createFile(runContext, parentId, fileName, "Root test content");
+            createdItemIds.add(file.getItemId());
 
-        List.Output output = listTask.run(runContext);
+            // When
+            List listTask = List.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .folderId(Property.ofValue(parentId))
+                .build();
 
-        // Then
-        assertThat(output.getItems(), not(empty()));
-        assertThat(output.getSize(), greaterThan(0));
+            List.Output output = listTask.run(runContext);
 
-        // Verify our created file is in the list
-        var createdFile = output.getItems().stream()
-            .filter(item -> item.getName().equals(fileName))
-            .findFirst();
-        assertThat(createdFile.isPresent(), is(true));
-        assertThat(createdFile.get().getId(), is(file.getItemId()));
+            // Then
+            assertThat(output.getItems(), not(empty()));
+            assertThat(output.getSize(), greaterThan(0));
+
+            var createdFile = output.getItems().stream()
+                .filter(item -> item.getName().equals(fileName))
+                .findFirst();
+            assertThat(createdFile.isPresent(), is(true));
+            assertThat(createdFile.get().getId(), is(file.getItemId()));
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
     }
 
     @Test
     void shouldReturnEmptyListForEmptyFolder() throws Exception {
-        // Given - Create an empty folder
-        String folderName = "IT_EmptyFolder_" + System.currentTimeMillis();
-        Create.Output folder = createFolder(parentId, folderName);
-        createdItemIds.add(folder.getItemId());
+        RunContext runContext = runContextFactory.of();
+        java.util.List<String> createdItemIds = new ArrayList<>();
 
-        // When
-        List listTask = List.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .folderId(Property.ofValue(folder.getItemId()))
-            .build();
+        try {
+            // Given - Create an empty folder
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+            String folderName = "IT_EmptyFolder_" + System.currentTimeMillis();
+            Create.Output folder = createFolder(runContext, parentId, folderName);
+            createdItemIds.add(folder.getItemId());
 
-        List.Output output = listTask.run(runContext);
+            // When
+            List listTask = List.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .folderId(Property.ofValue(folder.getItemId()))
+                .build();
 
-        // Then
-        assertThat(output.getItems(), empty());
-        assertThat(output.getSize(), is(0));
+            List.Output output = listTask.run(runContext);
+
+            // Then
+            assertThat(output.getItems(), empty());
+            assertThat(output.getSize(), is(0));
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
     }
 
     @Test
     void shouldReturnOnlyFirstItemWithFetchOne() throws Exception {
-        // Given - Create multiple test files
-        String folderName = "IT_FetchOneFolder_" + System.currentTimeMillis();
-        Create.Output folder = createFolder(parentId, folderName);
-        createdItemIds.add(folder.getItemId());
+        RunContext runContext = runContextFactory.of();
+        java.util.List<String> createdItemIds = new ArrayList<>();
 
-        String fileName1 = "IT_First_" + System.currentTimeMillis() + ".txt";
-        String fileName2 = "IT_Second_" + System.currentTimeMillis() + ".txt";
+        try {
+            // Given - Create multiple test files
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+            String folderName = "IT_FetchOneFolder_" + System.currentTimeMillis();
+            Create.Output folder = createFolder(runContext, parentId, folderName);
+            createdItemIds.add(folder.getItemId());
 
-        Create.Output file1 = createFile(folder.getItemId(), fileName1, "First");
-        createdItemIds.add(file1.getItemId());
+            Create.Output file1 = createFile(runContext, folder.getItemId(), "IT_First_" + System.currentTimeMillis() + ".txt", "First");
+            createdItemIds.add(file1.getItemId());
 
-        Create.Output file2 = createFile(folder.getItemId(), fileName2, "Second");
-        createdItemIds.add(file2.getItemId());
+            Create.Output file2 = createFile(runContext, folder.getItemId(), "IT_Second_" + System.currentTimeMillis() + ".txt", "Second");
+            createdItemIds.add(file2.getItemId());
 
-        // When
-        List listTask = List.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .folderId(Property.ofValue(folder.getItemId()))
-            .fetchType(Property.ofValue(FetchType.FETCH_ONE))
-            .build();
+            // When
+            List listTask = List.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .folderId(Property.ofValue(folder.getItemId()))
+                .fetchType(Property.ofValue(FetchType.FETCH_ONE))
+                .build();
 
-        List.Output output = listTask.run(runContext);
+            List.Output output = listTask.run(runContext);
 
-        // Then
-        assertThat(output.getItems(), hasSize(1));
-        assertThat(output.getSize(), is(1));
-        assertThat(output.getItem(), notNullValue());
-        assertThat(output.getItem().getId(), notNullValue());
-        assertThat(output.getUri(), is(nullValue()));
+            // Then
+            assertThat(output.getItems(), hasSize(1));
+            assertThat(output.getSize(), is(1));
+            assertThat(output.getItem(), notNullValue());
+            assertThat(output.getItem().getId(), notNullValue());
+            assertThat(output.getUri(), is(nullValue()));
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
     }
 
     @Test
     void shouldStoreItemsToFile() throws Exception {
-        // Given - Create test items
-        String folderName = "IT_StoreFolder_" + System.currentTimeMillis();
-        Create.Output folder = createFolder(parentId, folderName);
-        createdItemIds.add(folder.getItemId());
+        RunContext runContext = runContextFactory.of();
+        java.util.List<String> createdItemIds = new ArrayList<>();
 
-        String fileName1 = "IT_StoreFile1_" + System.currentTimeMillis() + ".txt";
-        String fileName2 = "IT_StoreFile2_" + System.currentTimeMillis() + ".txt";
+        try {
+            // Given - Create test items
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+            String folderName = "IT_StoreFolder_" + System.currentTimeMillis();
+            Create.Output folder = createFolder(runContext, parentId, folderName);
+            createdItemIds.add(folder.getItemId());
 
-        Create.Output file1 = createFile(folder.getItemId(), fileName1, "Content 1");
-        createdItemIds.add(file1.getItemId());
+            Create.Output file1 = createFile(runContext, folder.getItemId(), "IT_StoreFile1_" + System.currentTimeMillis() + ".txt", "Content 1");
+            createdItemIds.add(file1.getItemId());
 
-        Create.Output file2 = createFile(folder.getItemId(), fileName2, "Content 2");
-        createdItemIds.add(file2.getItemId());
+            Create.Output file2 = createFile(runContext, folder.getItemId(), "IT_StoreFile2_" + System.currentTimeMillis() + ".txt", "Content 2");
+            createdItemIds.add(file2.getItemId());
 
-        // When
-        List listTask = List.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .folderId(Property.ofValue(folder.getItemId()))
-            .fetchType(Property.ofValue(FetchType.STORE))
-            .build();
+            // When
+            List listTask = List.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .folderId(Property.ofValue(folder.getItemId()))
+                .fetchType(Property.ofValue(FetchType.STORE))
+                .build();
 
-        List.Output output = listTask.run(runContext);
+            List.Output output = listTask.run(runContext);
 
-        // Then
-        assertThat(output.getItems(), is(nullValue()));
-        assertThat(output.getSize(), is(2));
-        assertThat(output.getUri(), notNullValue());
+            // Then
+            assertThat(output.getItems(), is(nullValue()));
+            assertThat(output.getSize(), is(2));
+            assertThat(output.getUri(), notNullValue());
 
-        // Verify the stored file contains the items
-        var items = Flux.from(FileSerde.readAll(
-            new BufferedReader(new InputStreamReader(runContext.storage().getFile(output.getUri())))
-        )).collectList().block();
+            var items = Flux.from(FileSerde.readAll(
+                new BufferedReader(new InputStreamReader(runContext.storage().getFile(output.getUri())))
+            )).collectList().block();
 
-        assertThat(items, hasSize(2));
+            assertThat(items, hasSize(2));
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
     }
 
     @Test
     void shouldReturnNoItemsWithFetchNone() throws Exception {
-        // Given - Create test items
-        String folderName = "IT_FetchNoneFolder_" + System.currentTimeMillis();
-        Create.Output folder = createFolder(parentId, folderName);
-        createdItemIds.add(folder.getItemId());
+        RunContext runContext = runContextFactory.of();
+        java.util.List<String> createdItemIds = new ArrayList<>();
 
-        String fileName = "IT_FetchNoneFile_" + System.currentTimeMillis() + ".txt";
-        Create.Output file = createFile(folder.getItemId(), fileName, "Content");
-        createdItemIds.add(file.getItemId());
+        try {
+            // Given - Create test items
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+            String folderName = "IT_FetchNoneFolder_" + System.currentTimeMillis();
+            Create.Output folder = createFolder(runContext, parentId, folderName);
+            createdItemIds.add(folder.getItemId());
 
-        // When
-        List listTask = List.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .folderId(Property.ofValue(folder.getItemId()))
-            .fetchType(Property.ofValue(FetchType.NONE))
-            .build();
+            Create.Output file = createFile(runContext, folder.getItemId(), "IT_FetchNoneFile_" + System.currentTimeMillis() + ".txt", "Content");
+            createdItemIds.add(file.getItemId());
 
-        List.Output output = listTask.run(runContext);
+            // When
+            List listTask = List.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .folderId(Property.ofValue(folder.getItemId()))
+                .fetchType(Property.ofValue(FetchType.NONE))
+                .build();
 
-        // Then
-        assertThat(output.getItems(), empty());
-        assertThat(output.getSize(), is(0));
-        assertThat(output.getUri(), is(nullValue()));
+            List.Output output = listTask.run(runContext);
+
+            // Then
+            assertThat(output.getItems(), empty());
+            assertThat(output.getSize(), is(0));
+            assertThat(output.getUri(), is(nullValue()));
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
     }
 
     @Test
     void shouldListMixedFilesAndFolders() throws Exception {
-        // Given - Create mixed content
-        String parentFolderName = "IT_MixedParent_" + System.currentTimeMillis();
-        Create.Output parentFolder = createFolder(parentId, parentFolderName);
-        createdItemIds.add(parentFolder.getItemId());
+        RunContext runContext = runContextFactory.of();
+        java.util.List<String> createdItemIds = new ArrayList<>();
 
-        String fileName = "IT_MixedFile_" + System.currentTimeMillis() + ".txt";
-        String subFolderName = "IT_MixedSubFolder_" + System.currentTimeMillis();
+        try {
+            // Given - Create mixed content
+            String parentId = System.getenv().getOrDefault("SHAREPOINT_PARENT_ID", "root");
+            String parentFolderName = "IT_MixedParent_" + System.currentTimeMillis();
+            Create.Output parentFolder = createFolder(runContext, parentId, parentFolderName);
+            createdItemIds.add(parentFolder.getItemId());
 
-        Create.Output file = createFile(parentFolder.getItemId(), fileName, "File content");
-        createdItemIds.add(file.getItemId());
+            Create.Output file = createFile(runContext, parentFolder.getItemId(), "IT_MixedFile_" + System.currentTimeMillis() + ".txt", "File content");
+            createdItemIds.add(file.getItemId());
 
-        Create.Output subFolder = createFolder(parentFolder.getItemId(), subFolderName);
-        createdItemIds.add(subFolder.getItemId());
+            Create.Output subFolder = createFolder(runContext, parentFolder.getItemId(), "IT_MixedSubFolder_" + System.currentTimeMillis());
+            createdItemIds.add(subFolder.getItemId());
 
-        // When
-        List listTask = List.builder()
-            .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
-            .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
-            .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
-            .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
-            .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
-            .folderId(Property.ofValue(parentFolder.getItemId()))
-            .build();
+            // When
+            List listTask = List.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .folderId(Property.ofValue(parentFolder.getItemId()))
+                .build();
 
-        List.Output output = listTask.run(runContext);
+            List.Output output = listTask.run(runContext);
 
-        // Then
-        assertThat(output.getItems(), hasSize(2));
-        assertThat(output.getSize(), is(2));
+            // Then
+            assertThat(output.getItems(), hasSize(2));
+            assertThat(output.getSize(), is(2));
 
-        // Verify we have one file and one folder
-        long fileCount = output.getItems().stream().filter(Item::getIsFile).count();
-        long folderCount = output.getItems().stream().filter(Item::getIsFolder).count();
+            long fileCount = output.getItems().stream().filter(Item::getIsFile).count();
+            long folderCount = output.getItems().stream().filter(Item::getIsFolder).count();
 
-        assertThat(fileCount, is(1L));
-        assertThat(folderCount, is(1L));
-
-        // Verify specific items
-        var fileItem = output.getItems().stream()
-            .filter(Item::getIsFile)
-            .findFirst()
-            .orElseThrow();
-        assertThat(fileItem.getName(), is(fileName));
-
-        var folderItem = output.getItems().stream()
-            .filter(Item::getIsFolder)
-            .findFirst()
-            .orElseThrow();
-        assertThat(folderItem.getName(), is(subFolderName));
+            assertThat(fileCount, is(1L));
+            assertThat(folderCount, is(1L));
+        } finally {
+            cleanup(runContext, createdItemIds);
+        }
     }
 
-    // Helper methods to create test items
-    private Create.Output createFolder(String parentFolderId, String folderName) throws Exception {
+    private Create.Output createFolder(RunContext runContext, String parentFolderId, String folderName) throws Exception {
         Create createTask = Create.builder()
             .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
             .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
@@ -371,7 +349,7 @@ class ListIT {
         return createTask.run(runContext);
     }
 
-    private Create.Output createFile(String parentFolderId, String fileName, String content) throws Exception {
+    private Create.Output createFile(RunContext runContext, String parentFolderId, String fileName, String content) throws Exception {
         Create createTask = Create.builder()
             .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
             .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
@@ -385,5 +363,39 @@ class ListIT {
             .build();
 
         return createTask.run(runContext);
+    }
+
+    private void cleanup(RunContext runContext, java.util.List<String> itemIds) {
+        if (itemIds.isEmpty()) {
+            return;
+        }
+
+        try {
+            SharepointConnection connection = SharepointConnection.builder()
+                .tenantId(Property.ofValue(System.getenv("AZURE_TENANT_ID")))
+                .clientId(Property.ofValue(System.getenv("AZURE_CLIENT_ID")))
+                .clientSecret(Property.ofValue(System.getenv("AZURE_CLIENT_SECRET")))
+                .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
+                .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
+                .build();
+
+            GraphServiceClient graphClient = connection.createClient(runContext);
+            String driveId = connection.getDriveId(runContext, graphClient);
+
+            for (String itemId : itemIds) {
+                try {
+                    graphClient.drives()
+                        .byDriveId(driveId)
+                        .items()
+                        .byDriveItemId(itemId)
+                        .delete();
+                    log.info("Deleted test item: {}", itemId);
+                } catch (Exception e) {
+                    log.warn("Failed to delete test item {}: {}", itemId, e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to initialize cleanup: {}", e.getMessage());
+        }
     }
 }

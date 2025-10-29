@@ -31,23 +31,13 @@ class UploadTest {
     @Inject
     private RunContextFactory runContextFactory;
 
-    @Inject
-    private StorageInterface storageInterface;
-
-    private RunContext runContext;
-    private SharepointConnection mockConnection;
-    private GraphServiceClient mockClient;
-
-    @BeforeEach
-    void setUp() {
-        runContext = runContextFactory.of();
-        mockConnection = mock(SharepointConnection.class);
-        mockClient = mock(GraphServiceClient.class);
-    }
-
     @Test
     void shouldUploadFile() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         String fileContent = "Test file content";
         URI fileUri = runContext.storage().putFile(new ByteArrayInputStream(fileContent.getBytes()), "test.txt");
 
@@ -108,6 +98,10 @@ class UploadTest {
     @Test
     void shouldUploadFileToRoot() throws Exception {
         // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
         String fileContent = "Root file content";
         URI fileUri = runContext.storage().putFile(new ByteArrayInputStream(fileContent.getBytes()), "root-file.txt");
 
@@ -163,7 +157,12 @@ class UploadTest {
 
     @Test
     void shouldUploadLargeFile() throws Exception {
-        // Given - simulate a large file
+        // Given
+        RunContext runContext = runContextFactory.of();
+        SharepointConnection mockConnection = mock(SharepointConnection.class);
+        GraphServiceClient mockClient = mock(GraphServiceClient.class);
+        
+        // Simulate a large file
         byte[] largeContent = new byte[5 * 1024 * 1024]; // 5MB
         URI fileUri = runContext.storage().putFile(new ByteArrayInputStream(largeContent), "large-file.pdf");
 
