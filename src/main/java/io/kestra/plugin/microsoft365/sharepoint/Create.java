@@ -102,7 +102,7 @@ public class Create extends AbstractSharepointTask implements RunnableTask<Creat
 
         String rParentId = runContext.render(parentId).as(String.class).orElseThrow();
         String rName = runContext.render(name).as(String.class).orElseThrow();
-        String rContent = content != null ? runContext.render(content).as(String.class).orElse(null) : null;
+        String rContent = runContext.render(content).as(String.class).orElse(null);
 
         ItemType rItemType = runContext.render(itemType).as(ItemType.class).orElse(ItemType.FILE);
 
