@@ -25,7 +25,7 @@ import java.net.http.HttpResponse;
 @NoArgsConstructor
 @Schema(
     title = "Download a file from SharePoint",
-    description = "Downloads a file from a SharePoint document library and stores it in Kestra's internal storage."
+    description = "Download a file by id or path from a SharePoint document library and stores it in Kestra's internal storage."
 )
 @Plugin(
     examples = {
