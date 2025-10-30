@@ -37,7 +37,7 @@ class ExportTest {
         RunContext runContext = runContextFactory.of();
         SharepointConnection mockConnection = mock(SharepointConnection.class);
         GraphServiceClient mockClient = mock(GraphServiceClient.class);
-        
+
         Export exportTask = Export.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -45,7 +45,7 @@ class ExportTest {
             .siteId(Property.ofValue("test-site-id"))
             .driveId(Property.ofValue("test-drive-id"))
             .itemId(Property.ofValue("word-doc-id"))
-            .format(Property.ofValue("pdf"))
+            .format(Property.ofValue(Export.FormatType.valueOf("pdf")))
             .build();
 
         // Mock the SharePoint connection
@@ -104,7 +104,7 @@ class ExportTest {
         RunContext runContext = runContextFactory.of();
         SharepointConnection mockConnection = mock(SharepointConnection.class);
         GraphServiceClient mockClient = mock(GraphServiceClient.class);
-        
+
         Export exportTask = Export.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -112,7 +112,7 @@ class ExportTest {
             .siteId(Property.ofValue("test-site-id"))
             .driveId(Property.ofValue("test-drive-id"))
             .itemPath(Property.ofValue("/Documents/spreadsheet.xlsx"))
-            .format(Property.ofValue("pdf"))
+            .format(Property.ofValue(Export.FormatType.valueOf("pdf")))
             .build();
 
         // Mock the SharePoint connection
@@ -169,7 +169,7 @@ class ExportTest {
         RunContext runContext = runContextFactory.of();
         SharepointConnection mockConnection = mock(SharepointConnection.class);
         GraphServiceClient mockClient = mock(GraphServiceClient.class);
-        
+
         Export exportTask = Export.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -177,7 +177,7 @@ class ExportTest {
             .siteId(Property.ofValue("test-site-id"))
             .driveId(Property.ofValue("test-drive-id"))
             .itemId(Property.ofValue("ppt-id"))
-            .format(Property.ofValue("pdf"))
+            .format(Property.ofValue(Export.FormatType.valueOf("pdf")))
             .build();
 
         // Mock the SharePoint connection
@@ -232,7 +232,7 @@ class ExportTest {
         RunContext runContext = runContextFactory.of();
         SharepointConnection mockConnection = mock(SharepointConnection.class);
         GraphServiceClient mockClient = mock(GraphServiceClient.class);
-        
+
         Export exportTask = Export.builder()
             .tenantId(Property.ofValue("test-tenant-id"))
             .clientId(Property.ofValue("test-client-id"))
@@ -240,7 +240,7 @@ class ExportTest {
             .siteId(Property.ofValue("test-site-id"))
             .driveId(Property.ofValue("test-drive-id"))
             .itemId(Property.ofValue("doc-id"))
-            .format(Property.ofValue("html"))
+            .format(Property.ofValue(Export.FormatType.valueOf("html")))
             .build();
 
         // Mock the SharePoint connection

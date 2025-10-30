@@ -84,7 +84,7 @@ public class Export extends AbstractSharepointTask implements RunnableTask<Expor
         description = "The format to convert the file to. Supported values: 'pdf' or 'html'."
     )
     @NotNull
-    private Property<String> format;
+    private Property<FormatType> format;
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -109,10 +109,8 @@ public class Export extends AbstractSharepointTask implements RunnableTask<Expor
         }
 
         // Get and validate format
-        String rFormat = runContext.render(format).as(String.class).orElseThrow();
-        if (!rFormat.equals("pdf") && !rFormat.equals("html")) {
-            throw new IllegalArgumentException("Invalid format: " + rFormat + ". Supported formats: pdf, html");
-        }
+        FormatType formatEnum = runContext.render(format).as(FormatType.class).orElseThrow();
+        String rFormat = formatEnum.name().toLowerCase();
 
         // Download the file content with format conversion
         // The Microsoft Graph API endpoint is: GET /drives/{driveId}/items/{itemId}/content?format={format}
@@ -146,6 +144,11 @@ public class Export extends AbstractSharepointTask implements RunnableTask<Expor
             .webUrl(driveItem.getWebUrl())
             .format(rFormat)
             .build();
+    }
+
+    public enum FormatType {
+        HTML,
+        PDF
     }
 
     @Builder
