@@ -65,7 +65,7 @@ class ExportIT {
             .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
             .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
             .itemId(Property.ofValue(file.getItemId()))
-            .format(Property.ofValue(Export.FormatType.valueOf("HTML")))
+            .format(Property.ofValue(Export.FormatType.HTML))
             .build();
 
         Export.Output output = exportTask.run(runContext);
@@ -110,7 +110,7 @@ class ExportIT {
             .siteId(Property.ofValue(System.getenv("SHAREPOINT_SITE_ID")))
             .driveId(Property.ofValue(System.getenv("SHAREPOINT_DRIVE_ID")))
             .itemId(Property.ofValue(file.getItemId()))
-            .format(Property.ofValue(Export.FormatType.valueOf("PDF")))
+            .format(Property.ofValue(Export.FormatType.PDF))
             .build();
 
         Export.Output output = exportTask.run(runContext);
