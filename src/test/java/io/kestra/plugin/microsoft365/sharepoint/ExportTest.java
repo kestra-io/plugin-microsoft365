@@ -45,7 +45,7 @@ class ExportTest {
             .siteId(Property.ofValue("test-site-id"))
             .driveId(Property.ofValue("test-drive-id"))
             .itemId(Property.ofValue("word-doc-id"))
-            .format(Property.ofValue(Export.FormatType.valueOf("pdf")))
+            .format(Property.ofValue(Export.FormatType.valueOf("PDF")))
             .build();
 
         // Mock the SharePoint connection
@@ -112,7 +112,7 @@ class ExportTest {
             .siteId(Property.ofValue("test-site-id"))
             .driveId(Property.ofValue("test-drive-id"))
             .itemPath(Property.ofValue("/Documents/spreadsheet.xlsx"))
-            .format(Property.ofValue(Export.FormatType.valueOf("pdf")))
+            .format(Property.ofValue(Export.FormatType.valueOf("PDF")))
             .build();
 
         // Mock the SharePoint connection
@@ -177,7 +177,7 @@ class ExportTest {
             .siteId(Property.ofValue("test-site-id"))
             .driveId(Property.ofValue("test-drive-id"))
             .itemId(Property.ofValue("ppt-id"))
-            .format(Property.ofValue(Export.FormatType.valueOf("pdf")))
+            .format(Property.ofValue(Export.FormatType.valueOf("PDF")))
             .build();
 
         // Mock the SharePoint connection
@@ -240,7 +240,7 @@ class ExportTest {
             .siteId(Property.ofValue("test-site-id"))
             .driveId(Property.ofValue("test-drive-id"))
             .itemId(Property.ofValue("doc-id"))
-            .format(Property.ofValue(Export.FormatType.valueOf("html")))
+            .format(Property.ofValue(Export.FormatType.valueOf("HTML")))
             .build();
 
         // Mock the SharePoint connection
