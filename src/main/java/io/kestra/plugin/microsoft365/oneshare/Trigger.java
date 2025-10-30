@@ -206,6 +206,7 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
         String rSiteId = runContext.render(this.siteId).as(String.class).orElse(null);
         String rPath = runContext.render(this.path).as(String.class).orElseThrow();
 
+        // Validate inputs
         if (rDriveId == null && rSiteId == null) {
             throw new IllegalArgumentException("Either driveId or siteId must be provided");
         }
@@ -216,7 +217,24 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
             rSiteId = null;
         }
 
-        GraphServiceClient graphClient = graphClient(runContext);
+        // Validate path
+        if (rPath == null || rPath.trim().isEmpty()) {
+            throw new IllegalArgumentException("Path cannot be empty");
+        }
+
+        if (!rPath.startsWith("/")) {
+            throw new IllegalArgumentException(
+                String.format("Path must start with '/'. Provided path: '%s'", rPath));
+        }
+
+        GraphServiceClient graphClient;
+        try {
+            graphClient = graphClient(runContext);
+        } catch (Exception e) {
+            runContext.logger().error("Failed to create Graph API client: {}", e.getMessage(), e);
+            throw new IllegalStateException(
+                "Failed to authenticate with Microsoft Graph API. Please verify your credentials (tenantId, clientId, clientSecret)", e);
+        }
 
         // Use StatefulTriggerService for state management
         String rStateKey = runContext.render(stateKey).as(String.class).orElse(
@@ -245,7 +263,45 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
             } else {
                 runContext.logger().debug("No delta link found - performing full sync");
             }
-            var deltaResponse = executeDeltaQuery(graphClient, rDriveId, rSiteId, rPath, storedDeltaLink);
+            
+            DeltaGetResponse deltaResponse;
+            try {
+                deltaResponse = executeDeltaQuery(graphClient, rDriveId, rSiteId, rPath, storedDeltaLink);
+            } catch (ApiException e) {
+                if (e.getResponseStatusCode() == 404) {
+                    runContext.logger().error("Folder not found at path '{}'. Please verify the path exists in your OneDrive/SharePoint. " +
+                        "Common paths: '/' (root), '/Documents', '/Shared Documents'", rPath);
+                    throw new IllegalArgumentException(
+                        String.format("Folder not found: %s. Please ensure the path exists in your drive", rPath), e);
+                } else if (e.getResponseStatusCode() == 410) {
+                    runContext.logger().warn("Delta link expired, clearing stored delta link and will start fresh next time");
+                    // Remove the expired delta link from state
+                    state.remove(DELTA_LINK_KEY);
+                    StatefulTriggerService.writeState(runContext, rStateKey, state, Optional.ofNullable(rStateTtl));
+                    return Optional.empty();
+                } else if (e.getResponseStatusCode() == 401) {
+                    throw new IllegalStateException(
+                        "Authentication failed. Please verify your credentials (tenantId, clientId, clientSecret)", e);
+                } else if (e.getResponseStatusCode() == 403) {
+                    throw new IllegalStateException(
+                        String.format("Permission denied. Insufficient permissions to monitor path '%s'", rPath), e);
+                } else if (e.getResponseStatusCode() == 429) {
+                    runContext.logger().warn("Rate limit exceeded. Skipping this polling cycle");
+                    return Optional.empty();
+                } else if (e.getResponseStatusCode() == 503 || e.getResponseStatusCode() == 504) {
+                    runContext.logger().warn("Microsoft Graph API temporarily unavailable. Skipping this polling cycle");
+                    return Optional.empty();
+                }
+                
+                throw new RuntimeException(
+                    String.format("Failed to query delta for path '%s': %s", rPath, e.getMessage()), e);
+            }
+            
+            if (deltaResponse == null) {
+                throw new IllegalStateException(
+                    String.format("Failed to query delta for path '%s': No response received from Microsoft Graph API", rPath));
+            }
+            
             List<DriveItem> allItems = new ArrayList<>();
             if (deltaResponse.getValue() != null) {
                 allItems.addAll(deltaResponse.getValue());
@@ -254,13 +310,47 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
             // Paginate through all results and capture final delta link
             String nextLink = deltaResponse.getOdataNextLink();
             String newDeltaLink = deltaResponse.getOdataDeltaLink();
+            int pageCount = 1;
+            
             while (nextLink != null) {
-                var page = fetchDeltaByLink(graphClient, nextLink);
-                if (page.getValue() != null) {
-                    allItems.addAll(page.getValue());
+                runContext.logger().debug("Fetching delta page {}", pageCount + 1);
+                
+                DeltaGetResponse page;
+                try {
+                    page = fetchDeltaByLink(graphClient, nextLink);
+                } catch (ApiException e) {
+                    if (e.getResponseStatusCode() == 410) {
+                        runContext.logger().warn("Delta link expired during pagination at page {}. Clearing delta link", pageCount + 1);
+                        state.remove(DELTA_LINK_KEY);
+                        StatefulTriggerService.writeState(runContext, rStateKey, state, Optional.ofNullable(rStateTtl));
+                        return Optional.empty();
+                    } else if (e.getResponseStatusCode() == 429) {
+                        runContext.logger().warn("Rate limit exceeded during pagination at page {}. Returning partial results", pageCount + 1);
+                        break;
+                    } else if (e.getResponseStatusCode() == 503 || e.getResponseStatusCode() == 504) {
+                        runContext.logger().warn("API unavailable during pagination at page {}. Returning partial results", pageCount + 1);
+                        break;
+                    }
+                    
+                    runContext.logger().error("Error fetching delta page {}: {}. Returning partial results", 
+                        pageCount + 1, e.getMessage());
+                    break;
+                } catch (Exception e) {
+                    runContext.logger().error("Unexpected error during delta pagination at page {}: {}. Returning partial results", 
+                        pageCount + 1, e.getMessage());
+                    break;
                 }
-                newDeltaLink = page.getOdataDeltaLink(); // Update with latest delta link
-                nextLink = page.getOdataNextLink();
+                
+                if (page != null) {
+                    if (page.getValue() != null) {
+                        allItems.addAll(page.getValue());
+                    }
+                    newDeltaLink = page.getOdataDeltaLink(); // Update with latest delta link
+                    nextLink = page.getOdataNextLink();
+                    pageCount++;
+                } else {
+                    break;
+                }
             }
 
             // Process files and check state
@@ -272,7 +362,7 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
                     String fileVersion = item.getETag() != null ? item.getETag() : String.valueOf(item.getSize());
                     var modifiedAt = item.getLastModifiedDateTime() != null ?
                         item.getLastModifiedDateTime().toInstant() :
-                        item.getCreatedDateTime().toInstant();
+                        item.getCreatedDateTime() != null ? item.getCreatedDateTime().toInstant() : Instant.now();
 
                     var candidate = StatefulTriggerService.Entry.candidate(fileUri, fileVersion, modifiedAt);
                     var stateUpdate = StatefulTriggerService.computeAndUpdateState(state, candidate, rOn);
@@ -296,9 +386,15 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
             }
 
             // Save updated state
-            StatefulTriggerService.writeState(runContext, rStateKey, state, Optional.ofNullable(rStateTtl));
+            try {
+                StatefulTriggerService.writeState(runContext, rStateKey, state, Optional.ofNullable(rStateTtl));
+            } catch (Exception e) {
+                runContext.logger().error("Failed to save trigger state: {}", e.getMessage(), e);
+                // Don't throw - we can continue even if state save fails
+            }
 
-            runContext.logger().debug("Processed {} total items, {} files triggered execution", allItems.size(), filesToTrigger.size());
+            runContext.logger().debug("Processed {} total items across {} pages, {} files triggered execution", 
+                allItems.size(), pageCount, filesToTrigger.size());
 
             if (filesToTrigger.isEmpty()) {
                 return Optional.empty();
@@ -311,15 +407,30 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
 
             runContext.logger().info("Triggering execution with {} new/updated files", filesToTrigger.size());
             return Optional.of(TriggerService.generateExecution(this, conditionContext, context, output));
+            
         } catch (ApiException e) {
-            if (e.getResponseStatusCode() == 410) {
-                runContext.logger().warn("Delta link expired, clearing stored delta link and will start fresh next time");
-                // Remove the expired delta link from state
-                state.remove(DELTA_LINK_KEY);
-                StatefulTriggerService.writeState(runContext, rStateKey, state, Optional.ofNullable(rStateTtl));
+            // Handle any uncaught ApiException
+            runContext.logger().error("Microsoft Graph API error in trigger: {}", e.getMessage(), e);
+            
+            if (e.getResponseStatusCode() == 401) {
+                throw new IllegalStateException(
+                    "Authentication failed. Please verify your credentials (tenantId, clientId, clientSecret)", e);
+            } else if (e.getResponseStatusCode() == 429 || e.getResponseStatusCode() == 503 || e.getResponseStatusCode() == 504) {
+                // For rate limiting or service unavailability, just skip this cycle
+                runContext.logger().warn("Skipping trigger cycle due to API error: {}", e.getMessage());
                 return Optional.empty();
             }
+            
+            throw new RuntimeException(
+                String.format("Failed to evaluate trigger for path '%s': %s", rPath, e.getMessage()), e);
+                
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            // Re-throw our custom exceptions
             throw e;
+        } catch (Exception e) {
+            runContext.logger().error("Unexpected error in trigger: {}", e.getMessage(), e);
+            throw new RuntimeException(
+                String.format("Unexpected error evaluating trigger for path '%s': %s", rPath, e.getMessage()), e);
         }
     }
 
@@ -340,28 +451,52 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
 
         // Initial delta query for specific folder path
         // Endpoint format: /drives/{drive-id}/root:/{path}:/delta
-        if (driveId != null) {
-            return graphClient.drives()
-                .byDriveId(driveId)
-                .items()
-                .byDriveItemId("root:" + path + ":")
-                .delta()
-                .get();
-        } else {
-            // For site-based access
-            var drive = graphClient.sites().bySiteId(siteId).drive().get();
-            String siteDriveId = drive.getId();
+        try {
+            if (driveId != null) {
+                return graphClient.drives()
+                    .byDriveId(driveId)
+                    .items()
+                    .byDriveItemId("root:" + path + ":")
+                    .delta()
+                    .get();
+            } else {
+                // For site-based access
+                var drive = graphClient.sites().bySiteId(siteId).drive().get();
+                
+                if (drive == null || drive.getId() == null) {
+                    throw new IllegalStateException(
+                        String.format("Failed to retrieve drive for site '%s'", siteId));
+                }
+                
+                String siteDriveId = drive.getId();
 
-            return graphClient.drives()
-                .byDriveId(siteDriveId)
-                .items()
-                .byDriveItemId("root:" + path + ":")
-                .delta()
-                .get();
+                return graphClient.drives()
+                    .byDriveId(siteDriveId)
+                    .items()
+                    .byDriveItemId("root:" + path + ":")
+                    .delta()
+                    .get();
+            }
+        } catch (ApiException e) {
+            if (e.getResponseStatusCode() == 404) {
+                throw new IllegalArgumentException(
+                    String.format("Path '%s' not found. Please verify the path exists", path), e);
+            } else if (e.getResponseStatusCode() == 403) {
+                throw new IllegalStateException(
+                    String.format("Permission denied. Insufficient permissions to access path '%s'", path), e);
+            } else if (e.getResponseStatusCode() == 400) {
+                throw new IllegalArgumentException(
+                    String.format("Invalid path '%s'. Please ensure the path is correctly formatted", path), e);
+            }
+            throw e;
         }
     }
 
     protected DeltaGetResponse fetchDeltaByLink(GraphServiceClient graphClient, String nextLink) throws Exception {
+        if (nextLink == null || nextLink.trim().isEmpty()) {
+            throw new IllegalArgumentException("Next link cannot be empty");
+        }
+        
         DeltaRequestBuilder builder = new DeltaRequestBuilder(nextLink, graphClient.getRequestAdapter());
         return builder.get();
     }

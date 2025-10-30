@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -107,9 +108,9 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
     /**
      * Default slice size for chunked uploads.
      * Must be a multiple of 320 KiB (327,680 bytes).
-     * Default is 3MB (3 * 1024 * 1024 bytes).
+     * Default is 3.2 MB (10 * 327,680 bytes = 3,276,800 bytes).
      */
-    private static final int DEFAULT_MAX_SLICE_SIZE = 3 * 1024 * 1024; // 3MB
+    private static final int DEFAULT_MAX_SLICE_SIZE = 10 * 327680; // 3.2 MB - exactly 10 chunks of 320 KiB
 
     /**
      * Default maximum number of retry attempts for upload operations.
@@ -149,7 +150,7 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
     @Schema(
         title = "Maximum slice size for chunked uploads.",
         description = "The size of each chunk when uploading large files (in bytes). " +
-                     "Must be a multiple of 320 KiB (327,680 bytes). Default: 3MB (3145728 bytes)"
+                     "Must be a multiple of 320 KiB (327,680 bytes). Default: 3.2 MB (3,276,800 bytes)"
     )
     @Builder.Default
     private Property<Integer> maxSliceSize = Property.ofValue(DEFAULT_MAX_SLICE_SIZE);
@@ -192,23 +193,52 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
         int rMaxRetryAttempts = runContext.render(this.maxRetryAttempts).as(Integer.class).orElse(DEFAULT_MAX_RETRY_ATTEMPTS);
         ConflictBehavior rConflictBehavior = runContext.render(this.conflictBehavior).as(ConflictBehavior.class).orElse(ConflictBehavior.REPLACE);
 
+        // Validate inputs
+        if (rFileName == null || rFileName.trim().isEmpty()) {
+            throw new IllegalArgumentException("File name cannot be empty");
+        }
+
+        // Validate name doesn't contain invalid characters for OneDrive/SharePoint
+        if (rFileName.matches(".*[<>:\"/\\\\|?*].*")) {
+            throw new IllegalArgumentException("File name contains invalid characters. " +
+                "OneDrive/SharePoint names cannot contain: < > : \" / \\ | ? *");
+        }
+
+        // Validate slice size is multiple of 320 KiB
+        if (rMaxSliceSize % 327680 != 0) {
+            throw new IllegalArgumentException(
+                String.format("Max slice size (%d bytes) must be a multiple of 320 KiB (327,680 bytes)", rMaxSliceSize));
+        }
+
+        if (rMaxRetryAttempts < 1) {
+            throw new IllegalArgumentException("Max retry attempts must be at least 1");
+        }
+
         logger.info("Uploading file '{}' to drive '{}' as '{}'", rFrom, rDriveId, rFileName);
 
         // Create a temporary file from the input stream to determine size
-        File tempFile = File.createTempFile("kestra-upload-", ".tmp");
-        long fileSize;
+        File tempFile = null;
+        long fileSize = 0;
 
         try {
+            tempFile = File.createTempFile("kestra-upload-", ".tmp");
+            
             // Copy input stream to temp file to determine size
             try (InputStream inputStream = runContext.storage().getFile(rFrom);
                  FileOutputStream fos = new FileOutputStream(tempFile)) {
                 byte[] buffer = new byte[8192];
                 int bytesRead;
-                fileSize = 0;
                 while ((bytesRead = inputStream.read(buffer)) != -1) {
                     fos.write(buffer, 0, bytesRead);
                     fileSize += bytesRead;
                 }
+            } catch (IOException e) {
+                throw new RuntimeException(
+                    String.format("Failed to read file from storage '%s': %s", rFrom, e.getMessage()), e);
+            }
+
+            if (fileSize == 0) {
+                logger.warn("File size is 0 bytes. Uploading empty file");
             }
 
             logger.debug("File size: {} bytes, threshold: {} bytes", fileSize, rLargeFileThreshold);
@@ -228,17 +258,61 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
                                        rMaxSliceSize, rMaxRetryAttempts, rConflictBehavior, runContext, logger);
             }
 
+            if (result == null) {
+                throw new IllegalStateException(
+                    String.format("Failed to upload file '%s': No response received from Microsoft Graph API", rFileName));
+            }
+
             logger.info("File uploaded successfully. ID: {}, Size: {} bytes", result.getId(), result.getSize());
 
             return Output.builder()
                     .file(OneShareFile.of(result))
                     .build();
+                    
+        } catch (ApiException e) {
+            logger.error("Microsoft Graph API error during upload: {}", e.getMessage(), e);
+            
+            if (e.getResponseStatusCode() == 401) {
+                throw new IllegalStateException(
+                    "Authentication failed. Please verify your credentials (tenantId, clientId, clientSecret)", e);
+            } else if (e.getResponseStatusCode() == 403) {
+                throw new IllegalStateException(
+                    String.format("Permission denied. Insufficient permissions to upload to drive '%s'", rDriveId), e);
+            } else if (e.getResponseStatusCode() == 404) {
+                throw new IllegalArgumentException(
+                    String.format("Parent folder '%s' not found in drive '%s'", rParentId, rDriveId), e);
+            } else if (e.getResponseStatusCode() == 429) {
+                throw new IllegalStateException(
+                    "Rate limit exceeded. Too many requests to Microsoft Graph API. Please retry after some time", e);
+            } else if (e.getResponseStatusCode() == 503 || e.getResponseStatusCode() == 504) {
+                throw new IllegalStateException(
+                    "Microsoft Graph API is temporarily unavailable. Please retry after some time", e);
+            } else if (e.getResponseStatusCode() == 507) {
+                throw new IllegalStateException(
+                    String.format("Insufficient storage. Drive '%s' does not have enough space for file '%s' (%d bytes)", 
+                        rDriveId, rFileName, fileSize), e);
+            }
+            
+            throw new RuntimeException(
+                String.format("Failed to upload file '%s' to drive '%s': %s", 
+                    rFileName, rDriveId, e.getMessage()), e);
+                    
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            // Re-throw our custom exceptions
+            throw e;
+        } catch (Exception e) {
+            logger.error("Unexpected error during upload: {}", e.getMessage(), e);
+            throw new RuntimeException(
+                String.format("Unexpected error while uploading file '%s' to drive '%s': %s", 
+                    rFileName, rDriveId, e.getMessage()), e);
         } finally {
             // Clean up temp file
-            try {
-                Files.deleteIfExists(tempFile.toPath());
-            } catch (Exception e) {
-                logger.warn("Failed to delete temporary file: {}", tempFile.getAbsolutePath(), e);
+            if (tempFile != null) {
+                try {
+                    Files.deleteIfExists(tempFile.toPath());
+                } catch (Exception e) {
+                    logger.warn("Failed to delete temporary file: {}", tempFile.getAbsolutePath(), e);
+                }
             }
         }
     }
@@ -261,12 +335,33 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
                            "File will be replaced if it exists.");
             }
 
-            return client.drives()
-                    .byDriveId(driveId)
-                    .items()
-                    .byDriveItemId(itemPath)
-                    .content()
-                    .put(fileStream);
+            try {
+                return client.drives()
+                        .byDriveId(driveId)
+                        .items()
+                        .byDriveItemId(itemPath)
+                        .content()
+                        .put(fileStream);
+            } catch (ApiException e) {
+                if (e.getResponseStatusCode() == 404) {
+                    throw new IllegalArgumentException(
+                        String.format("Parent folder '%s' not found in drive '%s'", parentId, driveId), e);
+                } else if (e.getResponseStatusCode() == 403) {
+                    throw new IllegalStateException(
+                        String.format("Permission denied. Insufficient permissions to upload to drive '%s'", driveId), e);
+                } else if (e.getResponseStatusCode() == 507) {
+                    throw new IllegalStateException(
+                        String.format("Insufficient storage. Drive '%s' does not have enough space", driveId), e);
+                } else if (e.getResponseStatusCode() == 413) {
+                    throw new IllegalStateException(
+                        String.format("File '%s' is too large for simple upload. Consider increasing largeFileThreshold", fileName), e);
+                }
+                throw new RuntimeException(
+                    String.format("Simple upload failed for file '%s': %s", fileName, e.getMessage()), e);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(
+                String.format("Failed to read file '%s' for upload: %s", fileName, e.getMessage()), e);
         }
     }
 
@@ -307,25 +402,54 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
                     .post(uploadSessionRequest);
         } catch (ApiException e) {
             logger.error("Failed to create upload session", e);
-            throw new RuntimeException("Failed to create upload session: " + e.getMessage(), e);
+            
+            if (e.getResponseStatusCode() == 404) {
+                throw new IllegalArgumentException(
+                    String.format("Parent folder '%s' not found in drive '%s'", parentId, driveId), e);
+            } else if (e.getResponseStatusCode() == 403) {
+                throw new IllegalStateException(
+                    String.format("Permission denied. Insufficient permissions to create upload session in drive '%s'", driveId), e);
+            } else if (e.getResponseStatusCode() == 409 && conflictBehavior == ConflictBehavior.FAIL) {
+                throw new IllegalStateException(
+                    String.format("File '%s' already exists and conflict behavior is set to FAIL", fileName), e);
+            } else if (e.getResponseStatusCode() == 507) {
+                throw new IllegalStateException(
+                    String.format("Insufficient storage. Drive '%s' does not have enough space for file '%s' (%d bytes)", 
+                        driveId, fileName, fileSize), e);
+            }
+            
+            throw new RuntimeException(
+                String.format("Failed to create upload session for file '%s': %s", fileName, e.getMessage()), e);
+        } catch (Exception e) {
+            logger.error("Unexpected error creating upload session", e);
+            throw new RuntimeException(
+                String.format("Unexpected error creating upload session for file '%s': %s", fileName, e.getMessage()), e);
         }
 
         if (uploadSession == null || uploadSession.getUploadUrl() == null) {
-            throw new RuntimeException("Failed to create upload session: no upload URL returned");
+            throw new IllegalStateException(
+                String.format("Failed to create upload session for file '%s': no upload URL returned", fileName));
         }
 
         logger.info("Upload session created. Upload URL: {}", uploadSession.getUploadUrl());
 
         // Create the large file upload task using SDK
         try (InputStream fileStream = new FileInputStream(file)) {
-            LargeFileUploadTask<DriveItem> largeFileUploadTask = new LargeFileUploadTask<>(
-                    client.getRequestAdapter(),
-                    uploadSession,
-                    fileStream,
-                    fileSize,
-                    maxSliceSize,
-                    DriveItem::createFromDiscriminatorValue
-            );
+            LargeFileUploadTask<DriveItem> largeFileUploadTask;
+            try {
+                largeFileUploadTask = new LargeFileUploadTask<>(
+                        client.getRequestAdapter(),
+                        uploadSession,
+                        fileStream,
+                        fileSize,
+                        maxSliceSize,
+                        DriveItem::createFromDiscriminatorValue
+                );
+            } catch (Exception e) {
+                logger.error("Failed to create large file upload task", e);
+                throw new RuntimeException(
+                    String.format("Failed to create large file upload task for file '%s': %s", fileName, e.getMessage()), e);
+            }
 
             // Create progress callback
             IProgressCallback callback = (current, max) -> {
@@ -346,18 +470,55 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
             logger.info("Starting chunked upload with max slice size: {} bytes, max attempts: {}",
                        maxSliceSize, maxAttempts);
 
-            UploadResult<DriveItem> uploadResult = largeFileUploadTask.upload(maxAttempts, callback);
+            UploadResult<DriveItem> uploadResult;
+            try {
+                uploadResult = largeFileUploadTask.upload(maxAttempts, callback);
+            } catch (ApiException e) {
+                logger.error("Upload failed with API exception", e);
+                
+                if (e.getResponseStatusCode() == 507) {
+                    throw new IllegalStateException(
+                        String.format("Insufficient storage during upload. Drive '%s' ran out of space", driveId), e);
+                } else if (e.getResponseStatusCode() == 416) {
+                    throw new IllegalStateException(
+                        String.format("Invalid byte range during upload for file '%s'. Upload session may have expired", fileName), e);
+                } else if (e.getResponseStatusCode() == 404) {
+                    throw new IllegalStateException(
+                        String.format("Upload session not found or expired for file '%s'. Please retry the upload", fileName), e);
+                }
+                
+                throw new RuntimeException(
+                    String.format("Upload failed for file '%s' after %d attempts: %s", 
+                        fileName, maxAttempts, e.getMessage()), e);
+            } catch (Exception e) {
+                logger.error("Error during upload", e);
+                throw new RuntimeException(
+                    String.format("Error during upload of file '%s': %s", fileName, e.getMessage()), e);
+            }
+
+            if (uploadResult == null) {
+                throw new IllegalStateException(
+                    String.format("Upload failed for file '%s': No upload result returned", fileName));
+            }
 
             if (uploadResult.isUploadSuccessful()) {
                 logger.info("Upload completed successfully");
                 runContext.metric(Counter.of("file.size", fileSize));
+                
+                if (uploadResult.itemResponse == null) {
+                    throw new IllegalStateException(
+                        String.format("Upload succeeded but no item response returned for file '%s'", fileName));
+                }
+                
                 return uploadResult.itemResponse;
             } else {
-                throw new RuntimeException("Upload failed: upload was not successful");
+                throw new RuntimeException(
+                    String.format("Upload failed for file '%s': Upload was not successful after %d attempts", 
+                        fileName, maxAttempts));
             }
-        } catch (Exception e) {
-            logger.error("Error during upload", e);
-            throw new RuntimeException("Error during upload: " + e.getMessage(), e);
+        } catch (IOException e) {
+            throw new RuntimeException(
+                String.format("Failed to read file '%s' during upload: %s", fileName, e.getMessage()), e);
         }
     }
 

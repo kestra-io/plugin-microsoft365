@@ -14,6 +14,7 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.TestsUtils;
+import io.kestra.plugin.microsoft365.oneshare.models.ItemType;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -151,7 +152,7 @@ class ListFilesTest extends AbstractOneShareTest {
             .driveId(Property.ofValue(driveId))
             .parentId(Property.ofValue("root:/Documents/TestListFiles"))
             .name(Property.ofValue(dir))
-            .folder(Property.ofValue(true))
+            .itemType(Property.ofValue(ItemType.FOLDER))
             .build();
         
         Create.Output folderOutput = createFolder.run(TestsUtils.mockRunContext(

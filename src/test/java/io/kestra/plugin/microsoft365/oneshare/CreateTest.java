@@ -15,6 +15,7 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.TestsUtils;
+import io.kestra.plugin.microsoft365.oneshare.models.ItemType;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -102,7 +103,7 @@ class CreateTest extends AbstractOneShareTest {
             .driveId(Property.ofValue("test-drive"))
             .parentId(Property.ofValue("root"))
             .name(Property.ofValue("test-folder"))
-            .folder(Property.ofValue(true))
+            .itemType(Property.ofValue(ItemType.FOLDER))
             .tenantId(Property.ofValue("mock-tenant"))
             .clientId(Property.ofValue("mock-client"))
             .clientSecret(Property.ofValue("mock-secret"))
@@ -178,7 +179,7 @@ class CreateTest extends AbstractOneShareTest {
             .driveId(Property.ofValue(driveId))
             .parentId(Property.ofValue("root:/Documents/TestCreate"))
             .name(Property.ofValue(folderName))
-            .folder(Property.ofValue(true))
+            .itemType(Property.ofValue(ItemType.FOLDER))
             .build();
 
         Create.Output runOutput = task.run(runContext(task));
