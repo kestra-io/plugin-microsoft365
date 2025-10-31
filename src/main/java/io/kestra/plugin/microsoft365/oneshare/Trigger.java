@@ -245,7 +245,8 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
 
         // Read current state
         var state = StatefulTriggerService.readState(runContext, rStateKey, Optional.ofNullable(rStateTtl));
-        
+        runContext.logger().debug("Loaded trigger state (key={}): size={} keys={}", rStateKey, state.size(), state.keySet());
+            
         // Check if this is the first run (empty state except possibly delta link)
         boolean isFirstRun = state.isEmpty() || state.size() == 1 && state.containsKey(DELTA_LINK_KEY);
 
@@ -301,6 +302,9 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
                 throw new IllegalStateException(
                     String.format("Failed to query delta for path '%s': No response received from Microsoft Graph API", rPath));
             }
+            // Diagnostic: log the nextLink/deltaLink we received from Graph for this run
+            runContext.logger().debug("Delta response links: @odata.nextLink={} @odata.deltaLink={}",
+                deltaResponse.getOdataNextLink(), deltaResponse.getOdataDeltaLink());
             
             List<DriveItem> allItems = new ArrayList<>();
             if (deltaResponse.getValue() != null) {
@@ -380,7 +384,12 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
 
             // Store the delta link for next run (if we have one)
             if (newDeltaLink != null) {
-                var deltaLinkEntry = new StatefulTriggerService.Entry(DELTA_LINK_KEY, newDeltaLink, 
+                // Log the delta link received from Microsoft Graph for diagnostics. The initial delta
+                // response (after pagination) should include an @odata.deltaLink which we persist
+                // for incremental syncs on subsequent runs.
+                runContext.logger().debug("Delta link received from Graph: {}", newDeltaLink);
+
+                var deltaLinkEntry = new StatefulTriggerService.Entry(DELTA_LINK_KEY, newDeltaLink,
                     Instant.now(), Instant.now());
                 state.put(DELTA_LINK_KEY, deltaLinkEntry);
             }
@@ -388,6 +397,16 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
             // Save updated state
             try {
                 StatefulTriggerService.writeState(runContext, rStateKey, state, Optional.ofNullable(rStateTtl));
+                // Confirm the delta link (if any) was persisted to state
+                if (newDeltaLink != null) {
+                    runContext.logger().debug("Persisted delta link to stateKey {}: deltaLink={}", rStateKey, newDeltaLink);
+                } else {
+                    runContext.logger().debug("No delta link to persist for stateKey {}", rStateKey);
+                }
+
+                // Diagnostic: show what the state entry contains for the delta key after write
+                var persisted = state.get(DELTA_LINK_KEY);
+                runContext.logger().debug("Post-write state delta entry: {}", persisted != null ? persisted.version() : "null");
             } catch (Exception e) {
                 runContext.logger().error("Failed to save trigger state: {}", e.getMessage(), e);
                 // Don't throw - we can continue even if state save fails
@@ -451,14 +470,21 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
 
         // Initial delta query for specific folder path
         // Endpoint format: /drives/{drive-id}/root:/{path}:/delta
+        // Special-case the root path "/" because constructing "root:/:" is not a valid
+        // drive item id for the Graph SDK and can lead to unexpected results. When the
+        // configured path is "/" we call the delta on the root item directly.
         try {
             if (driveId != null) {
-                return graphClient.drives()
-                    .byDriveId(driveId)
-                    .items()
-                    .byDriveItemId("root:" + path + ":")
-                    .delta()
-                    .get();
+                var driveItems = graphClient.drives().byDriveId(driveId).items();
+
+                if ("/".equals(path) || path == null || path.trim().equals("")) {
+                    // Query delta on root directly
+                    return driveItems.byDriveItemId("root").delta().get();
+                }
+
+                // Normalize path to avoid double slashes and ensure correct formatting
+                String normalizedPath = path.replaceAll("^/+|/+$", "");
+                return driveItems.byDriveItemId("root:" + normalizedPath + ":").delta().get();
             } else {
                 // For site-based access
                 var drive = graphClient.sites().bySiteId(siteId).drive().get();
