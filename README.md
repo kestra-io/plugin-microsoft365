@@ -41,16 +41,19 @@ This plugin provides tasks and triggers for interacting with Microsoft 365 servi
 
 ![Kestra orchestrator](https://kestra.io/video.gif)
 
-## Features
+## Sub Plugins in MICROSOFT 365
 
-### OneDrive / SharePoint (OneShare)
-- **Upload**: Upload files to OneDrive or SharePoint
-- **Download**: Download files from OneDrive or SharePoint
+### OneShare
+- **Upload**: Upload files to OneDrive
+- **Download**: Download files from OneDrive
 - **List**: List files and folders
 - **Create**: Create files or folders
 - **Delete**: Delete files or folders
 - **Export**: Export files to different formats
-- **Trigger**: React to new file creation events using Delta API
+- **Trigger**: React to OneDrive/SharePoint file CREATE, UPDATE, or BOTH events using Delta API
+
+This sub-plugin is named as **OneShare** because it supports both OneDrive and Sharepoint for Trigger.
+If you need the same above Tasks for SharePoint please check the SharePoint sub-plugin.
 
 
 ### Setup Instructions
