@@ -33,13 +33,92 @@
 <p align="center" style="color:grey;"><i>Get started with Kestra in 4 minutes.</i></p>
 
 
-# Kestra Plugin Template
+# Kestra Plugin Microsoft 365
 
-> A template for creating Kestra plugins
+> Integrate Microsoft 365 services with Kestra data workflows
 
-This repository serves as a general template for creating a new [Kestra](https://github.com/kestra-io/kestra) plugin. It should take only a few minutes! Use this repository as a scaffold to ensure that you've set up the plugin correctly, including unit tests and CI/CD workflows.
+This plugin provides tasks and triggers for interacting with Microsoft 365 services including OneDrive and SharePoint. It uses the Microsoft Graph API to access files, manage folders, and react to changes in your Microsoft 365 environment.
 
 ![Kestra orchestrator](https://kestra.io/video.gif)
+
+## Sub Plugins in MICROSOFT 365
+
+### OneShare
+- **Upload**: Upload files to OneDrive
+- **Download**: Download files from OneDrive
+- **List**: List files and folders
+- **Create**: Create files or folders
+- **Delete**: Delete files or folders
+- **Export**: Export files to different formats
+- **Trigger**: React to OneDrive/SharePoint file CREATE, UPDATE, or BOTH events using Delta API
+
+This sub-plugin is named as **OneShare** because it supports both OneDrive and Sharepoint for Trigger.
+If you need the same above Tasks for SharePoint please check the SharePoint sub-plugin.
+
+
+### Setup Instructions
+
+To use the OneShare subplugin, you need to configure Azure AD authentication:
+
+#### Azure AD App Registration
+
+1. **Create App Registration**:
+   - Navigate to [Azure Portal](https://portal.azure.com/) → **Azure Active Directory** → **App registrations**
+   - Click **New registration**
+   - Provide a name (e.g., "Kestra OneShare Integration")
+   - Select **Accounts in this organizational directory only**
+   - Click **Register**
+
+2. **Note Credentials**:
+   - Copy the **Application (client) ID**
+   - Copy the **Directory (tenant) ID**
+
+3. **Create Client Secret**:
+   - Go to **Certificates & secrets** → **Client secrets**
+   - Click **New client secret**
+   - Provide a description and select expiration
+   - **Copy the secret value immediately** (won't be shown again)
+
+4. **Grant API Permissions**:
+   - Go to **API permissions** → **Add a permission**
+   - Select **Microsoft Graph** → **Application permissions**
+   - Add the following permissions:
+     - `Files.ReadWrite.All` - Read and write files in all site collections
+     - `Sites.ReadWrite.All` - Read and write items in all site collections
+   - Click **Grant admin consent for your organization**
+
+5. **Get Drive ID**:
+   - For OneDrive: Use [Graph Explorer](https://developer.microsoft.com/en-us/graph/graph-explorer) and query `/me/drive` to get your drive ID
+   - For SharePoint: Query `/sites/{site-id}/drive` or `/sites/{site-id}/drives`
+
+
+### Authentication Methods
+
+This plugin supports two authentication methods:
+
+#### Option 1: Client Secret (Recommended for most scenarios)
+1. Go to **Certificates & secrets** in your app registration
+2. Create a new **Client Secret**
+3. Note the secret value immediately (it won't be shown again)
+4. Use `clientId`, `tenantId`, and `clientSecret` in your Kestra tasks
+
+#### Option 2: Client Certificate (For enhanced security)
+1. Go to **Certificates & secrets** in your app registration
+2. Upload a certificate (.cer, .pem, or .crt file)
+3. Export your certificate with private key as PEM format
+4. Use `clientId`, `tenantId`, and `pemCertificate` in your Kestra tasks
+
+**Note**: Use **either** Client Secret **OR** Client Certificate, not both.
+
+### API Permissions
+
+Grant the following API permissions in your app registration:
+- `Files.ReadWrite.All` - Read and write files in all site collections
+- `Sites.ReadWrite.All` - Read and write items in all site collections
+
+After adding permissions, click **Grant admin consent** for your organization.
+
+For more details, see the [Microsoft Graph API documentation](https://learn.microsoft.com/en-us/graph/auth-register-app-v2).
 
 ## Running the project in local
 ### Prerequisites

@@ -7,3 +7,15 @@ kestra:
     type: local
     local:
       base-path: /tmp/unittest
+  tasks:
+    oneshare:
+      tenantId: "${MS365_TENANT_ID:}"
+      clientId: "${MS365_CLIENT_ID:}"
+      clientSecret: "${MS365_CLIENT_SECRET:}"
+      driveId: "${MS365_DRIVE_ID:}"
+  variables:
+    globals:
+      tenantId: "${kestra.tasks.oneshare.tenantId}"
+      clientId: "${kestra.tasks.oneshare.clientId}"
+      clientSecret: "${kestra.tasks.oneshare.clientSecret}"
+      driveId: "${kestra.tasks.oneshare.driveId}"
