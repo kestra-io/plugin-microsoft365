@@ -52,7 +52,7 @@ dependencies {
 
     // Microsoft Graph SDK - latest stable version
     implementation "com.microsoft.graph:microsoft-graph:6.54.0"
-    implementation "com.azure:azure-identity:1.18.0"
+    implementation "com.azure:azure-identity:1.18.1"
 }
 
 /**********************************************************************************************************************\
