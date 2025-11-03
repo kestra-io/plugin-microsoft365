@@ -51,7 +51,7 @@ dependencies {
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
 
     // Microsoft Graph SDK - latest stable version
-    implementation "com.microsoft.graph:microsoft-graph:6.54.0"
+    implementation "com.microsoft.graph:microsoft-graph:6.55.0"
     implementation "com.azure:azure-identity:1.18.0"
 }
 
