@@ -94,11 +94,10 @@ public class Download extends AbstractOneShareTask implements RunnableTask<Downl
         runContext.logger().info("Downloading item '{}' from drive '{}'", rItemId, rDriveId);
 
         File tempFile = null;
-        InputStream inputStream = null;
-        FileOutputStream fos = null;
         
         try {
             // Get the file content stream
+            InputStream inputStream;
             try {
                 inputStream = client.drives().byDriveId(rDriveId).items().byDriveItemId(rItemId).content().get();
             } catch (ApiException e) {
@@ -123,55 +122,30 @@ public class Download extends AbstractOneShareTask implements RunnableTask<Downl
                     throw new IllegalStateException(
                         String.format("Invalid range request for item '%s'. The requested byte range is not satisfiable", rItemId), e);
                 }
-                
+
                 throw new RuntimeException(
                     String.format("Failed to download item '%s' from drive '%s': %s", 
                         rItemId, rDriveId, e.getMessage()), e);
             }
-            
+
             if (inputStream == null) {
                 throw new IllegalStateException(
                     String.format("Failed to download item '%s': No content stream received from Microsoft Graph API", rItemId));
             }
-            
-            // Create temp file and write content
+
+            // Create temp file and write content using try-with-resources and InputStream.transferTo
             try {
                 tempFile = runContext.workingDir().createTempFile().toFile();
-                fos = new FileOutputStream(tempFile);
-                
-                byte[] buffer = new byte[8192];
-                int bytesRead;
-                long totalBytesRead = 0;
-                
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    fos.write(buffer, 0, bytesRead);
-                    totalBytesRead += bytesRead;
+                try (InputStream in = inputStream; FileOutputStream out = new FileOutputStream(tempFile)) {
+                    long totalBytesRead = in.transferTo(out);
+                    runContext.logger().debug("Downloaded {} bytes for item '{}'", totalBytesRead, rItemId);
                 }
-                
-                runContext.logger().debug("Downloaded {} bytes for item '{}'", totalBytesRead, rItemId);
-                
             } catch (IOException e) {
                 throw new RuntimeException(
                     String.format("Failed to write downloaded content to temporary file for item '%s': %s", 
                         rItemId, e.getMessage()), e);
-            } finally {
-                // Close streams
-                if (fos != null) {
-                    try {
-                        fos.close();
-                    } catch (IOException e) {
-                        runContext.logger().warn("Failed to close file output stream: {}", e.getMessage());
-                    }
-                }
-                if (inputStream != null) {
-                    try {
-                        inputStream.close();
-                    } catch (IOException e) {
-                        runContext.logger().warn("Failed to close input stream: {}", e.getMessage());
-                    }
-                }
             }
-            
+
             // Store file in Kestra storage
             URI uri;
             try {
