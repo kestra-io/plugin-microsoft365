@@ -35,7 +35,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @KestraTest
-class ListFilesTest extends AbstractOneShareTest {
+class ListTest extends AbstractOneShareTest {
     @Inject
     private OnesShareTestUtils testUtils;
 
@@ -94,9 +94,9 @@ class ListFilesTest extends AbstractOneShareTest {
     
     @Test
     void testListFilesExecutesSuccessfully() throws Exception {
-        ListFiles task = ListFiles.builder()
+        List task = List.builder()
             .id("test-list")
-            .type(ListFiles.class.getName())
+            .type(List.class.getName())
             .driveId(Property.ofValue("test-drive"))
             .itemId(Property.ofValue("root"))
             .tenantId(Property.ofValue("mock-tenant"))
@@ -105,7 +105,7 @@ class ListFilesTest extends AbstractOneShareTest {
             .build();
         
         RunContext runContext = runContextFactory.of();
-        ListFiles.Output output = task.run(runContext);
+        List.Output output = task.run(runContext);
         
         // Verify output
         assertThat(output, notNullValue());
@@ -120,9 +120,9 @@ class ListFilesTest extends AbstractOneShareTest {
     @Test
     void testListFilesTaskConfiguration() {
         // Lightweight configuration test
-        ListFiles task = ListFiles.builder()
+        List task = List.builder()
             .id("test-list")
-            .type(ListFiles.class.getName())
+            .type(List.class.getName())
             .driveId(Property.ofValue("test-drive"))
             .itemId(Property.ofValue("root"))
             .tenantId(Property.ofValue("mock-tenant"))
@@ -173,11 +173,11 @@ class ListFilesTest extends AbstractOneShareTest {
         }
 
         // List files in the folder
-        ListFiles task = task()
+        List task = task()
             .itemId(Property.ofValue(folderOutput.getFile().getId()))
             .build();
         
-        ListFiles.Output run = task.run(TestsUtils.mockRunContext(
+        List.Output run = task.run(TestsUtils.mockRunContext(
             this.runContextFactory,
             task,
             ImmutableMap.of(
@@ -191,11 +191,11 @@ class ListFilesTest extends AbstractOneShareTest {
         assertThat(run.getFiles().size(), greaterThanOrEqualTo(5));
 
         // Test listing root folder
-        ListFiles rootTask = task()
+        List rootTask = task()
             .itemId(Property.ofValue("root"))
             .build();
         
-        ListFiles.Output rootRun = rootTask.run(TestsUtils.mockRunContext(
+        List.Output rootRun = rootTask.run(TestsUtils.mockRunContext(
             this.runContextFactory,
             rootTask,
             ImmutableMap.of(
@@ -209,10 +209,10 @@ class ListFilesTest extends AbstractOneShareTest {
         assertThat(rootRun.getFiles().size(), greaterThanOrEqualTo(1));
     }
 
-    private static ListFiles.ListFilesBuilder<?, ?> task() {
-        return ListFiles.builder()
-            .id(ListFilesTest.class.getSimpleName())
-            .type(ListFiles.class.getName())
+    private static List.ListBuilder<?, ?> task() {
+        return List.builder()
+            .id(ListTest.class.getSimpleName())
+            .type(List.class.getName())
             .tenantId(Property.ofValue("{{ inputs.tenantId }}"))
             .clientId(Property.ofValue("{{ inputs.clientId }}"))
             .clientSecret(Property.ofValue("{{ inputs.clientSecret }}"))

@@ -52,7 +52,7 @@ import lombok.experimental.SuperBuilder;
 
                 tasks:
                   - id: list_files
-                    type: io.kestra.plugin.microsoft365.oneshare.ListFiles
+                    type: io.kestra.plugin.microsoft365.oneshare.List
                     tenantId: "{{ secret('TENANT_ID') }}"
                     clientId: "{{ secret('CLIENT_ID') }}"
                     clientSecret: "{{ secret('CLIENT_SECRET') }}"

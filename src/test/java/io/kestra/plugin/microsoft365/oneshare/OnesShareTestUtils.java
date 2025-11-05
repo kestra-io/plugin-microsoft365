@@ -159,9 +159,9 @@ class OnesShareTestUtils {
 
     private String findChildFolder(String parentId, String folderName) throws Exception {
         try {
-            ListFiles listFiles = ListFiles.builder()
+            List listFiles = List.builder()
                 .id("list-" + FriendlyId.createFriendlyId())
-                .type(ListFiles.class.getName())
+                .type(List.class.getName())
                 .tenantId(Property.ofValue(tenantId))
                 .clientId(Property.ofValue(clientId))
                 .clientSecret(Property.ofValue(clientSecret))
@@ -169,7 +169,7 @@ class OnesShareTestUtils {
                 .itemId(Property.ofValue(parentId))
                 .build();
             
-            ListFiles.Output output = listFiles.run(runContext(listFiles));
+            List.Output output = listFiles.run(runContext(listFiles));
             
             // Search for a folder with the matching name
             if (output.getFiles() != null) {

@@ -20,7 +20,6 @@ import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -43,7 +42,7 @@ import java.util.stream.Collectors;
 
                 tasks:
                   - id: list_files
-                    type: io.kestra.plugin.microsoft365.oneshare.ListFiles
+                    type: io.kestra.plugin.microsoft365.oneshare.List
                     tenantId: "{{ secret('TENANT_ID') }}"
                     clientId: "{{ secret('CLIENT_ID') }}"
                     clientSecret: "{{ secret('CLIENT_SECRET') }}"
@@ -60,7 +59,7 @@ import java.util.stream.Collectors;
 
                 tasks:
                   - id: list_folder_files
-                    type: io.kestra.plugin.microsoft365.oneshare.ListFiles
+                    type: io.kestra.plugin.microsoft365.oneshare.List
                     tenantId: "{{ secret('TENANT_ID') }}"
                     clientId: "{{ secret('CLIENT_ID') }}"
                     clientSecret: "{{ secret('CLIENT_SECRET') }}"
@@ -70,7 +69,7 @@ import java.util.stream.Collectors;
         )
     }
 )
-public class ListFiles extends AbstractOneShareTask implements RunnableTask<ListFiles.Output> {
+public class List extends AbstractOneShareTask implements RunnableTask<List.Output> {
 
     @Schema(
         title = "The ID of the item (folder) to list children from. If not provided, the root of the drive is used."
@@ -130,7 +129,7 @@ public class ListFiles extends AbstractOneShareTask implements RunnableTask<List
             }
 
             // Collect all items from all pages
-            List<DriveItem> allItems = new ArrayList<>();
+            java.util.List<DriveItem> allItems = new ArrayList<>();
             if (result.getValue() != null) {
                 allItems.addAll(result.getValue());
             }
@@ -180,7 +179,7 @@ public class ListFiles extends AbstractOneShareTask implements RunnableTask<List
 
             runContext.logger().info("Retrieved {} total items across {} pages", allItems.size(), pageCount);
 
-            List<OneShareFile> files = allItems.stream()
+            java.util.List<OneShareFile> files = allItems.stream()
                 .map(OneShareFile::of)
                 .collect(Collectors.toList());
 
@@ -221,7 +220,7 @@ public class ListFiles extends AbstractOneShareTask implements RunnableTask<List
         @Schema(
             title = "The list of files."
         )
-        private final List<OneShareFile> files;
+        private final java.util.List<OneShareFile> files;
 
         @Schema(
             title = "The number of files."
