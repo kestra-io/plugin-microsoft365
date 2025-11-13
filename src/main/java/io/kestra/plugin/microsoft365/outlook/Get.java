@@ -3,19 +3,18 @@ package io.kestra.plugin.microsoft365.outlook;
 import com.microsoft.graph.models.Attachment;
 import com.microsoft.graph.models.Message;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
-import io.kestra.plugin.microsoft365.outlook.domain.AttachmentInfo;
-import io.kestra.plugin.microsoft365.outlook.domain.MessageDetail;
-import io.kestra.plugin.microsoft365.outlook.utils.GraphMailUtils;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.microsoft365.outlook.domain.AttachmentInfo;
+import io.kestra.plugin.microsoft365.outlook.domain.MessageDetail;
+import io.kestra.plugin.microsoft365.outlook.utils.GraphMailUtils;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -23,7 +22,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-@Slf4j
 @SuperBuilder
 @ToString
 @EqualsAndHashCode

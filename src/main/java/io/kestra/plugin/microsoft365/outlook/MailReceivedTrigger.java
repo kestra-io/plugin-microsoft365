@@ -3,19 +3,18 @@ package io.kestra.plugin.microsoft365.outlook;
 import com.microsoft.graph.models.Attachment;
 import com.microsoft.graph.models.Message;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
-import io.kestra.plugin.microsoft365.outlook.utils.GraphMailUtils;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.triggers.*;
+import io.kestra.plugin.microsoft365.outlook.utils.GraphMailUtils;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import jakarta.validation.constraints.Pattern;
 import lombok.experimental.SuperBuilder;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -32,7 +31,6 @@ import static io.kestra.core.models.triggers.StatefulTriggerService.*;
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
 
-@Slf4j
 @SuperBuilder
 @ToString
 @EqualsAndHashCode
@@ -335,7 +333,7 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
                     URI storedUri = null;
 
                     if (att.getOdataType() != null && att.getOdataType().contains("fileAttachment")) {
-                        byte[] content = getAttachmentContent(att);
+                        byte[] content = getAttachmentContent(att, logger);
                         if (content != null) {
                             File tempFile = runContext.workingDir().createTempFile(att.getName()).toFile();
                             try (FileOutputStream fos = new FileOutputStream(tempFile)) {
@@ -363,12 +361,12 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
         return emailBuilder.build();
     }
 
-    private byte[] getAttachmentContent(Attachment attachment) {
+    private byte[] getAttachmentContent(Attachment attachment, Logger logger) {
         try {
             var contentField = attachment.getClass().getMethod("getContentBytes");
             return (byte[]) contentField.invoke(attachment);
         } catch (Exception e) {
-            log.warn("Could not extract attachment content", e);
+            logger.warn("Could not extract attachment content", e);
             return null;
         }
     }
