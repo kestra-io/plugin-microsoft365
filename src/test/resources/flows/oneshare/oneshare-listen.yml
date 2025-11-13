@@ -1,0 +1,17 @@
+id: oneshare-listen
+namespace: io.kestra.tests
+
+triggers:
+  - id: file_created
+    type: io.kestra.plugin.microsoft365.oneshare.Trigger
+    tenantId: "{{ globals.tenantId }}"
+    clientId: "{{ globals.clientId }}"
+    clientSecret: "{{ globals.clientSecret }}"
+    driveId: "{{ globals.driveId }}"
+    path: "/Documents/TestTrigger"
+    interval: PT10S
+
+tasks:
+  - id: log_files
+    type: io.kestra.plugin.core.log.Log
+    message: "Detected {{ trigger.count }} new file(s): {{ trigger.files | jq('.[].name') | join(', ') }}"

@@ -44,15 +44,21 @@ dependencies {
     // lombok
     annotationProcessor "org.projectlombok:lombok"
     compileOnly "org.projectlombok:lombok"
-
-    // kestra
+    // Kestra
     annotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
     compileOnly group: "io.kestra", name: "core", version: kestraVersion
     compileOnly group: "io.kestra", name: "script", version: kestraVersion
 
-    // Microsoft Graph SDK - latest stable version
-    implementation "com.microsoft.graph:microsoft-graph:6.54.0"
-    implementation "com.azure:azure-identity:1.18.0"
+    // Microsoft
+    api group: 'com.azure', name: 'azure-identity'
+    api (group: 'com.microsoft.graph', name: 'microsoft-graph', version: '6.54.0') {
+        // exclude libraries already provided by Kestra
+        exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'com.fasterxml.jackson.dataformat', module: 'jackson-dataformat-xml'
+        exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-jdk8'
+        exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-jsr310'
+        exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-guava'
+    }
 }
 
 /**********************************************************************************************************************\
@@ -88,6 +94,7 @@ dependencies {
 
     // test deps needed only for to have a runner
     testAnnotationProcessor group: "io.kestra", name: "processor", version: kestraVersion
+
     testImplementation group: "io.kestra", name: "core", version: kestraVersion
     testImplementation group: "io.kestra", name: "tests", version: kestraVersion
     testImplementation group: "io.kestra", name: "script", version: kestraVersion
@@ -95,12 +102,14 @@ dependencies {
     testImplementation group: "io.kestra", name: "runner-memory", version: kestraVersion
     testImplementation group: "io.kestra", name: "storage-local", version: kestraVersion
     testImplementation group: "io.kestra", name: "scheduler", version: kestraVersion
-
+    testImplementation group: "io.kestra", name: "worker", version: kestraVersion
 
     // test
     testImplementation "org.junit.jupiter:junit-jupiter-engine"
+    testImplementation "org.junit.jupiter:junit-jupiter-params"
     testImplementation "org.hamcrest:hamcrest"
     testImplementation "org.hamcrest:hamcrest-library"
+    testImplementation group: 'com.devskiller.friendly-id', name: 'friendly-id'
     testImplementation "org.mockito:mockito-core:5.20.0"
     testImplementation "org.mockito:mockito-junit-jupiter:5.20.0"
 }
@@ -137,6 +146,9 @@ test {
 
 jacocoTestReport {
     dependsOn test
+    reports {
+        xml.required.set(true)
+    }
 }
 
 /**********************************************************************************************************************\
@@ -188,6 +200,7 @@ jar {
 }
 
 shadowJar {
+    zip64 true
     archiveClassifier.set(null)
     mergeServiceFiles()
 }
