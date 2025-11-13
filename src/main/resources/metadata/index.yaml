@@ -1,0 +1,8 @@
+group: io.kestra.plugin.microsoft365
+name: "microsoft365"
+title: "Microsoft 365"
+description: "Microsoft 365 plugin for Kestra"
+body: ""
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"

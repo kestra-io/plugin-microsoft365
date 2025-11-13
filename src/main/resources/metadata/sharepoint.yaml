@@ -1,0 +1,8 @@
+group: io.kestra.plugin.microsoft365.sharepoint
+name: "sharepoint"
+title: "SharePoint"
+description: "SharePoint integration for Microsoft 365."
+body: ""
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"
