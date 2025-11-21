@@ -52,11 +52,18 @@ public class GraphMailUtils {
                 throw new IllegalStateException("Query parameters are null");
             }
 
-            if (filterExpression != null) {
-                requestConfig.queryParameters.filter = filterExpression;
+            // To use $orderby with $filter, the orderby property must appear in the filter first
+            String finalFilter = filterExpression;
+            if (filterExpression != null && !filterExpression.isEmpty()) {
+                // Prepend receivedDateTime condition to satisfy Graph API requirements
+                finalFilter = "receivedDateTime ge 1970-01-01T00:00:00Z and (" + filterExpression + ")";
                 if (logger != null) {
-                    logger.debug("Applied filter: {}", filterExpression);
+                    logger.debug("Applied filter with receivedDateTime prefix: {}", finalFilter);
                 }
+            }
+
+            if (finalFilter != null) {
+                requestConfig.queryParameters.filter = finalFilter;
             }
 
             requestConfig.queryParameters.top = maxResults;
@@ -84,8 +91,15 @@ public class GraphMailUtils {
                 throw new IllegalStateException("Query parameters are null");
             }
 
-            if (filterExpression != null) {
-                requestConfig.queryParameters.filter = filterExpression;
+            // To use $orderby with $filter, the orderby property must appear in the filter first
+            String finalFilter = filterExpression;
+            if (filterExpression != null && !filterExpression.isEmpty()) {
+                // Prepend receivedDateTime condition to satisfy Graph API requirements
+                finalFilter = "receivedDateTime ge 1970-01-01T00:00:00Z and (" + filterExpression + ")";
+            }
+
+            if (finalFilter != null) {
+                requestConfig.queryParameters.filter = finalFilter;
             }
 
             requestConfig.queryParameters.top = maxResults;
