@@ -28,8 +28,8 @@ import java.util.Objects;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Get a specific emailmessage from Microsoft Outlook",
-    description = "Retrieve a specific emai message by its ID."
+    title = "Get a specific email message from Microsoft Outlook",
+    description = "Retrieve a specific email message by its ID."
 )
 @Plugin(
     examples = {
@@ -76,7 +76,7 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
 
     @Schema(
         title = "Message ID",
-        description = "Uniques identifier of rhe email message to retrieve"
+        description = "Unique identifier of the email message to retrieve"
     )
     @NotNull
     private Property<String> messageId;

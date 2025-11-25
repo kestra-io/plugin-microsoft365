@@ -73,7 +73,7 @@ import java.net.URI;
 public class Export extends AbstractOneShareTask implements RunnableTask<Export.Output> {
 
     public enum ExportFormat {
-        @Schema(description = "Converts the item into PDF format. Supports: doc, docx, dot, dotx, dotm, dsn, dwg, eml, epub, fluidframework, form, htm, html, loop, loot, markdown, md, msg, note, odp, ods, odt, page, pps, ppsx, ppt, pptx, pulse, rtf, task, tif, tiff, wbtx, whiteboard, xls, xlsm, xlsx")
+        @Schema(description = "Converts the item into PDF format. Supports: doc, docx, dot, dotx, dotm, dsn, dwg, eml, epub, fluidframework, form, htm, html, loop, markdown, md, msg, note, odp, ods, odt, page, pps, ppsx, ppt, pptx, pulse, rtf, task, tif, tiff, wbtx, whiteboard, xls, xlsm, xlsx")
         PDF,
         
         @Schema(description = "Converts the item into HTML format. Supports: loop, fluid, wbtx")

@@ -41,14 +41,14 @@ public abstract class AbstractSharepointTask extends Task {
 
     @Schema(
         title = "Sharepoint Site ID",
-        description = "The id of the"
+        description = "The ID of the SharePoint site."
     )
     @NotNull
     protected Property<String> siteId;
 
     @Schema(
         title = "Drive ID",
-        description = "The id of the document library within the SharePoint site. If  not provided, the default document library will be used."
+        description = "The ID of the document library within the SharePoint site. If not provided, the default document library will be used."
     )
     protected Property<String> driveId;
 
