@@ -52,7 +52,7 @@ This plugin provides tasks and triggers for interacting with Microsoft 365 servi
 - **Export**: Export files to different formats
 - **Trigger**: React to OneDrive/SharePoint file CREATE, UPDATE, or BOTH events using Delta API
 
-This sub-plugin is named as **OneShare** because it supports both OneDrive and Sharepoint for Trigger.
+This sub-plugin is named as **OneShare** because it supports both OneDrive and SharePoint for Trigger.
 If you need the same above Tasks for SharePoint please check the SharePoint sub-plugin.
 
 
@@ -142,7 +142,7 @@ Follow the README.md within the `.devcontainer` folder for a quick and easy way 
 ./gradlew shadowJar && docker build -t kestra-custom . && docker run --rm -p 8080:8080 kestra-custom server local
 ```
 > [!NOTE]
-> You need to relaunch this whole command everytime you make a change to your plugin
+> You need to relaunch this whole command every time you make a change to your plugin
 
 go to http://localhost:8080, your plugin will be available to use
 

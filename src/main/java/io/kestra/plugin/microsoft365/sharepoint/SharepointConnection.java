@@ -40,14 +40,14 @@ public class SharepointConnection {
 
     @Schema(
         title = "Sharepoint Site ID",
-        description = "The id of the"
+        description = "The ID of the SharePoint site."
     )
     @NotNull
     private Property<String> siteId;
 
     @Schema(
         title = "Drive ID",
-        description = "The id of the document library within the SharePoint site. If  not provided, the default document library will be used."
+        description = "The ID of the document library within the SharePoint site. If not provided, the default document library will be used."
     )
     private Property<String> driveId;
 
