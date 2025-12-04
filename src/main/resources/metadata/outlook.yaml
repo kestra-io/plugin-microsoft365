@@ -1,8 +1,8 @@
 group: io.kestra.plugin.microsoft365.outlook
 name: "outlook"
 title: "Outlook"
-description: "Outlook email integration for Microsoft 365. Send emails, list messages, retrieve specific emails, and trigger workflows on new incoming mail using Microsoft Graph API."
-body: ""
+description: "Tasks that send and read Outlook email and trigger workflows on new messages."
+body: "Provide Microsoft Graph credentials and a mailbox user principal to send mail, list or fetch messages (including attachments), and use the polling trigger to start flows on new arrivals; configure optional folder filters, search queries, and attachment handling."
 videos: []
 createdBy: "Kestra Core Team"
 managedBy: "Kestra Core Team"

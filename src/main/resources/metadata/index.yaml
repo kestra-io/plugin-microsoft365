@@ -1,8 +1,8 @@
 group: io.kestra.plugin.microsoft365
 name: "microsoft365"
 title: "Microsoft 365"
-description: "Microsoft 365 plugin for Kestra"
-body: ""
+description: "Tasks that integrate Microsoft 365 services through the Microsoft Graph API."
+body: "Authenticate with Microsoft Graph (tenant, client ID/secret, scopes) once and reuse the connection to manage Outlook mail, OneDrive/SharePoint files, and related triggers directly from Kestra workflows."
 videos: []
 createdBy: "Kestra Core Team"
 managedBy: "Kestra Core Team"
