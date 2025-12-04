@@ -1,8 +1,8 @@
 group: io.kestra.plugin.microsoft365.oneshare
 name: "oneshare"
 title: "OneShare"
-description: "This sub-group of plugins contains Tasks to interact with OneDrive for file storage and collaboration including a Trigger to react on OneDrive/SharePoint file CREATE, UPDATE or BOTH. If you need SharePoint Tasks please check the SharePoint sub-plugin"
-body: ""
+description: "Tasks that manage OneDrive/SharePoint files with a unified interface and trigger on file changes."
+body: "Use Graph credentials with drive or site identifiers to list, upload, export, download, or delete files and enable the polling trigger to react to create/update events; ensure `driveId`/`itemPath` and permissions are set for the target library."
 videos: []
 createdBy: "Kestra Core Team"
 managedBy: "Kestra Core Team"
