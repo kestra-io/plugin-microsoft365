@@ -51,7 +51,7 @@ dependencies {
 
     // Microsoft
     api group: 'com.azure', name: 'azure-identity'
-    api (group: 'com.microsoft.graph', name: 'microsoft-graph', version: '6.57.0') {
+    api (group: 'com.microsoft.graph', name: 'microsoft-graph', version: '6.58.0') {
         // exclude libraries already provided by Kestra
         exclude group: 'com.fasterxml.jackson.core'
         exclude group: 'com.fasterxml.jackson.dataformat', module: 'jackson-dataformat-xml'
