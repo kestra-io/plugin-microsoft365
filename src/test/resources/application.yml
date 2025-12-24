@@ -22,6 +22,6 @@ kestra:
 
   url: https://mysuperhost.com/kestra/ui
 
-  micronaut:
-    server:
-      port: 59443
+micronaut:
+  server:
+    port: 59443
