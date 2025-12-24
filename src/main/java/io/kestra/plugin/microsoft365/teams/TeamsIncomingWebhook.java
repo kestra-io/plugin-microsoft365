@@ -96,33 +96,42 @@ import java.net.URI;
         ),
         @Example(
             title = "Send a Microsoft Teams notification message.",
-            code = {
-                "url: \"https://microsoft.webhook.office.com/webhookb2/XXXXXXXXXX\"",
-                "payload: |",
-                "  {",
-                "    \"@type\": \"MessageCard\",",
-                "    \"@context\": \"http://schema.org/extensions\",",
-                "    \"themeColor\": \"0076D7\",",
-                "    \"summary\": \"Notification message\",",
-                "    \"sections\": [{",
-                "      \"activityTitle\": \"Rolling Workflow started\",",
-                "      \"activitySubtitle\": \"Workflow Notification\",",
-                "      \"markdown\": true",
-                "    }],",
-                "    \"potentialAction\": [",
-                "      {",
-                "        \"@type\": \"OpenUri\",",
-                "        \"name\": \"Rolling Workflow\",",
-                "        \"targets\": [",
-                "          {",
-                "           \"os\": \"default\",",
-                "           \"uri\": \"{{ vars.systemUrl }}\"",
-                "          }",
-                "        ]",
-                "      }",
-                "    ]",
-                "  }"
-            }
+            full = true,
+            code = """
+                id: send_notification
+                namespace: company.team
+
+                tasks:
+                  - id: send_teams_notification
+                    type: io.kestra.plugin.microsoft365.teams.TeamsIncomingWebhook
+                    url: "https://microsoft.webhook.office.com/webhookb2/XXXXXXXXXX"
+                    payload: |
+                      {
+                         "@type": "MessageCard",
+                         "@context": "http://schema.org/extensions",
+                         "themeColor": "0076D7",
+                         "summary": "Notification message",
+                         "sections": [
+                           {
+                             "activityTitle": "Rolling Workflow started",
+                             "activitySubtitle": "Workflow Notification",
+                             "markdown": true
+                           }
+                         ],
+                         "potentialAction": [
+                           {
+                             "@type": "OpenUri",
+                             "name": "Rolling Workflow",
+                             "targets": [
+                               {
+                                 "os": "default",
+                                 "uri": "{{ vars.systemUrl }}"
+                               }
+                             ]
+                           }
+                         ]
+                       }
+                """
         )
     }
 )
