@@ -19,3 +19,9 @@ kestra:
       clientId: "${kestra.tasks.oneshare.clientId}"
       clientSecret: "${kestra.tasks.oneshare.clientSecret}"
       driveId: "${kestra.tasks.oneshare.driveId}"
+
+  url: https://mysuperhost.com/kestra/ui
+
+  micronaut:
+    server:
+      port: 59443
