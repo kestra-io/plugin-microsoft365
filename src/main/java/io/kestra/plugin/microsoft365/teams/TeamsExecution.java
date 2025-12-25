@@ -52,7 +52,8 @@ import java.util.Map;
                         prefix: true
                 """
         )
-    }
+    },
+    aliases = "io.kestra.plugin.notifications.teams.TeamsExecution"
 )
 public class TeamsExecution extends TeamsTemplate implements ExecutionInterface {
     @Builder.Default

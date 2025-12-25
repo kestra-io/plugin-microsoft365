@@ -133,7 +133,8 @@ import java.net.URI;
                        }
                 """
         )
-    }
+    },
+    aliases = "io.kestra.plugin.notifications.teams.TeamsIncomingWebhook"
 )
 public class TeamsIncomingWebhook  extends AbstractTeamsConnection {
     @Schema(
