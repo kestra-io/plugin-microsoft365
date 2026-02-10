@@ -28,7 +28,8 @@ import java.net.URI;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Export a file from OneDrive or SharePoint to a different format."
+    title = "Export a file from OneDrive or SharePoint to a different format.",
+    description = "Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {

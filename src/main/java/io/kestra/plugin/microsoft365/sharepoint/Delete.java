@@ -39,7 +39,8 @@ import org.slf4j.Logger;
     }
 )
 @Schema(
-    title = "Delete a file or folder from SharePoint."
+    title = "Delete a file or folder from SharePoint.",
+    description = "Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 public class Delete extends AbstractSharepointTask implements RunnableTask<Delete.Output> {
 

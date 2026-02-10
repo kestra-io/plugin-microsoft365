@@ -29,7 +29,8 @@ import java.util.stream.Collectors;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "List files in a OneDrive or SharePoint folder."
+    title = "List files in a OneDrive or SharePoint folder.",
+    description = "Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {

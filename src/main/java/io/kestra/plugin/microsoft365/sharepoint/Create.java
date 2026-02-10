@@ -64,7 +64,7 @@ import org.slf4j.Logger;
 )
 @Schema(
     title = "Create a file or folder in SharePoint.",
-    description = "Creates a new file with optional content or an empty folder in a SharePoint document library."
+    description = "Creates a new file with optional content or an empty folder in a SharePoint document library. Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 public class Create extends AbstractSharepointTask implements RunnableTask<Create.Output> {
 

@@ -43,7 +43,7 @@ import java.util.Optional;
 @NoArgsConstructor
 @Schema(
     title = "Trigger on file changes in OneDrive/SharePoint",
-    description = "Monitors a folder for file changes (create, update, or both) using Microsoft Graph Delta API"
+    description = "Monitors a folder for file changes (create, update, or both) using Microsoft Graph Delta API. Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {

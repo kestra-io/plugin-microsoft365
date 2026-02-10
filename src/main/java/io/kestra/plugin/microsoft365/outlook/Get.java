@@ -29,7 +29,7 @@ import java.util.Objects;
 @NoArgsConstructor
 @Schema(
     title = "Get a specific email message from Microsoft Outlook",
-    description = "Retrieve a specific email message by its ID."
+    description = "Retrieve a specific email message by its ID. Required Microsoft Graph application permission: Mail.Read."
 )
 @Plugin(
     examples = {

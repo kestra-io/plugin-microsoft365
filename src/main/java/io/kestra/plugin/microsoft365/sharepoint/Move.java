@@ -47,7 +47,7 @@ import java.util.Objects;
 )
 @Schema(
     title = "Move a file or folder in SharePoint.",
-    description = "Moves a DriveItem to another parent folder. Optionally renames the item."
+    description = "Moves a DriveItem to another parent folder. Optionally renames the item. Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 public class Move extends AbstractSharepointTask implements RunnableTask<Move.Output> {
 
