@@ -120,7 +120,7 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
 
     @Schema(
         title = "From address",
-        description = "Email address to send from (optional, uses authenticated user if not specified)"
+        description = "Email address of the mailbox used to send the email (required)"
     )
     @NotNull
     private Property<String> from;
