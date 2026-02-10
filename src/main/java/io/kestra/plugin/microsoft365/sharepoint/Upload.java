@@ -22,7 +22,7 @@ import java.net.URI;
 @NoArgsConstructor
 @Schema(
     title = "Upload a file to SharePoint",
-    description = "Uploads a file to a SharePoint document library. Supports both simple upload (<4MB) and chunked upload for larger files."
+    description = "Uploads a file to a SharePoint document library. Supports both simple upload (<4MB) and chunked upload for larger files. Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 @Plugin(
     examples = {

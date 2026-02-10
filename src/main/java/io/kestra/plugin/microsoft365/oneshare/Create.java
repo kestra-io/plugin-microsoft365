@@ -30,7 +30,8 @@ import java.nio.charset.StandardCharsets;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Create a file or folder in OneDrive or SharePoint."
+    title = "Create a file or folder in OneDrive or SharePoint.",
+    description = "Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 @Plugin(
     examples = {

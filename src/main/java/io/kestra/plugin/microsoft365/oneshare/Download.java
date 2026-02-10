@@ -28,7 +28,8 @@ import java.net.URI;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Download a file from OneDrive or SharePoint."
+    title = "Download a file from OneDrive or SharePoint.",
+    description = "Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {
