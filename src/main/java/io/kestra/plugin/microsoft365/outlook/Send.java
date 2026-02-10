@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @Schema(
     title = "Send an email via Microsoft Graph API",
-    description = "Send an email message through Outlook using Microsoft Graph API. Supports HTML and plain text content, multiple recipients, attachments, and various email options."
+    description = "Send an email message through Outlook using Microsoft Graph API. Supports HTML and plain text content, multiple recipients, attachments, and various email options. Required Microsoft Graph application permission: Mail.Send."
 )
 @Plugin(
     examples = {

@@ -83,7 +83,8 @@ import java.util.Objects;
     }
 )
 @Schema(
-    title = "List items in a SharePoint document library or folder."
+    title = "List items in a SharePoint document library or folder.",
+    description = "Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
 )
 public class List extends AbstractSharepointTask implements RunnableTask<List.Output> {
 

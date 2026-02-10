@@ -44,7 +44,7 @@ import java.nio.file.Files;
 @NoArgsConstructor
 @Schema(
     title = "Upload a file to OneDrive or SharePoint.",
-    description = "Supports both small and large file uploads. Files larger than the threshold (default 4MB) will use resumable upload sessions for reliability and progress tracking."
+    description = "Supports both small and large file uploads. Files larger than the threshold (default 4MB) will use resumable upload sessions for reliability and progress tracking. Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 @Plugin(
     examples = {

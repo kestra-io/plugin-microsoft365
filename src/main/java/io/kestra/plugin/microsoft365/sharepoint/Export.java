@@ -22,7 +22,7 @@ import java.net.URI;
 @NoArgsConstructor
 @Schema(
     title = "Export a SharePoint file to another format",
-    description = "Exports a single file from SharePoint (e.g., Office document) to another format such as PDF or HTML using Microsoft Graph API."
+    description = "Exports a single file from SharePoint (e.g., Office document) to another format such as PDF or HTML using Microsoft Graph API. Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {

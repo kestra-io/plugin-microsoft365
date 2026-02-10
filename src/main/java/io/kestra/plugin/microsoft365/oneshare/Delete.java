@@ -22,7 +22,8 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Delete a file or folder from OneDrive or SharePoint."
+    title = "Delete a file or folder from OneDrive or SharePoint.",
+    description = "Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 @Plugin(
     examples = {
