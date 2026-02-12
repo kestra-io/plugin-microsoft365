@@ -1,8 +1,6 @@
 @PluginSubGroup(
     title = "SharePoint",
-    description = "SharePoint integration for Microsoft 365.",
-    categories = PluginSubGroup.PluginCategory.MESSAGING,
-    categories = {
+    description = "SharePoint integration for Microsoft 365.",categories = {
         PluginSubGroup.PluginCategory.BUSINESS
     }
 )

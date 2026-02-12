@@ -1,8 +1,6 @@
 @PluginSubGroup(
     title = "Outlook",
-    description = "Outlook email integration for Microsoft 365. Send emails, list messages, retrieve specific emails, and trigger workflows on new incoming mail using Microsoft Graph API.",
-    categories = PluginSubGroup.PluginCategory.MESSAGING,
-    categories = {
+    description = "Outlook email integration for Microsoft 365. Send emails, list messages, retrieve specific emails, and trigger workflows on new incoming mail using Microsoft Graph API.",categories = {
         PluginSubGroup.PluginCategory.BUSINESS
     }
 )
