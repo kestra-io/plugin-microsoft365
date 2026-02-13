@@ -34,7 +34,7 @@ import java.util.Collections;
 @NoArgsConstructor
 @Schema(
     title = "List emails from Microsoft Outlook",
-    description = "Retrieve a list of email messages from a specific folder using Microsoft Graph API. Supports filtering with OData syntax and pagination."
+    description = "Retrieve a list of email messages from a specific folder using Microsoft Graph API. Supports filtering with OData syntax and pagination. Required Microsoft Graph application permission: Mail.Read."
 )
 @Plugin(
     examples = {

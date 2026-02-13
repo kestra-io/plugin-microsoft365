@@ -23,7 +23,7 @@ import java.net.URI;
 @NoArgsConstructor
 @Schema(
     title = "Download a file from SharePoint",
-    description = "Download a file by id or path from a SharePoint document library and stores it in Kestra's internal storage."
+    description = "Download a file by id or path from a SharePoint document library and stores it in Kestra's internal storage. Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {

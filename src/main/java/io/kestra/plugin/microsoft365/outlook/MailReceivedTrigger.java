@@ -40,7 +40,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
     title = "Trigger a flow on new incoming mail in Microsoft Outlook.",
     description = "This trigger will poll every `interval` for new emails in a mailbox folder. " +
         "You can filter messages with an OData `filter` query. "+
-        "Once an email is detected, attachments can be downloaded to internal storage."
+        "Once an email is detected, attachments can be downloaded to internal storage. " +
+        "Required Microsoft Graph application permission: Mail.Read."
 )
 @Plugin(
     examples = {
