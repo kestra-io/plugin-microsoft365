@@ -266,6 +266,69 @@ class MailReceivedTriggerTest {
     }
 
     @Test
+    void testTriggerHandlesMessagesWithoutDates() throws Exception {
+        graphClientMock.close();
+
+        try (var nullDatesMock = Mockito.mockConstruction(
+            GraphServiceClient.class, (mock, context) -> {
+                var usersBuilder = mock(UsersRequestBuilder.class);
+                var userItemBuilder = mock(UserItemRequestBuilder.class);
+                var mailFoldersBuilder = mock(MailFoldersRequestBuilder.class);
+                var mailFolderItemBuilder = mock(MailFolderItemRequestBuilder.class);
+                var messagesBuilder = mock(MessagesRequestBuilder.class);
+
+                var messageWithoutDates = createMockMessage(
+                    "msg-no-dates",
+                    "No Dates",
+                    "sender@example.com",
+                    "Sender",
+                    "message without dates",
+                    false
+                );
+                messageWithoutDates.setReceivedDateTime(null);
+                messageWithoutDates.setSentDateTime(null);
+
+                var response = new MessageCollectionResponse();
+                response.setValue(List.of(messageWithoutDates));
+
+                when(messagesBuilder.get()).thenReturn(response);
+                when(messagesBuilder.get(any())).thenReturn(response);
+                when(mailFolderItemBuilder.messages()).thenReturn(messagesBuilder);
+                when(mailFoldersBuilder.byMailFolderId(anyString())).thenReturn(mailFolderItemBuilder);
+                when(userItemBuilder.mailFolders()).thenReturn(mailFoldersBuilder);
+                when(usersBuilder.byUserId(anyString())).thenReturn(userItemBuilder);
+                when(mock.users()).thenReturn(usersBuilder);
+            }
+        )) {
+            var trigger = MailReceivedTrigger.builder()
+                .id("test-trigger-null-dates-" + IdUtils.create())
+                .type(MailReceivedTrigger.class.getName())
+                .tenantId(Property.ofValue(MOCK_TENANT_ID))
+                .clientId(Property.ofValue(MOCK_CLIENT_ID))
+                .clientSecret(Property.ofValue(MOCK_CLIENT_SECRET))
+                .userEmail(Property.ofValue(MOCK_USER_EMAIL))
+                .folderId(Property.ofValue("inbox"))
+                .interval(Duration.ofMinutes(5))
+                .build();
+
+            var context = TestsUtils.mockTrigger(runContextFactory, trigger);
+            var execution = trigger.evaluate(context.getKey(), context.getValue());
+            assertThat(execution.isPresent(), is(true));
+
+            @SuppressWarnings("unchecked")
+            var variables = (Map<String, Object>) execution.get().getTrigger().getVariables();
+            @SuppressWarnings("unchecked")
+            var messages = (List<Map<String, Object>>) variables.get("messages");
+            var message = messages.getFirst();
+
+            assertThat(message.get("receivedDateTime"), nullValue());
+            assertThat(message.get("sentDateTime"), nullValue());
+        } finally {
+            setupMocks();
+        }
+    }
+
+    @Test
     void testUserEmailCanBeOmitted() {
         var trigger = MailReceivedTrigger.builder()
             .id("test-trigger-user-optional-" + IdUtils.create())

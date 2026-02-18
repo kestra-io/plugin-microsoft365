@@ -286,8 +286,8 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
                 message.getFrom().getEmailAddress().getAddress() : null)
             .fromName(message.getFrom() != null && message.getFrom().getEmailAddress() != null ?
                 message.getFrom().getEmailAddress().getName() : null)
-            .receivedDateTime(Objects.requireNonNull(message.getReceivedDateTime()).toZonedDateTime())
-            .sentDateTime(Objects.requireNonNull(message.getSentDateTime()).toZonedDateTime())
+            .receivedDateTime(message.getReceivedDateTime() != null ? message.getReceivedDateTime().toZonedDateTime() : null)
+            .sentDateTime(message.getSentDateTime() != null ? message.getSentDateTime().toZonedDateTime() : null)
             .hasAttachments(message.getHasAttachments())
             .isRead(message.getIsRead())
             .importance(message.getImportance() != null ? message.getImportance().toString() : null)
