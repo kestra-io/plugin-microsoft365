@@ -25,8 +25,8 @@ import java.net.URI;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Send a Microsoft Teams message using an Incoming Webhook.",
-    description = "Add this task to a list of `errors` tasks to implement custom flow-level failure noticiations. Check the [Microsoft Teams documentation](https://support.microsoft.com/en-us/office/create-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498) for more details. No Microsoft Graph permission is required; only a valid Teams incoming webhook URL is needed."
+    title = "Send message via Teams incoming webhook",
+    description = "Posts a JSON payload to a [Microsoft Teams Incoming Webhook](https://support.microsoft.com/en-us/office/create-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498); ideal for `errors` notifications. No Graph permission required, only the webhook URL."
 )
 @Plugin(
     examples = {
@@ -138,14 +138,15 @@ import java.net.URI;
 )
 public class TeamsIncomingWebhook  extends AbstractTeamsConnection {
     @Schema(
-        title = "Microsoft Teams incoming webhook URL"
+        title = "Teams incoming webhook URL"
     )
     @PluginProperty(dynamic = true)
     @NotEmpty
     private String url;
 
     @Schema(
-        title = "Microsoft Teams message payload"
+        title = "Teams message payload",
+        description = "Raw JSON payload for the webhook (Adaptive Card or MessageCard)"
     )
     protected Property<String> payload;
 

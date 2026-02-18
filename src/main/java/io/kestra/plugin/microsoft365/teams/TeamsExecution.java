@@ -19,9 +19,8 @@ import java.util.Map;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Send a Microsoft Teams message with the execution information",
-    description = "The message will include a link to the execution page in the UI along with the execution ID, namespace, flow name, the start date, duration, and the final status of the execution. If the task failed, then the task that led to the failure is specified.\n\n" +
-    "Use this notification task only in a flow that has a [Flow trigger](https://kestra.io/docs/administrator-guide/monitoring#alerting). Don't use this notification task in `errors` tasks. Instead, for `errors` tasks, use the [TeamsIncomingWebhook](https://kestra.io/plugins/plugin-microsoft365/tasks/teams/io.kestra.plugin.microsoft365.teams.teamsincomingwebhook) task. No Microsoft Graph permission is required; only a valid Teams incoming webhook URL is needed."
+    title = "Send Teams notification with execution details",
+    description = "Renders a template with execution metadata (ID, namespace, flow, start time, duration, status, failing task) and posts via Teams webhook. Use with Flow triggers; for `errors` handlers prefer [TeamsIncomingWebhook](https://kestra.io/plugins/plugin-microsoft365/tasks/teams/io.kestra.plugin.microsoft365.teams.teamsincomingwebhook). No Graph permission required."
 )
 @Plugin(
     examples = {

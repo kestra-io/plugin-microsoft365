@@ -22,8 +22,8 @@ import java.net.URI;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Download a file from SharePoint",
-    description = "Download a file by id or path from a SharePoint document library and stores it in Kestra's internal storage. Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
+    title = "Download SharePoint file to storage",
+    description = "Downloads a file by ID or path from a document library and stores it in Kestra internal storage (`kestra:///`). Uses the Graph download URL and can fail if the link is unavailable for very large or locked files. Requires Microsoft Graph permissions Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {
@@ -69,13 +69,13 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
 
     @Schema(
         title = "Item ID",
-        description = "The ID of the file to download. Either itemId or itemPath must be provided."
+        description = "ID of the file to download; either itemId or itemPath is required"
     )
     private Property<String> itemId;
 
     @Schema(
         title = "Item path",
-        description = "The path to the file relative to the drive root (e.g., '/Documents/file.txt'). Either itemId or itemPath must be provided."
+        description = "Path relative to the drive root (e.g., '/Documents/file.txt'); either itemPath or itemId is required"
     )
     private Property<String> itemPath;
 
@@ -142,27 +142,27 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The ID of the downloaded item"
+            title = "ID of the downloaded item"
         )
         private String itemId;
 
         @Schema(
-            title = "The name of the downloaded file"
+            title = "Name of the downloaded file"
         )
         private String name;
 
         @Schema(
-            title = "The URI of the file in Kestra's internal storage"
+            title = "URI of the file in Kestra internal storage"
         )
         private String uri;
 
         @Schema(
-            title = "The size of the downloaded file in bytes"
+            title = "Size of the downloaded file in bytes"
         )
         private Long size;
 
         @Schema(
-            title = "The web URL of the file in SharePoint"
+            title = "Web URL of the file in SharePoint"
         )
         private String webUrl;
     }

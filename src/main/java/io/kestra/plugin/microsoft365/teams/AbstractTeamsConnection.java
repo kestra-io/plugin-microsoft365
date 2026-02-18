@@ -27,8 +27,8 @@ import java.util.Map;
 @NoArgsConstructor
 public abstract class AbstractTeamsConnection extends Task implements RunnableTask<VoidOutput> {
     @Schema(
-        title = "Options",
-        description = "The options to set to customize the HTTP client"
+        title = "HTTP client options",
+        description = "Optional timeouts, charset, headers, and limits for Teams webhook calls"
     )
     @PluginProperty(dynamic = true)
     protected RequestOptions options;
@@ -79,15 +79,15 @@ public abstract class AbstractTeamsConnection extends Task implements RunnableTa
         @Builder.Default
         private final Property<Duration> readIdleTimeout = Property.ofValue(Duration.of(5, ChronoUnit.MINUTES));
 
-        @Schema(title = "The time an idle connection can remain in the client's connection pool before being closed.")
+        @Schema(title = "Idle pool timeout", description = "Time an idle connection stays in the pool before closing")
         @Builder.Default
         private final Property<Duration> connectionPoolIdleTimeout = Property.ofValue(Duration.ofSeconds(0));
 
-        @Schema(title = "The maximum content length of the response.")
+        @Schema(title = "Max response size", description = "Maximum response content length in bytes")
         @Builder.Default
         private final Property<Integer> maxContentLength = Property.ofValue(1024 * 1024 * 10);
 
-        @Schema(title = "The default charset for the request.")
+        @Schema(title = "Default charset")
         @Builder.Default
         private final Property<Charset> defaultCharset = Property.ofValue(StandardCharsets.UTF_8);
 

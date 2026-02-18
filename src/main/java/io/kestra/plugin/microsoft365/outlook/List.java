@@ -33,8 +33,8 @@ import java.util.Collections;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "List emails from Microsoft Outlook",
-    description = "Retrieve a list of email messages from a specific folder using Microsoft Graph API. Supports filtering with OData syntax and pagination. Required Microsoft Graph application permission: Mail.Read."
+    title = "List Outlook emails",
+    description = "Lists messages from a folder with optional OData filter and paging. Supports FETCH/FETCH_ONE/STORE outputs. Requires Microsoft Graph permission Mail.Read (application)."
 )
 @Plugin(
     examples = {
@@ -101,27 +101,27 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
 
     @Schema(
         title = "Folder ID",
-        description = "Email folder to retrieve messages from (inbox, sentitems, drafts, deleteditems, or folder ID)",
+        description = "Folder to read (inbox, sentitems, drafts, deleteditems, or folder ID)",
         defaultValue = "inbox"
     )
     private Property<String> folderId;
 
     @Schema(
         title = "Filter",
-        description = "OData filter expression to filter the results (e.g., 'isRead eq false', 'from/emailAddress/address eq 'sender@example.com'')"
+        description = "OData filter expression (e.g., isRead eq false, from/emailAddress/address eq 'sender@example.com')"
     )
     private Property<String> filter;
 
     @Schema(
         title = "Top",
-        description = "Maximum number of messages to return",
+        description = "Maximum number of messages to return in this call",
         defaultValue = "50"
     )
     private Property<Integer> top;
 
     @Schema(
         title = "User email",
-        description = "Email address of the user whose mailbox to access (optional, uses authenticated user if not specified)"
+        description = "Mailbox to monitor; if not specified, uses the authenticated user's mailbox."
     )
     @NotNull
     private Property<String> userEmail;
@@ -237,17 +237,17 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "List of messages (when fetchType is FETCH)"
+            title = "List of messages (FETCH)"
         )
         private final java.util.List<MessageSummary> messages;
 
         @Schema(
-            title = "Single message (when fetchType is FETCH_ONE)"
+            title = "Single message (FETCH_ONE)"
         )
         private final MessageSummary message;
 
         @Schema(
-            title = "URI of the stored messages file (when fetchType is STORE)"
+            title = "URI of stored messages file (STORE)"
         )
         private final URI uri;
 
@@ -259,13 +259,13 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
 
         @Schema(
             title = "Folder ID",
-            description = "ID of the folder that was queried"
+            description = "Folder that was queried"
         )
         private final String folderId;
 
         @Schema(
             title = "Has next page",
-            description = "Whether there are more messages available"
+            description = "True when Graph returned @odata.nextLink"
         )
         private final Boolean hasNextPage;
     }

@@ -22,8 +22,8 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Delete a file or folder from OneDrive or SharePoint.",
-    description = "Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
+    title = "Delete OneDrive/SharePoint item",
+    description = "Deletes a file or folder by ID; Graph moves it to the recycle bin unless retention prevents it. Requires Microsoft Graph permissions Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 @Plugin(
     examples = {
@@ -74,7 +74,8 @@ import lombok.experimental.SuperBuilder;
 public class Delete extends AbstractOneShareTask implements RunnableTask<VoidOutput> {
 
     @Schema(
-        title = "The ID of the item (file or folder) to delete."
+        title = "Item ID",
+        description = "DriveItem ID of the file or folder to delete"
     )
     @NotNull
     private Property<String> itemId;

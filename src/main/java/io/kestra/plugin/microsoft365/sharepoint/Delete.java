@@ -39,14 +39,14 @@ import org.slf4j.Logger;
     }
 )
 @Schema(
-    title = "Delete a file or folder from SharePoint.",
-    description = "Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
+    title = "Delete SharePoint file or folder",
+    description = "Deletes a DriveItem by ID in a document library (Graph moves it to the Recycle Bin). Requires Microsoft Graph permissions Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 public class Delete extends AbstractSharepointTask implements RunnableTask<Delete.Output> {
 
     @Schema(
-        title = "The item ID to delete.",
-        description = "The unique identifier of the file or folder to delete."
+        title = "Item ID",
+        description = "Unique identifier of the file or folder to delete"
     )
     @NotNull
     private Property<String> itemId;
@@ -74,8 +74,8 @@ public class Delete extends AbstractSharepointTask implements RunnableTask<Delet
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The ID of the deleted item.",
-            description = "The unique identifier of the deleted file or folder."
+            title = "The ID of the deleted item",
+            description = "Unique identifier of the deleted file or folder"
         )
         private final String itemId;
     }

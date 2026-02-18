@@ -29,8 +29,8 @@ import java.util.stream.Collectors;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "List files in a OneDrive or SharePoint folder.",
-    description = "Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
+    title = "List OneDrive/SharePoint folder items",
+    description = "Lists children of a folder (defaults to drive root) and follows Graph pagination until all items are collected. Requires Microsoft Graph permissions Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {
@@ -73,7 +73,8 @@ import java.util.stream.Collectors;
 public class List extends AbstractOneShareTask implements RunnableTask<List.Output> {
 
     @Schema(
-        title = "The ID of the item (folder) to list children from. If not provided, the root of the drive is used."
+        title = "Folder ID",
+        description = "DriveItem ID of the folder to list; defaults to root"
     )
     private Property<String> itemId;
 
@@ -219,12 +220,12 @@ public class List extends AbstractOneShareTask implements RunnableTask<List.Outp
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The list of files."
+            title = "List of files"
         )
         private final java.util.List<OneShareFile> files;
 
         @Schema(
-            title = "The number of files."
+            title = "Number of files"
         )
         private final int count;
     }

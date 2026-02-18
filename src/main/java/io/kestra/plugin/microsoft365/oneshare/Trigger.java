@@ -42,8 +42,8 @@ import java.util.Optional;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Trigger on file changes in OneDrive/SharePoint",
-    description = "Monitors a folder for file changes (create, update, or both) using Microsoft Graph Delta API. Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
+    title = "Trigger on OneDrive/SharePoint file changes",
+    description = "Polls Microsoft Graph Delta for a folder path and fires on creates and/or updates using persisted delta links. Default interval is PT1M. Requires Microsoft Graph permissions Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {
@@ -126,54 +126,46 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
 
     @Schema(
         title = "Drive ID to monitor",
-        description = "OneDrive or SharePoint drive identifier. Either driveId or siteId must be provided."
+        description = "Drive identifier; takes precedence when both driveId and siteId are provided"
     )
     protected Property<String> driveId;
 
     @Schema(
         title = "Site ID to monitor",
-        description = "SharePoint site identifier. Either driveId or siteId must be provided."
+        description = "SharePoint site identifier used when driveId is not set"
     )
     protected Property<String> siteId;
 
     @Schema(
         title = "Folder path to monitor",
-        description = "Path to the folder to monitor for new files, e.g., /Documents"
+        description = "Absolute path starting with '/' (e.g., /Documents)"
     )
     @NotNull
     protected Property<String> path;
 
     @Schema(
         title = "Polling interval",
-        description = "How frequently to check for new files"
+        description = "ISO-8601 duration between delta checks; default PT1M"
     )
     @Builder.Default
     private Duration interval = Duration.ofMinutes(1);
 
     @Schema(
         title = "Trigger event type",
-        description = """
-            Defines when the trigger fires.
-            - `CREATE`: only for newly discovered files (default).
-            - `UPDATE`: only when an already-seen file is modified (ETag or size changes fallback).
-            - `CREATE_OR_UPDATE`: fires on either event.
-            """
+        description = "When to fire: CREATE (default), UPDATE, or CREATE_OR_UPDATE"
     )
     @Builder.Default
     protected Property<StatefulTriggerInterface.On> on = Property.of(StatefulTriggerInterface.On.CREATE);
 
     @Schema(
         title = "State key",
-        description = """
-            JSON-type KV key for persisted state.
-            Default: `<namespace>__<flowId>__<triggerId>`
-            """
+        description = "Key for persisted trigger state; defaults to `<namespace>__<flowId>__<triggerId>`"
     )
     protected Property<String> stateKey;
 
     @Schema(
         title = "State TTL",
-        description = "TTL for persisted state entries (e.g., PT24H, P7D)."
+        description = "TTL for persisted state entries (e.g., PT24H, P7D); default 7 days"
     )
     protected Property<Duration> stateTtl;
 

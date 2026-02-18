@@ -21,8 +21,8 @@ import java.net.URI;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Export a SharePoint file to another format",
-    description = "Exports a single file from SharePoint (e.g., Office document) to another format such as PDF or HTML using Microsoft Graph API. Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
+    title = "Export SharePoint file to PDF or HTML",
+    description = "Converts a single SharePoint file to PDF or HTML via Microsoft Graph `content?format=` and stores the converted copy in Kestra internal storage. Only Office document types are supported by Graph; other files may fail. Requires Microsoft Graph permissions Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {
@@ -69,19 +69,19 @@ public class Export extends AbstractSharepointTask implements RunnableTask<Expor
 
     @Schema(
         title = "Item ID",
-        description = "The ID of the file in SharePoint to export. Either itemId or itemPath must be provided."
+        description = "ID of the file to export; either itemId or itemPath is required"
     )
     private Property<String> itemId;
 
     @Schema(
         title = "Item path",
-        description = "The path to the file relative to the drive root (e.g., '/Documents/file.docx'). Either itemId or itemPath must be provided."
+        description = "Path relative to the drive root (e.g., '/Documents/file.docx'); either itemPath or itemId is required"
     )
     private Property<String> itemPath;
 
     @Schema(
         title = "Output format",
-        description = "The format to convert the file to. Supported values: 'pdf' or 'html'."
+        description = "Conversion target; supported values are PDF or HTML"
     )
     @NotNull
     private Property<FormatType> format;
@@ -155,37 +155,37 @@ public class Export extends AbstractSharepointTask implements RunnableTask<Expor
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The ID of the file"
+            title = "ID of the file"
         )
         private String itemId;
 
         @Schema(
-            title = "The original name of the file in SharePoint"
+            title = "Original name of the file in SharePoint"
         )
         private String originalName;
 
         @Schema(
-            title = "The name of the exported file with new extension"
+            title = "Name of the exported file with new extension"
         )
         private String name;
 
         @Schema(
-            title = "The URI of the file in Kestra's internal storage"
+            title = "URI of the file in Kestra internal storage"
         )
         private String uri;
 
         @Schema(
-            title = "The size of the original file in bytes (before conversion)"
+            title = "Size of the original file in bytes (before conversion)"
         )
         private Long originalSize;
 
         @Schema(
-            title = "The web URL of the file in SharePoint"
+            title = "Web URL of the file in SharePoint"
         )
         private String webUrl;
 
         @Schema(
-            title = "The format the file was converted to"
+            title = "Format the file was converted to"
         )
         private String format;
     }

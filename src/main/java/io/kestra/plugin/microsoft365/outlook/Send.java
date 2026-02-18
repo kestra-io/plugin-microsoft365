@@ -28,8 +28,8 @@ import java.util.Map;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Send an email via Microsoft Graph API",
-    description = "Send an email message through Outlook using Microsoft Graph API. Supports HTML and plain text content, multiple recipients, attachments, and various email options. Required Microsoft Graph application permission: Mail.Send."
+    title = "Send email via Microsoft Graph",
+    description = "Sends an email with optional CC/BCC, HTML or text body, and attachments from Kestra storage. Requires Microsoft Graph permission Mail.Send (application)."
 )
 @Plugin(
     examples = {
@@ -114,53 +114,53 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
 
     @Schema(
         title = "To recipients",
-        description = "List of email addresses to send the email to"
+        description = "Email addresses for To"
     )
     @NotNull
     private Property<List<String>> to;
 
     @Schema(
         title = "CC recipients",
-        description = "List of email addresses to carbon copy"
+        description = "Email addresses for CC"
     )
     private Property<List<String>> cc;
 
     @Schema(
         title = "BCC recipients",
-        description = "List of email addresses to blind carbon copy"
+        description = "Email addresses for BCC"
     )
     private Property<List<String>> bcc;
 
     @Schema(
         title = "Email subject",
-        description = "Subject line of the email"
+        description = "Subject line"
     )
     @NotNull
     private Property<String> subject;
 
     @Schema(
         title = "Email body",
-        description = "Body content of the email"
+        description = "Body content"
     )
     @NotNull
     private Property<String> body;
 
     @Schema(
         title = "Body type",
-        description = "Content type of the email body (Html or Text)"
+        description = "Content type for body (Html or Text); defaults to Html"
     )
     private Property<String> bodyType;
 
     @Schema(
         title = "From address",
-        description = "Email address of the mailbox used to send the email (required)"
+        description = "Sender mailbox address used for Graph `sendMail`"
     )
     @NotNull
     private Property<String> from;
 
     @Schema(
         title = "Email attachments",
-        description = "List of attachments to send from Kestra internal storage.",
+        description = "Attachments sourced from Kestra internal storage",
         anyOf = {List.class, String.class}
     )
     private Property<Object> attachments;
@@ -337,7 +337,7 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
     @Builder
     public static class AttachmentInput {
         @Schema(
-            title = "An attachment URI from Kestra internal storage"
+            title = "Attachment URI in Kestra internal storage"
         )
         @NotNull
         private Property<String> uri;
@@ -350,7 +350,7 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
 
         @Schema(
             title = "Attachment content type",
-            description = "MIME type for the attachment. Defaults to application/octet-stream."
+            description = "MIME type; defaults to application/octet-stream"
         )
         @NotNull
         @Builder.Default
@@ -368,25 +368,25 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
 
         @Schema(
             title = "To recipient count",
-            description = "Number of recipients in the 'to' field"
+            description = "Number of recipients in the To field"
         )
         private final int toCount;
 
         @Schema(
             title = "CC recipient count",
-            description = "Number of recipients in the 'cc' field"
+            description = "Number of recipients in the CC field"
         )
         private final int ccCount;
 
         @Schema(
             title = "BCC recipient count",
-            description = "Number of recipients in the 'bcc' field"
+            description = "Number of recipients in the BCC field"
         )
         private final int bccCount;
 
         @Schema(
             title = "Body type",
-            description = "Content type of the email body (Html or Text)"
+            description = "Body content type (Html or Text)"
         )
         private final String bodyType;
     }

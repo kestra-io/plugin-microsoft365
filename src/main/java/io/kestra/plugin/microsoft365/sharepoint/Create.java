@@ -63,36 +63,36 @@ import org.slf4j.Logger;
     }
 )
 @Schema(
-    title = "Create a file or folder in SharePoint.",
-    description = "Creates a new file with optional content or an empty folder in a SharePoint document library. Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
+    title = "Create SharePoint file or folder",
+    description = "Creates a file via simple upload or an empty folder in a document library. Requires Microsoft Graph application permissions Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 public class Create extends AbstractSharepointTask implements RunnableTask<Create.Output> {
 
     @Schema(
             title = "Parent folder ID",
-            description = "The ID of the parent folder where the item will be created. Use 'root' for the root of the document library."
+            description = "Target folder ID; use 'root' for the document library root"
     )
     @NotNull
     private Property<String> parentId;
 
     @Schema(
-        title = "The name of the item.",
-        description = "The name of the file or folder to create."
+        title = "Item name",
+        description = "Filename or folder name to create"
     )
     @NotNull
     private Property<String> name;
 
     @Schema(
             title = "Item type",
-            description = "Whether to create a FILE or FOLDER"
+            description = "FILE creates a document; FOLDER creates an empty folder; default FILE"
     )
     @NotNull
     @Builder.Default
     private Property<ItemType> itemType = Property.ofValue(ItemType.FILE);
 
     @Schema(
-        title = "The content of the file.",
-        description = "The content to be written to the new file. If not provided, an empty folder will be created."
+        title = "File content",
+        description = "String content for the new file; ignored for folders; empty value results in a zero-byte file"
     )
     private Property<String> content;
 
@@ -165,17 +165,17 @@ public class Create extends AbstractSharepointTask implements RunnableTask<Creat
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The ID of the created item."
+            title = "The ID of the created item"
         )
         private final String itemId;
 
         @Schema(
-            title = "The name of the created item."
+            title = "The name of the created item"
         )
         private final String itemName;
 
         @Schema(
-            title = "The web URL of the created item."
+            title = "The web URL of the created item"
         )
         private final String webUrl;
     }

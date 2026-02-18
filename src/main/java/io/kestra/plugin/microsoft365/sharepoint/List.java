@@ -83,14 +83,14 @@ import java.util.Objects;
     }
 )
 @Schema(
-    title = "List items in a SharePoint document library or folder.",
-    description = "Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
+    title = "List SharePoint drive items",
+    description = "Lists files and folders from a document library or folder ID. Default fetchType is FETCH; STORE writes items as Ion to Kestra internal storage. Requires Microsoft Graph permissions Files.Read.All and Sites.Read.All."
 )
 public class List extends AbstractSharepointTask implements RunnableTask<List.Output> {
 
     @Schema(
         title = "Folder ID",
-        description = "The ID of the folder to list items from. Use 'root' for the root of the document library."
+        description = "Folder ID to list from; use 'root' for the document library root"
     )
     @NotNull
     @Builder.Default
@@ -204,26 +204,26 @@ public class List extends AbstractSharepointTask implements RunnableTask<List.Ou
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The list of items",
-            description = "List of files and folders. Only populated when fetchType is FETCH or FETCH_ONE."
+            title = "List of items",
+            description = "Files and folders; populated when fetchType is FETCH or FETCH_ONE"
         )
         private final java.util.List<Item> items;
 
         @Schema(
             title = "Single item",
-            description = "Single item. Only populated when fetchType is FETCH_ONE and an item exists."
+            description = "Single item when fetchType is FETCH_ONE and an item exists"
         )
         private final Item item;
 
         @Schema(
-            title = "URI of the stored items file",
-            description = "URI pointing to the file containing all items. Only populated when fetchType is STORE."
+            title = "URI of stored items file",
+            description = "URI of the Ion file with items; populated when fetchType is STORE"
         )
         private final URI uri;
 
         @Schema(
             title = "Total number of items",
-            description = "Total count of items fetched from the folder."
+            description = "Count of items fetched from the folder"
         )
         private final Integer size;
     }

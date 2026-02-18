@@ -36,11 +36,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Trigger a flow on new incoming mail in Microsoft Outlook.",
-    description = "This trigger will poll every `interval` for new emails in a mailbox folder. " +
-        "You can filter messages with an OData `filter` query. "+
-        "Once an email is detected, attachments can be downloaded to internal storage. " +
-        "Required Microsoft Graph application permission: Mail.Read."
+    title = "Trigger on new Outlook mail",
+    description = "Polls a mailbox folder for new messages using Graph. Optional OData filter and attachment download to Kestra storage. Requires Microsoft Graph permission Mail.Read (application)."
 )
 @Plugin(
     examples = {
@@ -139,52 +136,52 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
     @Builder.Default
     @Schema(
         title = "Polling interval",
-        description = "The interval between polls"
+        description = "ISO-8601 duration between polls; default PT5M"
     )
     private final Duration interval = Duration.ofMinutes(5);
 
     @Schema(
         title = "Folder ID or name",
-        description = "The mail folder to monitor. Can be a well-known name (inbox, drafts, sentitems, deleteditems) or a folder ID."
+        description = "Mailbox folder to monitor (e.g., inbox, drafts, sentitems, deleteditems, or folder ID)"
     )
     @Builder.Default
     private Property<String> folderId = Property.ofValue("inbox");
 
     @Schema(
         title = "User email",
-        description = "Email address of the user whose mailbox to monitor. If not specified, uses the authenticated user's mailbox."
+        description = "Mailbox to monitor; if not specified, uses the authenticated user's mailbox."
     )
     private Property<String> userEmail;
 
     @Schema(
         title = "OData filter",
-        description = "Microsoft Graph OData filter query. Example: 'from/emailAddress/address eq \\'sender@example.com\\'' or 'hasAttachments eq true'"
+        description = "Graph OData filter, e.g., `from/emailAddress/address eq sender@example.com` or `hasAttachments eq true`"
     )
     private Property<String> filter;
 
     @Schema(
         title = "Include attachments",
-        description = "Whether to download attachments to Kestra's internal storage"
+        description = "If true, downloads file attachments to Kestra internal storage"
     )
     @Builder.Default
     private Property<Boolean> includeAttachments = Property.ofValue(false);
 
     @Schema(
         title = "Max messages per poll",
-        description = "Maximum number of messages to process per polling interval"
+        description = "Maximum messages processed each poll"
     )
     @Builder.Default
     private Property<Integer> maxMessages = Property.ofValue(10);
 
     @Schema(
         title = "State key",
-        description = "Custom key for state management. If not provided, defaults to trigger ID."
+        description = "Custom key for persisted state; defaults to trigger ID"
     )
     private Property<String> stateKey;
 
     @Schema(
         title = "State TTL",
-        description = "Time to live for state entries. After this duration, messages will be reprocessed."
+        description = "TTL for state entries (e.g., PT24H, P30D); after expiry messages may retrigger"
     )
     private Property<Duration> stateTtl;
 

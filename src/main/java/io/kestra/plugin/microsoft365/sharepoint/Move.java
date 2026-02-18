@@ -46,28 +46,28 @@ import java.util.Objects;
     }
 )
 @Schema(
-    title = "Move a file or folder in SharePoint.",
-    description = "Moves a DriveItem to another parent folder. Optionally renames the item. Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
+    title = "Move SharePoint file or folder",
+    description = "Moves a DriveItem to another parent folder within the same drive and can rename it in the same call. Requires Microsoft Graph permissions Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 public class Move extends AbstractSharepointTask implements RunnableTask<Move.Output> {
 
     @Schema(
         title = "Item ID",
-        description = "The unique identifier of the file or folder to move."
+        description = "Unique identifier of the file or folder to move"
     )
     @NotNull
     private Property<String> itemId;
 
     @Schema(
         title = "Destination parent folder ID",
-        description = "The ID of the destination folder (parent) where the item will be moved."
+        description = "ID of the destination folder (parent) to move the item into"
     )
     @NotNull
     private Property<String> destinationParentId;
 
     @Schema(
         title = "New name",
-        description = "Optional new name for the moved item."
+        description = "Optional new name for the moved item"
     )
     private Property<String> newName;
 
@@ -119,25 +119,25 @@ public class Move extends AbstractSharepointTask implements RunnableTask<Move.Ou
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The ID of the moved item.",
-            description = "The unique identifier of the moved file or folder."
+            title = "ID of the moved item",
+            description = "Unique identifier of the moved file or folder"
         )
         private final String itemId;
 
         @Schema(
-            title = "The name of the moved item.",
-            description = "The current name of the moved item (after optional rename)."
+            title = "Name of the moved item",
+            description = "Current name of the moved item (after optional rename)"
         )
         private final String itemName;
 
         @Schema(
-            title = "The destination parent ID.",
-            description = "The ID of the parent folder where the item was moved."
+            title = "Destination parent ID",
+            description = "Parent folder ID where the item was moved"
         )
         private final String parentId;
 
         @Schema(
-            title = "The web URL of the moved item."
+            title = "Web URL of the moved item"
         )
         private final String webUrl;
     }

@@ -28,8 +28,8 @@ import java.net.URI;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Export a file from OneDrive or SharePoint to a different format.",
-    description = "Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
+    title = "Export OneDrive/SharePoint file",
+    description = "Converts a single file to PDF or HTML via Graph `content?format=` and stores the converted copy in Kestra internal storage. Supported source types depend on Graph (Office docs for PDF; Loop/Fluid/WBTX for HTML). Requires Microsoft Graph permissions Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {
@@ -82,14 +82,15 @@ public class Export extends AbstractOneShareTask implements RunnableTask<Export.
     }
 
     @Schema(
-        title = "The ID of the item (file) to export."
+        title = "Item ID",
+        description = "DriveItem ID of the file to export"
     )
     @NotNull
     private Property<String> itemId;
 
     @Schema(
-        title = "The format to export the file to.",
-        description = "PDF format supports most file types (doc, docx, ppt, xlsx, etc.). HTML format supports loop, fluid, and wbtx files only."
+        title = "Export format",
+        description = "Target format PDF or HTML; Graph limits HTML to loop/fluid/wbtx types"
     )
     @NotNull
     private Property<ExportFormat> format;
@@ -233,7 +234,7 @@ public class Export extends AbstractOneShareTask implements RunnableTask<Export.
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The URI of the exported file in Kestra's internal storage."
+            title = "URI of the exported file in Kestra internal storage"
         )
         private final URI uri;
     }

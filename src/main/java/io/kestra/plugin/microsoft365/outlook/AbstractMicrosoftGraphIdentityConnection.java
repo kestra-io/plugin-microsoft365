@@ -20,22 +20,22 @@ import java.util.Optional;
 @Getter
 @NoArgsConstructor
 public abstract class AbstractMicrosoftGraphIdentityConnection extends Task {
-    @Schema(title = "Tenant ID", description = "Azure tenant ID (directory ID)")
+    @Schema(title = "Azure tenant ID", description = "Entra tenant (directory) ID used for Graph auth")
     @NotNull
     protected Property<String> tenantId;
 
-    @Schema(title = "Client ID", description = "Azure application (client) ID")
+    @Schema(title = "Azure client ID", description = "Application (client) ID of the Graph app registration")
     @NotNull
     protected Property<String> clientId;
 
-    @Schema(title = "Client Secret", description = "Azure client secret")
+    @Schema(title = "Azure client secret", description = "Client secret for the app registration; required for client-credentials flow")
     @NotNull
     protected Property<String> clientSecret;
 
-    @Schema(title = "User Principal Name", description = "User email to act on behalf of (optional)")
+    @Schema(title = "User principal name", description = "Mailbox UPN/email to act on; defaults to app context when omitted")
     protected Property<String> userPrincipalName;
 
-    @Schema(title = "Scopes", description = "Scopes for Microsoft Graph")
+    @Schema(title = "Scopes", description = "Space-separated Graph scopes; default uses `.default` application permissions")
     @Builder.Default
     protected Property<String> scopes = Property.ofValue("https://graph.microsoft.com/.default");
 

@@ -21,8 +21,8 @@ import java.net.URI;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Upload a file to SharePoint",
-    description = "Uploads a file to a SharePoint document library. Supports both simple upload (<4MB) and chunked upload for larger files. Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
+    title = "Upload file to SharePoint",
+    description = "Uploads a file from Kestra internal storage to a SharePoint document library using Graph simple upload (best for files up to ~4MB; larger files may fail). PUT replaces existing files; conflictBehavior is currently ignored. Requires Microsoft Graph permissions Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 @Plugin(
     examples = {
@@ -73,21 +73,21 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
 
     @Schema(
         title = "Source file URI",
-        description = "The URI of the file to upload from Kestra's internal storage"
+        description = "URI of the file in Kestra internal storage to upload"
     )
     @NotNull
     private Property<String> from;
 
     @Schema(
         title = "Destination filename",
-        description = "The name of the file in SharePoint"
+        description = "Filename to create in SharePoint"
     )
     @NotNull
     private Property<String> to;
 
     @Schema(
         title = "Parent folder ID",
-        description = "The ID of the parent folder where the file will be uploaded. Use 'root' for the root of the document library."
+        description = "Parent folder ID; use 'root' for the document library root"
     )
     @NotNull
     @Builder.Default
@@ -95,14 +95,14 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
 
     @Schema(
         title = "Conflict behavior",
-        description = "What to do if a file with the same name already exists"
+        description = "Reserved flag for naming conflicts; currently ignored and the upload overwrites existing files"
     )
     @Builder.Default
     private ConflictBehavior conflictBehavior = ConflictBehavior.FAIL;
 
     @Schema(
         title = "Chunk size for large files",
-        description = "The size of each chunk in bytes for large file uploads. Default is 5MB."
+        description = "Unused placeholder for chunked uploads; Graph simple upload is used instead"
     )
     @Builder.Default
     private Property<Long> chunkSize = Property.ofValue(5L * 1024 * 1024); // 5MB
@@ -155,22 +155,22 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The ID of the uploaded item"
+            title = "ID of the uploaded item"
         )
         private String itemId;
 
         @Schema(
-            title = "The name of the uploaded file"
+            title = "Name of the uploaded file"
         )
         private String name;
 
         @Schema(
-            title = "The web URL of the uploaded file"
+            title = "Web URL of the uploaded file"
         )
         private String webUrl;
 
         @Schema(
-            title = "The size of the uploaded file in bytes"
+            title = "Size of the uploaded file in bytes"
         )
         private Long size;
     }
