@@ -150,14 +150,14 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
 
     @Schema(
         title = "User email",
-        description = "Mailbox to monitor; required for app context"
+        description = "Mailbox to monitor; if not specified, uses the authenticated user's mailbox."
     )
     @NotNull
     private Property<String> userEmail;
 
     @Schema(
         title = "OData filter",
-        description = "Graph OData filter, e.g., from/emailAddress/address eq 'sender@example.com' or hasAttachments eq true"
+        description = "Graph OData filter, e.g., `from/emailAddress/address eq sender@example.com` or `hasAttachments eq true`"
     )
     private Property<String> filter;
 

@@ -121,7 +121,7 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
 
     @Schema(
         title = "User email",
-        description = "Mailbox to read; required for delegated/app context"
+        description = "Mailbox to monitor; if not specified, uses the authenticated user's mailbox."
     )
     @NotNull
     private Property<String> userEmail;
