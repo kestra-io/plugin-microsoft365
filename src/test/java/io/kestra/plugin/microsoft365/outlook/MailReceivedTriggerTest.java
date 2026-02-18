@@ -219,6 +219,28 @@ class MailReceivedTriggerTest {
     }
 
     @Test
+    void testTriggerIsIdempotentAcrossConsecutivePolls() throws Exception {
+        var trigger = MailReceivedTrigger.builder()
+            .id("test-trigger-idempotent-" + IdUtils.create())
+            .type(MailReceivedTrigger.class.getName())
+            .tenantId(Property.ofValue(MOCK_TENANT_ID))
+            .clientId(Property.ofValue(MOCK_CLIENT_ID))
+            .clientSecret(Property.ofValue(MOCK_CLIENT_SECRET))
+            .userEmail(Property.ofValue(MOCK_USER_EMAIL))
+            .folderId(Property.ofValue("inbox"))
+            .interval(Duration.ofMinutes(5))
+            .build();
+
+        var context = TestsUtils.mockTrigger(runContextFactory, trigger);
+
+        var firstExecution = trigger.evaluate(context.getKey(), context.getValue());
+        assertThat(firstExecution.isPresent(), is(true));
+
+        var secondExecution = trigger.evaluate(context.getKey(), context.getValue());
+        assertThat(secondExecution.isEmpty(), is(true));
+    }
+
+    @Test
     void testTriggerNoNewMessages() throws Exception {
         // Temporarily close the class-level mock to avoid conflict
         graphClientMock.close();
