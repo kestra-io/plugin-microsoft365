@@ -18,7 +18,8 @@ import lombok.experimental.SuperBuilder;
 public abstract class AbstractOneShareTask extends AbstractGraphConnection {
 
     @Schema(
-        title = "The ID of the drive."
+        title = "Drive ID",
+        description = "OneDrive or SharePoint drive identifier required for all OneShare tasks"
     )
     @NotNull
     protected Property<String> driveId;

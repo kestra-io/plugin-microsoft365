@@ -30,8 +30,8 @@ import java.nio.charset.StandardCharsets;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Create a file or folder in OneDrive or SharePoint.",
-    description = "Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
+    title = "Create OneDrive/SharePoint file or folder",
+    description = "Creates a file (with optional text content) or empty folder in a drive. Defaults parent to root and itemType to FILE. Requires Microsoft Graph permissions Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 @Plugin(
     examples = {
@@ -78,25 +78,28 @@ import java.nio.charset.StandardCharsets;
 public class Create extends AbstractOneShareTask implements RunnableTask<Create.Output> {
 
     @Schema(
-        title = "The ID of the parent folder. If not provided, the root of the drive is used."
+        title = "Parent folder ID",
+        description = "Target folder ID; defaults to drive root"
     )
     private Property<String> parentId;
 
     @Schema(
-        title = "The name of the file or folder to create."
+        title = "Item name",
+        description = "Filename or folder name to create"
     )
     @NotNull
     private Property<String> name;
 
     @Schema(
-        title = "Type of item to create.",
-        description = "Specify whether to create a FILE or FOLDER. Defaults to FILE."
+        title = "Item type",
+        description = "FILE (default) creates a file; FOLDER creates a folder"
     )
     @Builder.Default
     private Property<ItemType> itemType = Property.ofValue(ItemType.FILE);
 
     @Schema(
-        title = "Content of the file to create."
+        title = "File content",
+        description = "UTF-8 text to write when creating a file; ignored for folders; empty value creates zero-byte file"
     )
     private Property<String> content;
 
@@ -251,7 +254,7 @@ public class Create extends AbstractOneShareTask implements RunnableTask<Create.
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The created file or folder metadata."
+            title = "Created item metadata"
         )
         private final OneShareFile file;
     }

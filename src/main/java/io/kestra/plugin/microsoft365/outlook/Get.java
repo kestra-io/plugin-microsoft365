@@ -28,8 +28,8 @@ import java.util.Objects;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Get a specific email message from Microsoft Outlook",
-    description = "Retrieve a specific email message by its ID. Required Microsoft Graph application permission: Mail.Read."
+    title = "Get Outlook email message",
+    description = "Retrieves one email by message ID with optional attachments. Requires Microsoft Graph permission Mail.Read (application)."
 )
 @Plugin(
     examples = {
@@ -76,21 +76,21 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
 
     @Schema(
         title = "Message ID",
-        description = "Unique identifier of the email message to retrieve"
+        description = "Graph message ID to retrieve"
     )
     @NotNull
     private Property<String> messageId;
 
     @Schema(
         title = "Include attachments",
-        description = "Whether to include attachment information in the response"
+        description = "If true, returns attachment metadata; content is not downloaded here"
     )
     @Builder.Default
     private Property<Boolean> includeAttachments = Property.ofValue(false);
 
     @Schema(
         title = "User email",
-        description = "Email address of the user whose mailbox to access (optional, uses authenticated user if not specified)"
+        description = "Mailbox to read; defaults to app mailbox when omitted"
     )
     private Property<String> userEmail;
 
@@ -171,7 +171,7 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
             title = "Message",
-            description = "Email message details"
+            description = "Full message detail including recipients and attachments"
         )
         private final MessageDetail message;
 

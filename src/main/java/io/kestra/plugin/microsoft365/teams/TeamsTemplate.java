@@ -27,7 +27,8 @@ public abstract class TeamsTemplate extends TeamsIncomingWebhook {
     protected Property<String> templateUri;
 
     @Schema(
-        title = "Map of variables to use for the message template"
+        title = "Template variables",
+        description = "Key-value map rendered into the template before sending"
     )
     protected Property<Map<String, Object>> templateRenderMap;
 
@@ -35,10 +36,10 @@ public abstract class TeamsTemplate extends TeamsIncomingWebhook {
     @Builder.Default
     protected Property<String> themeColor = Property.ofValue("0076D7");
 
-    @Schema(title = "Activity Title")
+    @Schema(title = "Activity title")
     protected Property<String> activityTitle;
 
-    @Schema(title = "Activity Subtitle")
+    @Schema(title = "Activity subtitle")
     protected Property<String> activitySubtitle;
 
     @SuppressWarnings("unchecked")

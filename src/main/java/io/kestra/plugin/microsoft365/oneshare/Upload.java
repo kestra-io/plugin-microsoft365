@@ -43,8 +43,8 @@ import java.nio.file.Files;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Upload a file to OneDrive or SharePoint.",
-    description = "Supports both small and large file uploads. Files larger than the threshold (default 4MB) will use resumable upload sessions for reliability and progress tracking. Required Microsoft Graph application permissions: Files.ReadWrite.All and Sites.ReadWrite.All."
+    title = "Upload file to OneDrive or SharePoint",
+    description = "Uploads a file from Kestra internal storage. Uses simple PUT up to the threshold (default 4MB) and resumable upload sessions above it, with conflictBehavior defaulting to REPLACE. Requires Microsoft Graph permissions Files.ReadWrite.All and Sites.ReadWrite.All."
 )
 @Plugin(
     examples = {
@@ -118,53 +118,51 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
     private static final int DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 
     @Schema(
-        title = "The ID of the parent folder.",
-        description = "The ID of the parent folder. If not provided, the root of the drive is used."
+        title = "Parent folder ID",
+        description = "Target folder ID; defaults to drive root"
     )
     @Builder.Default
     private Property<String> parentId = Property.ofValue("root");
 
     @Schema(
-        title = "The name of the file to upload.",
-        description = "The desired filename in OneDrive/SharePoint. Can be different from the source filename."
+        title = "Destination filename",
+        description = "Filename to create in OneDrive/SharePoint; can differ from source name"
     )
     @NotNull
     private Property<String> fileName;
 
     @Schema(
-        title = "The file from Kestra's internal storage to upload.",
-        description = "URI of the file in Kestra's internal storage. Can be from inputs, outputs, or other tasks."
+        title = "Source file URI",
+        description = "URI in Kestra internal storage to upload (inputs/outputs/other tasks)"
     )
     @NotNull
     @PluginProperty(internalStorageURI = true)
     private Property<String> from;
 
     @Schema(
-        title = "File size threshold for using resumable upload.",
-        description = "Files larger than this threshold (in bytes) will use resumable upload sessions. " +
-                     "Microsoft recommends 4MB (4194304 bytes) as the threshold. Default: 4MB"
+        title = "Large file threshold",
+        description = "Bytes threshold to switch to resumable upload; default 4MB (4194304)"
     )
     @Builder.Default
     private Property<Long> largeFileThreshold = Property.ofValue(DEFAULT_LARGE_FILE_THRESHOLD);
 
     @Schema(
-        title = "Maximum slice size for chunked uploads.",
-        description = "The size of each chunk when uploading large files (in bytes). " +
-                     "Must be a multiple of 320 KiB (327,680 bytes). Default: 3.2 MB (3,276,800 bytes)"
+        title = "Max slice size",
+        description = "Chunk size in bytes for resumable upload; must be multiple of 320 KiB; default 3,276,800"
     )
     @Builder.Default
     private Property<Integer> maxSliceSize = Property.ofValue(DEFAULT_MAX_SLICE_SIZE);
 
     @Schema(
-        title = "Maximum number of retry attempts.",
-        description = "The maximum number of attempts to retry failed upload operations. Default: 5"
+        title = "Max retry attempts",
+        description = "Maximum retries for chunk uploads; default 5"
     )
     @Builder.Default
     private Property<Integer> maxRetryAttempts = Property.ofValue(DEFAULT_MAX_RETRY_ATTEMPTS);
 
     @Schema(
-        title = "Conflict behavior when file exists.",
-        description = "Defines how to handle conflicts when a file with the same name already exists. Default: REPLACE"
+        title = "Conflict behavior",
+        description = "How to handle existing files: REPLACE (default), FAIL, or RENAME"
     )
     @Builder.Default
     private Property<ConflictBehavior> conflictBehavior = Property.ofValue(ConflictBehavior.REPLACE);
@@ -534,7 +532,7 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The uploaded file metadata."
+            title = "Uploaded file metadata"
         )
         private final OneShareFile file;
     }

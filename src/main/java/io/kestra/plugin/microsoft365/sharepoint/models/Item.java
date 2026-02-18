@@ -11,42 +11,42 @@ import java.time.OffsetDateTime;
 @Builder
 public class Item {
     @Schema(
-        title = "The unique identifier of the item."
+        title = "Item ID"
     )
     String id;
 
     @Schema(
-        title = "The name of the item."
+        title = "Item name"
     )
     String name;
 
     @Schema(
-        title = "The size of the item in bytes."
+        title = "Item size in bytes"
     )
     Long size;
 
     @Schema(
-        title = "The creation time of the item."
+        title = "Creation time of the item"
     )
     OffsetDateTime createdDateTime;
 
     @Schema(
-        title = "The last modified time of the item."
+        title = "Last modified time of the item"
     )
     OffsetDateTime lastModifiedDateTime;
 
     @Schema(
-        title = "The web URL of the item."
+        title = "Web URL of the item"
     )
     String webUrl;
 
     @Schema(
-        title = "Whether the item is a folder."
+        title = "Whether the item is a folder"
     )
     Boolean isFolder;
 
     @Schema(
-        title = "Whether the item is a file."
+        title = "Whether the item is a file"
     )
     Boolean isFile;
 

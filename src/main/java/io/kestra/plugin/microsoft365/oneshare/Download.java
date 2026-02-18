@@ -28,8 +28,8 @@ import java.net.URI;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Download a file from OneDrive or SharePoint.",
-    description = "Required Microsoft Graph application permissions: Files.Read.All and Sites.Read.All."
+    title = "Download OneDrive/SharePoint file to storage",
+    description = "Downloads a file by item ID and stores it in Kestra internal storage (`kestra:///`). Streams via Graph content endpoint; large locked files may fail. Requires Microsoft Graph permissions Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {
@@ -76,7 +76,8 @@ import java.net.URI;
 public class Download extends AbstractOneShareTask implements RunnableTask<Download.Output> {
 
     @Schema(
-        title = "The ID of the item (file) to download."
+        title = "Item ID",
+        description = "DriveItem ID of the file to download"
     )
     @NotNull
     private Property<String> itemId;
@@ -182,7 +183,7 @@ public class Download extends AbstractOneShareTask implements RunnableTask<Downl
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The URI of the downloaded file in Kestra's internal storage."
+            title = "URI of the downloaded file in Kestra internal storage"
         )
         private final URI uri;
     }

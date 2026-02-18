@@ -19,36 +19,36 @@ import lombok.experimental.SuperBuilder;
 public abstract class AbstractSharepointTask extends Task {
 
     @Schema(
-        title = "Azure Tenant ID",
-        description = "The Azure Active Directory tenant ID"
+        title = "Azure tenant ID",
+        description = "Azure AD (Entra ID) tenant GUID used for Graph authentication"
     )
     @NotNull
     protected Property<String> tenantId;
 
     @Schema(
-        title = "Azure Client ID",
-        description = "The client ID registered in Azure"
+        title = "Azure client ID",
+        description = "Application (client) ID of the registered Entra ID app"
     )
     @NotNull
     protected Property<String> clientId;
 
     @Schema(
-        title = "Azure Client Secret",
-        description = "The client secret for the registered application"
+        title = "Azure client secret",
+        description = "Client secret for the app registration; required for client-credentials flow"
     )
     @NotNull
     protected Property<String> clientSecret;
 
     @Schema(
-        title = "Sharepoint Site ID",
-        description = "The ID of the SharePoint site."
+        title = "SharePoint site ID",
+        description = "Site identifier in Graph format `hostname,siteId,webId`"
     )
     @NotNull
     protected Property<String> siteId;
 
     @Schema(
         title = "Drive ID",
-        description = "The ID of the document library within the SharePoint site. If not provided, the default document library will be used."
+        description = "Document library ID; if omitted the first drive returned for the site is used"
     )
     protected Property<String> driveId;
 
