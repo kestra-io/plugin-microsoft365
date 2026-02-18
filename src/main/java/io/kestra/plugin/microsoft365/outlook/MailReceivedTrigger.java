@@ -229,11 +229,10 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
 
         Map<String, StatefulTriggerService.Entry> state = readState(runContext, rStateKey, rStateTtl);
 
-        String finalRUser = rUser;
         List<EmailMessage> toFire = messages.stream()
             .flatMap(throwFunction(message -> {
                 String messageUri = String.format("message://%s/%s/%s",
-                    finalRUser != null ? finalRUser : "me", rFolderId, message.getId());
+                    rUser != null ? rUser : "me", rFolderId, message.getId());
 
                 String version = message.getReceivedDateTime() != null
                     ? message.getReceivedDateTime().toString()
@@ -250,7 +249,7 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
                     logger.debug("New message detected: {}", message.getSubject());
 
                     // Build email message object
-                    EmailMessage emailMessage = buildEmailMessage(message, graphClient, finalRUser, rIncludeAttachments, runContext, logger);
+                    EmailMessage emailMessage = buildEmailMessage(message, graphClient, rUser, rIncludeAttachments, runContext, logger);
                     return Stream.of(emailMessage);
                 }
                 return Stream.empty();
