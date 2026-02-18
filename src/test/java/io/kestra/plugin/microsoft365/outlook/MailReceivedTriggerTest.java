@@ -18,6 +18,7 @@ import io.kestra.core.utils.IdUtils;
 import io.kestra.core.utils.TestsUtils;
 import java.util.Map;
 import jakarta.inject.Inject;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,9 @@ class MailReceivedTriggerTest {
 
     @Inject
     private RunContextFactory runContextFactory;
+
+    @Inject
+    private Validator validator;
 
     // ---- Mock handles ----
     private static MockedConstruction<GraphServiceClient> graphClientMock;
@@ -259,6 +263,22 @@ class MailReceivedTriggerTest {
             // Recreate the class-level mock for other tests
             setupMocks();
         }
+    }
+
+    @Test
+    void testUserEmailCanBeOmitted() {
+        var trigger = MailReceivedTrigger.builder()
+            .id("test-trigger-user-optional-" + IdUtils.create())
+            .type(MailReceivedTrigger.class.getName())
+            .tenantId(Property.ofValue(MOCK_TENANT_ID))
+            .clientId(Property.ofValue(MOCK_CLIENT_ID))
+            .clientSecret(Property.ofValue(MOCK_CLIENT_SECRET))
+            .folderId(Property.ofValue("inbox"))
+            .interval(Duration.ofMinutes(5))
+            .build();
+
+        var violations = validator.validate(trigger);
+        assertThat(violations, empty());
     }
 
     // Helper methods

@@ -11,7 +11,6 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.triggers.*;
 import io.kestra.plugin.microsoft365.outlook.utils.GraphMailUtils;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
@@ -155,7 +154,6 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
         title = "User email",
         description = "Email address of the user whose mailbox to monitor. If not specified, uses the authenticated user's mailbox."
     )
-    @NotNull
     private Property<String> userEmail;
 
     @Schema(
