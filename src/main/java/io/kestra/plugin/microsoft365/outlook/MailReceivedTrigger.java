@@ -11,7 +11,6 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.triggers.*;
 import io.kestra.plugin.microsoft365.outlook.utils.GraphMailUtils;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
@@ -152,7 +151,6 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
         title = "User email",
         description = "Mailbox to monitor; if not specified, uses the authenticated user's mailbox."
     )
-    @NotNull
     private Property<String> userEmail;
 
     @Schema(
@@ -228,11 +226,10 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
 
         Map<String, StatefulTriggerService.Entry> state = readState(runContext, rStateKey, rStateTtl);
 
-        String finalRUser = rUser;
         List<EmailMessage> toFire = messages.stream()
             .flatMap(throwFunction(message -> {
                 String messageUri = String.format("message://%s/%s/%s",
-                    finalRUser != null ? finalRUser : "me", rFolderId, message.getId());
+                    rUser != null ? rUser : "me", rFolderId, message.getId());
 
                 String version = message.getReceivedDateTime() != null
                     ? message.getReceivedDateTime().toString()
@@ -249,7 +246,7 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
                     logger.debug("New message detected: {}", message.getSubject());
 
                     // Build email message object
-                    EmailMessage emailMessage = buildEmailMessage(message, graphClient, finalRUser, rIncludeAttachments, runContext, logger);
+                    EmailMessage emailMessage = buildEmailMessage(message, graphClient, rUser, rIncludeAttachments, runContext, logger);
                     return Stream.of(emailMessage);
                 }
                 return Stream.empty();
@@ -285,8 +282,8 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
                 message.getFrom().getEmailAddress().getAddress() : null)
             .fromName(message.getFrom() != null && message.getFrom().getEmailAddress() != null ?
                 message.getFrom().getEmailAddress().getName() : null)
-            .receivedDateTime(Objects.requireNonNull(message.getReceivedDateTime()).toZonedDateTime())
-            .sentDateTime(Objects.requireNonNull(message.getSentDateTime()).toZonedDateTime())
+            .receivedDateTime(message.getReceivedDateTime() != null ? message.getReceivedDateTime().toZonedDateTime() : null)
+            .sentDateTime(message.getSentDateTime() != null ? message.getSentDateTime().toZonedDateTime() : null)
             .hasAttachments(message.getHasAttachments())
             .isRead(message.getIsRead())
             .importance(message.getImportance() != null ? message.getImportance().toString() : null)

@@ -18,6 +18,7 @@ import io.kestra.core.utils.IdUtils;
 import io.kestra.core.utils.TestsUtils;
 import java.util.Map;
 import jakarta.inject.Inject;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,9 @@ class MailReceivedTriggerTest {
 
     @Inject
     private RunContextFactory runContextFactory;
+
+    @Inject
+    private Validator validator;
 
     // ---- Mock handles ----
     private static MockedConstruction<GraphServiceClient> graphClientMock;
@@ -215,6 +219,28 @@ class MailReceivedTriggerTest {
     }
 
     @Test
+    void testTriggerIsIdempotentAcrossConsecutivePolls() throws Exception {
+        var trigger = MailReceivedTrigger.builder()
+            .id("test-trigger-idempotent-" + IdUtils.create())
+            .type(MailReceivedTrigger.class.getName())
+            .tenantId(Property.ofValue(MOCK_TENANT_ID))
+            .clientId(Property.ofValue(MOCK_CLIENT_ID))
+            .clientSecret(Property.ofValue(MOCK_CLIENT_SECRET))
+            .userEmail(Property.ofValue(MOCK_USER_EMAIL))
+            .folderId(Property.ofValue("inbox"))
+            .interval(Duration.ofMinutes(5))
+            .build();
+
+        var context = TestsUtils.mockTrigger(runContextFactory, trigger);
+
+        var firstExecution = trigger.evaluate(context.getKey(), context.getValue());
+        assertThat(firstExecution.isPresent(), is(true));
+
+        var secondExecution = trigger.evaluate(context.getKey(), context.getValue());
+        assertThat(secondExecution.isEmpty(), is(true));
+    }
+
+    @Test
     void testTriggerNoNewMessages() throws Exception {
         // Temporarily close the class-level mock to avoid conflict
         graphClientMock.close();
@@ -259,6 +285,85 @@ class MailReceivedTriggerTest {
             // Recreate the class-level mock for other tests
             setupMocks();
         }
+    }
+
+    @Test
+    void testTriggerHandlesMessagesWithoutDates() throws Exception {
+        graphClientMock.close();
+
+        try (var nullDatesMock = Mockito.mockConstruction(
+            GraphServiceClient.class, (mock, context) -> {
+                var usersBuilder = mock(UsersRequestBuilder.class);
+                var userItemBuilder = mock(UserItemRequestBuilder.class);
+                var mailFoldersBuilder = mock(MailFoldersRequestBuilder.class);
+                var mailFolderItemBuilder = mock(MailFolderItemRequestBuilder.class);
+                var messagesBuilder = mock(MessagesRequestBuilder.class);
+
+                var messageWithoutDates = createMockMessage(
+                    "msg-no-dates",
+                    "No Dates",
+                    "sender@example.com",
+                    "Sender",
+                    "message without dates",
+                    false
+                );
+                messageWithoutDates.setReceivedDateTime(null);
+                messageWithoutDates.setSentDateTime(null);
+
+                var response = new MessageCollectionResponse();
+                response.setValue(List.of(messageWithoutDates));
+
+                when(messagesBuilder.get()).thenReturn(response);
+                when(messagesBuilder.get(any())).thenReturn(response);
+                when(mailFolderItemBuilder.messages()).thenReturn(messagesBuilder);
+                when(mailFoldersBuilder.byMailFolderId(anyString())).thenReturn(mailFolderItemBuilder);
+                when(userItemBuilder.mailFolders()).thenReturn(mailFoldersBuilder);
+                when(usersBuilder.byUserId(anyString())).thenReturn(userItemBuilder);
+                when(mock.users()).thenReturn(usersBuilder);
+            }
+        )) {
+            var trigger = MailReceivedTrigger.builder()
+                .id("test-trigger-null-dates-" + IdUtils.create())
+                .type(MailReceivedTrigger.class.getName())
+                .tenantId(Property.ofValue(MOCK_TENANT_ID))
+                .clientId(Property.ofValue(MOCK_CLIENT_ID))
+                .clientSecret(Property.ofValue(MOCK_CLIENT_SECRET))
+                .userEmail(Property.ofValue(MOCK_USER_EMAIL))
+                .folderId(Property.ofValue("inbox"))
+                .interval(Duration.ofMinutes(5))
+                .build();
+
+            var context = TestsUtils.mockTrigger(runContextFactory, trigger);
+            var execution = trigger.evaluate(context.getKey(), context.getValue());
+            assertThat(execution.isPresent(), is(true));
+
+            @SuppressWarnings("unchecked")
+            var variables = (Map<String, Object>) execution.get().getTrigger().getVariables();
+            @SuppressWarnings("unchecked")
+            var messages = (List<Map<String, Object>>) variables.get("messages");
+            var message = messages.getFirst();
+
+            assertThat(message.get("receivedDateTime"), nullValue());
+            assertThat(message.get("sentDateTime"), nullValue());
+        } finally {
+            setupMocks();
+        }
+    }
+
+    @Test
+    void testUserEmailCanBeOmitted() {
+        var trigger = MailReceivedTrigger.builder()
+            .id("test-trigger-user-optional-" + IdUtils.create())
+            .type(MailReceivedTrigger.class.getName())
+            .tenantId(Property.ofValue(MOCK_TENANT_ID))
+            .clientId(Property.ofValue(MOCK_CLIENT_ID))
+            .clientSecret(Property.ofValue(MOCK_CLIENT_SECRET))
+            .folderId(Property.ofValue("inbox"))
+            .interval(Duration.ofMinutes(5))
+            .build();
+
+        var violations = validator.validate(trigger);
+        assertThat(violations, empty());
     }
 
     // Helper methods
