@@ -155,7 +155,7 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
         description = "When to fire: CREATE (default), UPDATE, or CREATE_OR_UPDATE"
     )
     @Builder.Default
-    protected Property<StatefulTriggerInterface.On> on = Property.of(StatefulTriggerInterface.On.CREATE);
+    protected Property<StatefulTriggerInterface.On> on = Property.ofValue(StatefulTriggerInterface.On.CREATE);
 
     @Schema(
         title = "State key",
