@@ -41,7 +41,7 @@ class TeamsIncomingWebhookTest {
 
         TeamsIncomingWebhook task = TeamsIncomingWebhook.builder()
             .url(embeddedServer.getURI() + "/webhook-unit-test")
-            .payload(new Property<>(
+            .payload(Property.ofValue(
                 Files.asCharSource(
                     new File(Objects.requireNonNull(TeamsIncomingWebhookTest.class.getClassLoader()
                             .getResource("teams.peb"))
