@@ -2,6 +2,7 @@ package io.kestra.plugin.microsoft365;
 
 import io.kestra.core.models.property.Property;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.kestra.core.models.annotations.PluginProperty;
 
 public interface MicrosoftGraphConnectionInterface {
     @Schema(
@@ -11,6 +12,7 @@ public interface MicrosoftGraphConnectionInterface {
                     If you don't have a service principal, refer to [create a service principal with Azure CLI](https://learn.microsoft.com/en-us/cli/azure/azure-cli-sp-tutorial-1?tabs=bash).
                     """
     )
+    @PluginProperty(group = "connection")
     Property<String> getClientId();
 
     @Schema(
@@ -21,6 +23,7 @@ public interface MicrosoftGraphConnectionInterface {
                     Either clientSecret OR pemCertificate must be provided, not both.
                     """
     )
+    @PluginProperty(group = "connection")
     Property<String> getClientSecret();
 
     @Schema(
@@ -31,8 +34,10 @@ public interface MicrosoftGraphConnectionInterface {
                 Either clientSecret OR pemCertificate must be provided, not both.
             """
     )
+    @PluginProperty(group = "advanced")
     Property<String> getPemCertificate();
 
     @Schema(title = "Tenant ID")
+    @PluginProperty(group = "connection")
     Property<String> getTenantId();
 }

@@ -14,6 +14,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.io.InputStream;
 import java.net.URI;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -71,12 +72,14 @@ public class Export extends AbstractSharepointTask implements RunnableTask<Expor
         title = "Item ID",
         description = "ID of the file to export; either itemId or itemPath is required"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> itemId;
 
     @Schema(
         title = "Item path",
         description = "Path relative to the drive root (e.g., '/Documents/file.docx'); either itemPath or itemId is required"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> itemPath;
 
     @Schema(
@@ -84,6 +87,7 @@ public class Export extends AbstractSharepointTask implements RunnableTask<Expor
         description = "Conversion target; supported values are PDF or HTML"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<FormatType> format;
 
     @Override

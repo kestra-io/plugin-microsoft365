@@ -35,6 +35,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -128,12 +129,14 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
         title = "Drive ID to monitor",
         description = "Drive identifier; takes precedence when both driveId and siteId are provided"
     )
+    @PluginProperty(group = "advanced")
     protected Property<String> driveId;
 
     @Schema(
         title = "Site ID to monitor",
         description = "SharePoint site identifier used when driveId is not set"
     )
+    @PluginProperty(group = "advanced")
     protected Property<String> siteId;
 
     @Schema(
@@ -141,6 +144,7 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
         description = "Absolute path starting with '/' (e.g., /Documents)"
     )
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> path;
 
     @Schema(
@@ -148,6 +152,7 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
         description = "ISO-8601 duration between delta checks; default PT1M"
     )
     @Builder.Default
+    @PluginProperty(group = "execution")
     private Duration interval = Duration.ofMinutes(1);
 
     @Schema(
@@ -161,12 +166,14 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
         title = "State key",
         description = "Key for persisted trigger state; defaults to `<namespace>__<flowId>__<triggerId>`"
     )
+    @PluginProperty(group = "connection")
     protected Property<String> stateKey;
 
     @Schema(
         title = "State TTL",
         description = "TTL for persisted state entries (e.g., PT24H, P7D); default 7 days"
     )
+    @PluginProperty(group = "advanced")
     protected Property<Duration> stateTtl;
 
     @Override

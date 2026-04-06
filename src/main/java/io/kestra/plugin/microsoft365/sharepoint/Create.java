@@ -13,6 +13,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -73,6 +74,7 @@ public class Create extends AbstractSharepointTask implements RunnableTask<Creat
             description = "Target folder ID; use 'root' for the document library root"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> parentId;
 
     @Schema(
@@ -80,6 +82,7 @@ public class Create extends AbstractSharepointTask implements RunnableTask<Creat
         description = "Filename or folder name to create"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> name;
 
     @Schema(
@@ -88,12 +91,14 @@ public class Create extends AbstractSharepointTask implements RunnableTask<Creat
     )
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<ItemType> itemType = Property.ofValue(ItemType.FILE);
 
     @Schema(
         title = "File content",
         description = "String content for the new file; ignored for folders; empty value results in a zero-byte file"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> content;
 
     @Override

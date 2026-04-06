@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -24,22 +25,27 @@ public abstract class TeamsTemplate extends TeamsIncomingWebhook {
         title = "Template to use",
         hidden = true
     )
+    @PluginProperty(group = "advanced")
     protected Property<String> templateUri;
 
     @Schema(
         title = "Template variables",
         description = "Key-value map rendered into the template before sending"
     )
+    @PluginProperty(group = "advanced")
     protected Property<Map<String, Object>> templateRenderMap;
 
     @Schema(title = "Theme color")
     @Builder.Default
+    @PluginProperty(group = "advanced")
     protected Property<String> themeColor = Property.ofValue("0076D7");
 
     @Schema(title = "Activity title")
+    @PluginProperty(group = "advanced")
     protected Property<String> activityTitle;
 
     @Schema(title = "Activity subtitle")
+    @PluginProperty(group = "advanced")
     protected Property<String> activitySubtitle;
 
     @SuppressWarnings("unchecked")

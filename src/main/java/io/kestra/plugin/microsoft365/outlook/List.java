@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -104,12 +105,14 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
         description = "Folder to read (inbox, sentitems, drafts, deleteditems, or folder ID)",
         defaultValue = "inbox"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> folderId;
 
     @Schema(
         title = "Filter",
         description = "OData filter expression (e.g., isRead eq false, from/emailAddress/address eq 'sender@example.com')"
     )
+    @PluginProperty(group = "processing")
     private Property<String> filter;
 
     @Schema(
@@ -117,6 +120,7 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
         description = "Maximum number of messages to return in this call",
         defaultValue = "50"
     )
+    @PluginProperty(group = "destination")
     private Property<Integer> top;
 
     @Schema(
@@ -124,6 +128,7 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
         description = "Mailbox to monitor; if not specified, uses the authenticated user's mailbox."
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> userEmail;
 
     @Schema(
@@ -136,6 +141,7 @@ public class List extends AbstractMicrosoftGraphIdentityConnection implements Ru
     )
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "processing")
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
     @Override

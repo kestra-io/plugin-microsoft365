@@ -12,6 +12,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.util.Map;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -56,8 +57,11 @@ import java.util.Map;
 )
 public class TeamsExecution extends TeamsTemplate implements ExecutionInterface {
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private final Property<String> executionId = Property.ofExpression("{{ execution.id }}");
+    @PluginProperty(group = "destination")
     private Property<Map<String, Object>> customFields;
+    @PluginProperty(group = "destination")
     private Property<String> customMessage;
 
     @Override

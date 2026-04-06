@@ -122,6 +122,7 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
         description = "Target folder ID; defaults to drive root"
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<String> parentId = Property.ofValue("root");
 
     @Schema(
@@ -129,6 +130,7 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
         description = "Filename to create in OneDrive/SharePoint; can differ from source name"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> fileName;
 
     @Schema(
@@ -136,7 +138,7 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
         description = "URI in Kestra internal storage to upload (inputs/outputs/other tasks)"
     )
     @NotNull
-    @PluginProperty(internalStorageURI = true)
+    @PluginProperty(internalStorageURI = true, group = "main")
     private Property<String> from;
 
     @Schema(
@@ -144,6 +146,7 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
         description = "Bytes threshold to switch to resumable upload; default 4MB (4194304)"
     )
     @Builder.Default
+    @PluginProperty(group = "source")
     private Property<Long> largeFileThreshold = Property.ofValue(DEFAULT_LARGE_FILE_THRESHOLD);
 
     @Schema(
@@ -151,6 +154,7 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
         description = "Chunk size in bytes for resumable upload; must be multiple of 320 KiB; default 3,276,800"
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Integer> maxSliceSize = Property.ofValue(DEFAULT_MAX_SLICE_SIZE);
 
     @Schema(
@@ -158,6 +162,7 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
         description = "Maximum retries for chunk uploads; default 5"
     )
     @Builder.Default
+    @PluginProperty(group = "reliability")
     private Property<Integer> maxRetryAttempts = Property.ofValue(DEFAULT_MAX_RETRY_ATTEMPTS);
 
     @Schema(
@@ -165,6 +170,7 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
         description = "How to handle existing files: REPLACE (default), FAIL, or RENAME"
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<ConflictBehavior> conflictBehavior = Property.ofValue(ConflictBehavior.REPLACE);
 
     public enum ConflictBehavior {

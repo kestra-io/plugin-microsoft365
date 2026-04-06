@@ -28,6 +28,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Objects;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -94,6 +95,7 @@ public class List extends AbstractSharepointTask implements RunnableTask<List.Ou
     )
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<String> folderId = Property.ofValue("root");
 
     @Schema(
@@ -106,6 +108,7 @@ public class List extends AbstractSharepointTask implements RunnableTask<List.Ou
     )
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "processing")
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
     @Override

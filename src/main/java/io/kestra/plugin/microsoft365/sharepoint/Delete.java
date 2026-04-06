@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -49,6 +50,7 @@ public class Delete extends AbstractSharepointTask implements RunnableTask<Delet
         description = "Unique identifier of the file or folder to delete"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> itemId;
 
     @Override

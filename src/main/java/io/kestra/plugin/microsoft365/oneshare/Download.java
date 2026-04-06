@@ -21,6 +21,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -80,6 +81,7 @@ public class Download extends AbstractOneShareTask implements RunnableTask<Downl
         description = "DriveItem ID of the file to download"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> itemId;
 
     @Override

@@ -15,6 +15,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.io.InputStream;
 import java.net.URI;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -71,12 +72,14 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
         title = "Item ID",
         description = "ID of the file to download; either itemId or itemPath is required"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> itemId;
 
     @Schema(
         title = "Item path",
         description = "Path relative to the drive root (e.g., '/Documents/file.txt'); either itemPath or itemId is required"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> itemPath;
 
     @Override

@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -78,6 +79,7 @@ public class Delete extends AbstractOneShareTask implements RunnableTask<VoidOut
         description = "DriveItem ID of the file or folder to delete"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> itemId;
 
     @Override

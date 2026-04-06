@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -79,6 +80,7 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
         description = "Graph message ID to retrieve"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> messageId;
 
     @Schema(
@@ -86,12 +88,14 @@ public class Get extends AbstractMicrosoftGraphIdentityConnection implements Run
         description = "If true, returns attachment metadata; content is not downloaded here"
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Boolean> includeAttachments = Property.ofValue(false);
 
     @Schema(
         title = "User email",
         description = "Mailbox to read; defaults to app mailbox when omitted"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> userEmail;
 
     @Override

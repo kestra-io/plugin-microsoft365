@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString(callSuper = true)
@@ -22,5 +23,6 @@ public abstract class AbstractOneShareTask extends AbstractGraphConnection {
         description = "OneDrive or SharePoint drive identifier required for all OneShare tasks"
     )
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> driveId;
 }

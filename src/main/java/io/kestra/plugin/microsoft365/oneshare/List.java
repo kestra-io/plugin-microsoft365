@@ -22,6 +22,7 @@ import lombok.experimental.SuperBuilder;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -76,6 +77,7 @@ public class List extends AbstractOneShareTask implements RunnableTask<List.Outp
         title = "Folder ID",
         description = "DriveItem ID of the folder to list; defaults to root"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> itemId;
 
     @Override
