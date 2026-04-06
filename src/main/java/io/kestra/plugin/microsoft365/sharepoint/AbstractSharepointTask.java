@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -23,6 +24,7 @@ public abstract class AbstractSharepointTask extends Task {
         description = "Azure AD (Entra ID) tenant GUID used for Graph authentication"
     )
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> tenantId;
 
     @Schema(
@@ -30,6 +32,7 @@ public abstract class AbstractSharepointTask extends Task {
         description = "Application (client) ID of the registered Entra ID app"
     )
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> clientId;
 
     @Schema(
@@ -37,6 +40,7 @@ public abstract class AbstractSharepointTask extends Task {
         description = "Client secret for the app registration; required for client-credentials flow"
     )
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> clientSecret;
 
     @Schema(
@@ -44,12 +48,14 @@ public abstract class AbstractSharepointTask extends Task {
         description = "Site identifier in Graph format `hostname,siteId,webId`"
     )
     @NotNull
+    @PluginProperty(group = "main")
     protected Property<String> siteId;
 
     @Schema(
         title = "Drive ID",
         description = "Document library ID; if omitted the first drive returned for the site is used"
     )
+    @PluginProperty(group = "advanced")
     protected Property<String> driveId;
 
     protected SharepointConnection connection(RunContext runContext) throws Exception {

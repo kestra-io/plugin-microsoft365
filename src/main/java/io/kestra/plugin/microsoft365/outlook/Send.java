@@ -21,6 +21,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -117,18 +118,21 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
         description = "Email addresses for To"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<List<String>> to;
 
     @Schema(
         title = "CC recipients",
         description = "Email addresses for CC"
     )
+    @PluginProperty(group = "advanced")
     private Property<List<String>> cc;
 
     @Schema(
         title = "BCC recipients",
         description = "Email addresses for BCC"
     )
+    @PluginProperty(group = "advanced")
     private Property<List<String>> bcc;
 
     @Schema(
@@ -136,6 +140,7 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
         description = "Subject line"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> subject;
 
     @Schema(
@@ -143,12 +148,14 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
         description = "Body content"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> body;
 
     @Schema(
         title = "Body type",
         description = "Content type for body (Html or Text); defaults to Html"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> bodyType;
 
     @Schema(
@@ -156,6 +163,7 @@ public class Send extends AbstractMicrosoftGraphIdentityConnection implements Ru
         description = "Sender mailbox address used for Graph `sendMail`"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> from;
 
     @Schema(

@@ -15,6 +15,7 @@ import lombok.experimental.SuperBuilder;
 import org.slf4j.Logger;
 
 import java.util.Objects;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -56,6 +57,7 @@ public class Move extends AbstractSharepointTask implements RunnableTask<Move.Ou
         description = "Unique identifier of the file or folder to move"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> itemId;
 
     @Schema(
@@ -63,12 +65,14 @@ public class Move extends AbstractSharepointTask implements RunnableTask<Move.Ou
         description = "ID of the destination folder (parent) to move the item into"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> destinationParentId;
 
     @Schema(
         title = "New name",
         description = "Optional new name for the moved item"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> newName;
 
     @Override

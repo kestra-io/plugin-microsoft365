@@ -23,6 +23,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -81,6 +82,7 @@ public class Create extends AbstractOneShareTask implements RunnableTask<Create.
         title = "Parent folder ID",
         description = "Target folder ID; defaults to drive root"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> parentId;
 
     @Schema(
@@ -88,6 +90,7 @@ public class Create extends AbstractOneShareTask implements RunnableTask<Create.
         description = "Filename or folder name to create"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> name;
 
     @Schema(
@@ -95,12 +98,14 @@ public class Create extends AbstractOneShareTask implements RunnableTask<Create.
         description = "FILE (default) creates a file; FOLDER creates a folder"
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<ItemType> itemType = Property.ofValue(ItemType.FILE);
 
     @Schema(
         title = "File content",
         description = "UTF-8 text to write when creating a file; ignored for folders; empty value creates zero-byte file"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> content;
 
     @Override

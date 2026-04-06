@@ -21,6 +21,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -86,6 +87,7 @@ public class Export extends AbstractOneShareTask implements RunnableTask<Export.
         description = "DriveItem ID of the file to export"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> itemId;
 
     @Schema(
@@ -93,6 +95,7 @@ public class Export extends AbstractOneShareTask implements RunnableTask<Export.
         description = "Target format PDF or HTML; Graph limits HTML to loop/fluid/wbtx types"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<ExportFormat> format;
 
     @Override

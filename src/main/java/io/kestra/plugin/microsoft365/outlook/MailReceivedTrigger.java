@@ -28,6 +28,7 @@ import java.util.stream.Stream;
 
 import static io.kestra.core.models.triggers.StatefulTriggerService.*;
 import static io.kestra.core.utils.Rethrow.throwFunction;
+import io.kestra.core.models.annotations.PluginProperty;
 
 
 @SuperBuilder
@@ -138,6 +139,7 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
         title = "Polling interval",
         description = "ISO-8601 duration between polls; default PT5M"
     )
+    @PluginProperty(group = "execution")
     private final Duration interval = Duration.ofMinutes(5);
 
     @Schema(
@@ -145,18 +147,21 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
         description = "Mailbox folder to monitor (e.g., inbox, drafts, sentitems, deleteditems, or folder ID)"
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<String> folderId = Property.ofValue("inbox");
 
     @Schema(
         title = "User email",
         description = "Mailbox to monitor; if not specified, uses the authenticated user's mailbox."
     )
+    @PluginProperty(group = "advanced")
     private Property<String> userEmail;
 
     @Schema(
         title = "OData filter",
         description = "Graph OData filter, e.g., `from/emailAddress/address eq sender@example.com` or `hasAttachments eq true`"
     )
+    @PluginProperty(group = "processing")
     private Property<String> filter;
 
     @Schema(
@@ -164,6 +169,7 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
         description = "If true, downloads file attachments to Kestra internal storage"
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Boolean> includeAttachments = Property.ofValue(false);
 
     @Schema(
@@ -171,18 +177,21 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
         description = "Maximum messages processed each poll"
     )
     @Builder.Default
+    @PluginProperty(group = "execution")
     private Property<Integer> maxMessages = Property.ofValue(10);
 
     @Schema(
         title = "State key",
         description = "Custom key for persisted state; defaults to trigger ID"
     )
+    @PluginProperty(group = "connection")
     private Property<String> stateKey;
 
     @Schema(
         title = "State TTL",
         description = "TTL for state entries (e.g., PT24H, P30D); after expiry messages may retrigger"
     )
+    @PluginProperty(group = "advanced")
     private Property<Duration> stateTtl;
 
     @Override
@@ -388,48 +397,63 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
     @Getter
     public static class EmailMessage {
         @Schema(title = "Message ID")
+        @PluginProperty(group = "advanced")
         private final String id;
 
         @Schema(title = "Email subject")
+        @PluginProperty(group = "advanced")
         private final String subject;
 
         @Schema(title = "Sender email address")
+        @PluginProperty(group = "source")
         private final String from;
 
         @Schema(title = "Sender name")
+        @PluginProperty(group = "advanced")
         private final String fromName;
 
         @Schema(title = "To recipients")
+        @PluginProperty(group = "advanced")
         private final List<String> toRecipients;
 
         @Schema(title = "CC recipients")
+        @PluginProperty(group = "advanced")
         private final List<String> ccRecipients;
 
         @Schema(title = "Date and time the message was received")
+        @PluginProperty(group = "advanced")
         private final ZonedDateTime receivedDateTime;
 
         @Schema(title = "Date and time the message was sent")
+        @PluginProperty(group = "advanced")
         private final ZonedDateTime sentDateTime;
 
         @Schema(title = "Whether the message has attachments")
+        @PluginProperty(group = "advanced")
         private final Boolean hasAttachments;
 
         @Schema(title = "Whether the message has been read")
+        @PluginProperty(group = "advanced")
         private final Boolean isRead;
 
         @Schema(title = "Message importance (Low, Normal, High)")
+        @PluginProperty(group = "advanced")
         private final String importance;
 
         @Schema(title = "Preview of the message body")
+        @PluginProperty(group = "advanced")
         private final String bodyPreview;
 
         @Schema(title = "Full message body content")
+        @PluginProperty(group = "advanced")
         private final String body;
 
         @Schema(title = "Body content type (Text or HTML)")
+        @PluginProperty(group = "advanced")
         private final String bodyContentType;
 
         @Schema(title = "List of attachments with URIs to stored files in Kestra")
+        @PluginProperty(group = "advanced")
         private final List<AttachmentData> attachments;
     }
 
@@ -437,21 +461,27 @@ public class MailReceivedTrigger extends AbstractMicrosoftGraphIdentityPollingTr
     @Getter
     public static class AttachmentData {
         @Schema(title = "Attachment ID")
+        @PluginProperty(group = "advanced")
         private final String id;
 
         @Schema(title = "Attachment name")
+        @PluginProperty(group = "advanced")
         private final String name;
 
         @Schema(title = "Content type")
+        @PluginProperty(group = "advanced")
         private final String contentType;
 
         @Schema(title = "Size in bytes")
+        @PluginProperty(group = "advanced")
         private final Integer size;
 
         @Schema(title = "Whether the attachment is inline")
+        @PluginProperty(group = "advanced")
         private final Boolean isInline;
 
         @Schema(title = "URI to the downloaded attachment in Kestra's internal storage")
+        @PluginProperty(group = "advanced")
         private final URI uri;
     }
 }

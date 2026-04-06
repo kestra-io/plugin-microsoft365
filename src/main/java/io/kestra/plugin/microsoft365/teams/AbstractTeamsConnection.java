@@ -30,7 +30,7 @@ public abstract class AbstractTeamsConnection extends Task implements RunnableTa
         title = "HTTP client options",
         description = "Optional timeouts, charset, headers, and limits for Teams webhook calls"
     )
-    @PluginProperty(dynamic = true)
+    @PluginProperty(dynamic = true, group = "advanced")
     protected RequestOptions options;
 
     protected HttpConfiguration httpClientConfigurationWithOptions() throws IllegalVariableEvaluationException {
@@ -69,32 +69,39 @@ public abstract class AbstractTeamsConnection extends Task implements RunnableTa
     @Builder
     public static class RequestOptions {
         @Schema(title = "The time allowed to establish a connection to the server before failing.")
+        @PluginProperty(group = "execution")
         private final Property<Duration> connectTimeout;
 
         @Schema(title = "The maximum time allowed for reading data from the server before failing.")
         @Builder.Default
+        @PluginProperty(group = "execution")
         private final Property<Duration> readTimeout = Property.ofValue(Duration.ofSeconds(10));
 
         @Schema(title = "The time allowed for a read connection to remain idle before closing it.")
         @Builder.Default
+        @PluginProperty(group = "execution")
         private final Property<Duration> readIdleTimeout = Property.ofValue(Duration.of(5, ChronoUnit.MINUTES));
 
         @Schema(title = "Idle pool timeout", description = "Time an idle connection stays in the pool before closing")
         @Builder.Default
+        @PluginProperty(group = "execution")
         private final Property<Duration> connectionPoolIdleTimeout = Property.ofValue(Duration.ofSeconds(0));
 
         @Schema(title = "Max response size", description = "Maximum response content length in bytes")
         @Builder.Default
+        @PluginProperty(group = "execution")
         private final Property<Integer> maxContentLength = Property.ofValue(1024 * 1024 * 10);
 
         @Schema(title = "Default charset")
         @Builder.Default
+        @PluginProperty(group = "advanced")
         private final Property<Charset> defaultCharset = Property.ofValue(StandardCharsets.UTF_8);
 
         @Schema(
             title = "HTTP headers",
             description = "HTTP headers to include in the request"
         )
+        @PluginProperty(group = "advanced")
         public Property<Map<String,String>> headers;
     }
 }

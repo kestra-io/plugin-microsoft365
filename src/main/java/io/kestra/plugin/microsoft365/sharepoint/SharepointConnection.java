@@ -12,6 +12,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.util.Objects;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @Getter
 @Builder
@@ -22,6 +23,7 @@ public class SharepointConnection {
         description = "Azure AD (Entra ID) tenant GUID used for Graph authentication"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> tenantId;
 
     @Schema(
@@ -29,6 +31,7 @@ public class SharepointConnection {
         description = "Application (client) ID of the registered Entra ID app"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> clientId;
 
     @Schema(
@@ -36,6 +39,7 @@ public class SharepointConnection {
         description = "Client secret for the app registration; required for client-credentials flow"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> clientSecret;
 
     @Schema(
@@ -43,12 +47,14 @@ public class SharepointConnection {
         description = "Site identifier in Graph format `hostname,siteId,webId`"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> siteId;
 
     @Schema(
         title = "Drive ID",
         description = "Document library ID; if omitted the first drive returned for the site is used"
     )
+    @PluginProperty(group = "advanced")
     private Property<String> driveId;
 
     public GraphServiceClient createClient(RunContext runContext) throws Exception{

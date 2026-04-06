@@ -140,7 +140,7 @@ public class TeamsIncomingWebhook  extends AbstractTeamsConnection {
     @Schema(
         title = "Teams incoming webhook URL"
     )
-    @PluginProperty(dynamic = true)
+    @PluginProperty(dynamic = true, group = "main")
     @NotEmpty
     private String url;
 
@@ -148,6 +148,7 @@ public class TeamsIncomingWebhook  extends AbstractTeamsConnection {
         title = "Teams message payload",
         description = "Raw JSON payload for the webhook (Adaptive Card or MessageCard)"
     )
+    @PluginProperty(group = "main")
     protected Property<String> payload;
 
     @Override

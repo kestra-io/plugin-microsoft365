@@ -14,6 +14,7 @@ import lombok.experimental.SuperBuilder;
 import jakarta.validation.constraints.NotNull;
 import java.io.InputStream;
 import java.net.URI;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -76,6 +77,7 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
         description = "URI of the file in Kestra internal storage to upload"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> from;
 
     @Schema(
@@ -83,6 +85,7 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
         description = "Filename to create in SharePoint"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> to;
 
     @Schema(
@@ -91,6 +94,7 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
     )
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<String> parentId = Property.ofValue("root");
 
     @Schema(
@@ -98,6 +102,7 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
         description = "Reserved flag for naming conflicts; currently ignored and the upload overwrites existing files"
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private ConflictBehavior conflictBehavior = ConflictBehavior.FAIL;
 
     @Schema(
@@ -105,6 +110,7 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
         description = "Unused placeholder for chunked uploads; Graph simple upload is used instead"
     )
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Long> chunkSize = Property.ofValue(5L * 1024 * 1024); // 5MB
 
     private static final long SIMPLE_UPLOAD_SIZE_LIMIT = 4L * 1024 * 1024; // 4MB
