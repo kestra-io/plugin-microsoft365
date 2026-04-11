@@ -57,7 +57,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 
                 tasks:
                   - id: log_new_file
-                    type: io.kestra.core.tasks.log.Log
+                    type: io.kestra.plugin.core.log.Log
                     message: "New file detected: {{ trigger.files[0].name }}"
 
                 triggers:
@@ -80,7 +80,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 
                 tasks:
                   - id: log_updated_file
-                    type: io.kestra.core.tasks.log.Log
+                    type: io.kestra.plugin.core.log.Log
                     message: "File updated: {{ trigger.files[0].name }}"
 
                 triggers:
@@ -104,7 +104,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 
                 tasks:
                   - id: log_file_changes
-                    type: io.kestra.core.tasks.log.Log
+                    type: io.kestra.plugin.core.log.Log
                     message: "File changed: {{ trigger.files[0].name }}"
 
                 triggers:
