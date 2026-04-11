@@ -13,8 +13,7 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.property.Property;
-import io.kestra.core.queues.QueueFactoryInterface;
-import io.kestra.core.queues.QueueInterface;
+import io.kestra.core.queues.DispatchQueueInterface;
 import io.kestra.core.repositories.LocalFlowRepositoryLoader;
 import io.kestra.core.runners.FlowListeners;
 import io.kestra.core.utils.IdUtils;
@@ -25,7 +24,6 @@ import io.kestra.scheduler.AbstractScheduler;
 import io.kestra.worker.DefaultWorker;
 import io.micronaut.context.ApplicationContext;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -62,8 +60,7 @@ class TriggerTest extends AbstractOneShareTest {
     private FlowListeners flowListenersService;
 
     @Inject
-    @Named(QueueFactoryInterface.EXECUTION_NAMED)
-    private QueueInterface<Execution> executionQueue;
+    private DispatchQueueInterface<Execution> executionQueue;
 
     @Inject
     protected LocalFlowRepositoryLoader repositoryLoader;
@@ -237,8 +234,7 @@ class TriggerTest extends AbstractOneShareTest {
             AtomicReference<Execution> last = new AtomicReference<>();
 
             // wait for execution
-            Flux<Execution> receive = TestsUtils.receive(executionQueue, executionWithError -> {
-                Execution execution = executionWithError.getLeft();
+            executionQueue.addListener(execution -> {
                 if (execution.getFlowId().equals("oneshare-listen")) {
                     last.set(execution);
                     queueCount.countDown();
@@ -256,11 +252,7 @@ class TriggerTest extends AbstractOneShareTest {
             repositoryLoader.load(MAIN_TENANT, Objects.requireNonNull(TriggerTest.class.getClassLoader().getResource("flows/oneshare")));
 
             boolean await = queueCount.await(60, TimeUnit.SECONDS);
-            try {
-                assertThat(await, is(true));
-            } finally {
-                receive.blockLast();
-            }
+            assertThat(await, is(true));
 
             @SuppressWarnings("unchecked")
             List<Object> files = (List<Object>) last.get().getTrigger().getVariables().get("files");
