@@ -13,6 +13,11 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.property.Property;
+=======
+import io.kestra.core.queues.DispatchQueueInterface;
+import io.kestra.core.repositories.LocalFlowRepositoryLoader;
+import io.kestra.core.runners.FlowListeners;
+>>>>>>> 381087c (fix: v2 compatibility)
 import io.kestra.core.utils.IdUtils;
 import io.kestra.core.utils.TestsUtils;
 import io.kestra.plugin.microsoft365.oneshare.models.OneShareFile;
@@ -43,6 +48,7 @@ import static org.mockito.Mockito.when;
 @KestraTest
 class TriggerTest extends AbstractOneShareTest {
     @Inject
+<<<<<<< HEAD
     protected OnesShareTestUtils testUtils;
 
     private static MockedConstruction<GraphServiceClient> graphClientMock;
