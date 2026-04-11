@@ -9,6 +9,7 @@ import com.microsoft.graph.drives.item.items.item.delta.DeltaGetResponse;
 import com.microsoft.graph.drives.item.items.item.delta.DeltaRequestBuilder;
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.kestra.core.junit.annotations.EvaluateTrigger;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.executions.Execution;
@@ -18,17 +19,6 @@ import io.kestra.core.queues.DispatchQueueInterface;
 import io.kestra.core.repositories.LocalFlowRepositoryLoader;
 import io.kestra.core.runners.FlowListeners;
 >>>>>>> 381087c (fix: v2 compatibility)
-import io.kestra.core.utils.IdUtils;
-import io.kestra.core.utils.TestsUtils;
-import io.kestra.plugin.microsoft365.oneshare.models.OneShareFile;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
-import org.mockito.MockedConstruction;
-import org.mockito.Mockito;
-
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -37,22 +27,11 @@ import java.util.Map;
 import java.util.Optional;
 
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-@KestraTest
-class TriggerTest extends AbstractOneShareTest {
-    @Inject
-<<<<<<< HEAD
     protected OnesShareTestUtils testUtils;
 
     private static MockedConstruction<GraphServiceClient> graphClientMock;
     private static MockedConstruction<DeltaRequestBuilder> deltaBuilderMock;
+    private static final String LISTEN_FLOW_PATH = "flows/oneshare/oneshare-listen.yml";
     
     @BeforeAll
     static void setupMocks() {
@@ -141,6 +120,18 @@ class TriggerTest extends AbstractOneShareTest {
         if (graphClientMock != null) {
             graphClientMock.close();
         }
+    }
+
+    @BeforeEach
+    void prepareListenFlowInputs(TestInfo testInfo) throws Exception {
+        if (!credentialsAvailable || !"listenFromFlow".equals(testInfo.getTestMethod().map(method -> method.getName()).orElse(null))) {
+            return;
+        }
+
+        String out1 = FriendlyId.createFriendlyId() + ".yml";
+        testUtils.uploadNamed("Documents/TestTrigger", out1);
+        String out2 = FriendlyId.createFriendlyId() + ".yml";
+        testUtils.uploadNamed("Documents/TestTrigger", out2);
     }
 
     // ================== Mock-based Unit Tests ==================
