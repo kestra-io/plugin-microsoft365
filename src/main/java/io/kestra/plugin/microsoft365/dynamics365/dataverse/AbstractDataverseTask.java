@@ -56,9 +56,9 @@ public abstract class AbstractDataverseTask extends AbstractDynamics365Task {
         return resolvedOrgUrl(runContext) + "/.default";
     }
 
-    private static final ObjectMapper MAPPER = JacksonMapper.ofJson();
+    protected static final ObjectMapper MAPPER = JacksonMapper.ofJson();
 
-    protected static void parseAndThrowODataError(int statusCode, String body) {
+    protected static RuntimeException parseAndThrowODataError(int statusCode, String body) {
         String message = body;
         try {
             var error = MAPPER.readTree(body).path("error");
@@ -68,6 +68,6 @@ public abstract class AbstractDataverseTask extends AbstractDynamics365Task {
         } catch (Exception ignored) {
             // fall back to raw body
         }
-        throw new IllegalStateException("Dataverse API returned HTTP " + statusCode + ": " + message);
+        return new IllegalStateException("Dataverse API returned HTTP " + statusCode + ": " + message);
     }
 }

@@ -92,8 +92,7 @@ public class Delete extends AbstractDataverseTask implements RunnableTask<VoidOu
             try {
                 client.request(request, String.class);
             } catch (HttpClientResponseException e) {
-                parseAndThrowODataError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
-                throw new IllegalStateException("unreachable");
+                throw parseAndThrowODataError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
             }
         }
 

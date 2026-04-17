@@ -1,6 +1,5 @@
 package io.kestra.plugin.microsoft365.dynamics365.dataverse;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.http.HttpRequest;
 import io.kestra.core.http.client.HttpClient;
 import io.kestra.core.http.client.HttpClientResponseException;
@@ -10,7 +9,6 @@ import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.JacksonMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -83,8 +81,6 @@ public class Upsert extends AbstractDataverseTask implements RunnableTask<Upsert
     @PluginProperty(group = "main")
     private Property<Map<String, Object>> record;
 
-    private static final ObjectMapper MAPPER = JacksonMapper.ofJson();
-
     @Override
     public Output run(RunContext runContext) throws Exception {
         var logger = runContext.logger();
@@ -115,8 +111,7 @@ public class Upsert extends AbstractDataverseTask implements RunnableTask<Upsert
             try {
                 client.request(request, String.class);
             } catch (HttpClientResponseException e) {
-                parseAndThrowODataError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
-                throw new IllegalStateException("unreachable");
+                throw parseAndThrowODataError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
             }
         }
 

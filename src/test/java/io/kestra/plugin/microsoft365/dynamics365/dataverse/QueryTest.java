@@ -16,10 +16,6 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
 
 @KestraTest
 class QueryTest {
@@ -34,8 +30,8 @@ class QueryTest {
 
     private static final String TENANT_ID = "test-tenant";
 
-    private Query.QueryBuilder<?, ?> baseTask() {
-        return Query.builder()
+    private TestableQuery.TestableQueryBuilder<?, ?> baseTask() {
+        return TestableQuery.builder()
             .tenantId(Property.ofValue(TENANT_ID))
             .clientId(Property.ofValue("test-client"))
             .clientSecret(Property.ofValue("test-secret"))
@@ -58,12 +54,11 @@ class QueryTest {
             .atPriority(2)
             .willReturn(okJson(page1)));
 
-        var task = spy(baseTask()
+        var task = baseTask()
             .entitySetName(Property.ofValue("accounts"))
             .top(Property.ofValue(1))
             .fetchType(Property.ofValue(FetchType.FETCH))
-            .build());
-        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+            .build();
 
         var output = task.run(runContextFactory.of(Map.of()));
 
@@ -79,11 +74,10 @@ class QueryTest {
             .withQueryParam("$top", equalTo("1"))
             .willReturn(okJson("{\"value\":[{\"accountid\":\"id-1\",\"name\":\"Contoso\"},{\"accountid\":\"id-2\",\"name\":\"Fabrikam\"}]}")));
 
-        var task = spy(baseTask()
+        var task = baseTask()
             .entitySetName(Property.ofValue("accounts"))
             .fetchType(Property.ofValue(FetchType.FETCH_ONE))
-            .build());
-        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+            .build();
 
         var output = task.run(runContextFactory.of(Map.of()));
 
@@ -97,11 +91,10 @@ class QueryTest {
         wm.stubFor(get(urlPathEqualTo("/api/data/v9.2/contacts"))
             .willReturn(okJson("{\"value\":[{\"contactid\":\"c-1\",\"fullname\":\"Alice\"},{\"contactid\":\"c-2\",\"fullname\":\"Bob\"}]}")));
 
-        var task = spy(baseTask()
+        var task = baseTask()
             .entitySetName(Property.ofValue("contacts"))
             .fetchType(Property.ofValue(FetchType.STORE))
-            .build());
-        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+            .build();
 
         var output = task.run(runContextFactory.of(Map.of()));
 
@@ -112,14 +105,14 @@ class QueryTest {
 
     @Test
     void throwsWhenBothClientSecretAndCertProvided() {
-        var task = spy(Query.builder()
+        var task = Query.builder()
             .tenantId(Property.ofValue(TENANT_ID))
             .clientId(Property.ofValue("test-client"))
             .clientSecret(Property.ofValue("test-secret"))
             .pemCertificate(Property.ofValue("-----BEGIN CERTIFICATE-----"))
             .orgUrl(Property.ofValue(wm.baseUrl()))
             .entitySetName(Property.ofValue("accounts"))
-            .build());
+            .build();
 
         assertThrows(IllegalArgumentException.class,
             () -> task.run(runContextFactory.of(Map.of())));

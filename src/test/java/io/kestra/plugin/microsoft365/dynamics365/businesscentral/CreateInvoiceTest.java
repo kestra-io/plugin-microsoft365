@@ -14,10 +14,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
 
 @KestraTest
 class CreateInvoiceTest {
@@ -41,7 +37,7 @@ class CreateInvoiceTest {
                 .withHeader("Content-Type", "application/json")
                 .withBody("{\"id\":\"" + NEW_INVOICE_ID + "\",\"number\":\"INV-002\",\"customerNumber\":\"C00010\",\"invoiceDate\":\"2026-04-17\"}")));
 
-        var task = spy(CreateInvoice.builder()
+        var task = TestableCreateInvoice.builder()
             .tenantId(Property.ofValue(TENANT_ID))
             .clientId(Property.ofValue("test-client"))
             .clientSecret(Property.ofValue("test-secret"))
@@ -49,8 +45,7 @@ class CreateInvoiceTest {
             .apiEndpoint(Property.ofValue(wm.baseUrl()))
             .companyId(Property.ofValue(COMPANY_ID))
             .invoice(Property.ofValue(Map.of("customerNumber", "C00010", "invoiceDate", "2026-04-17")))
-            .build());
-        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+            .build();
 
         var output = task.run(runContextFactory.of(Map.of()));
 

@@ -14,10 +14,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
 
 @KestraTest
 class CreateCustomerTest {
@@ -41,7 +37,7 @@ class CreateCustomerTest {
                 .withHeader("Content-Type", "application/json")
                 .withBody("{\"id\":\"" + NEW_CUSTOMER_ID + "\",\"displayName\":\"Acme Corp\",\"email\":\"billing@acme.com\"}")));
 
-        var task = spy(CreateCustomer.builder()
+        var task = TestableCreateCustomer.builder()
             .tenantId(Property.ofValue(TENANT_ID))
             .clientId(Property.ofValue("test-client"))
             .clientSecret(Property.ofValue("test-secret"))
@@ -49,8 +45,7 @@ class CreateCustomerTest {
             .apiEndpoint(Property.ofValue(wm.baseUrl()))
             .companyId(Property.ofValue(COMPANY_ID))
             .customer(Property.ofValue(Map.of("displayName", "Acme Corp", "email", "billing@acme.com")))
-            .build());
-        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+            .build();
 
         var output = task.run(runContextFactory.of(Map.of()));
 

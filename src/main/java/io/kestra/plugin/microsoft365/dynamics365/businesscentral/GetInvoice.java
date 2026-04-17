@@ -1,7 +1,6 @@
 package io.kestra.plugin.microsoft365.dynamics365.businesscentral;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.http.HttpRequest;
 import io.kestra.core.http.client.HttpClient;
 import io.kestra.core.http.client.HttpClientResponseException;
@@ -11,7 +10,6 @@ import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.JacksonMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -72,8 +70,6 @@ public class GetInvoice extends AbstractBusinessCentralTask implements RunnableT
     @PluginProperty(group = "main")
     private Property<String> invoiceId;
 
-    private static final ObjectMapper MAPPER = JacksonMapper.ofJson();
-
     @Override
     public Output run(RunContext runContext) throws Exception {
         var logger = runContext.logger();
@@ -99,8 +95,7 @@ public class GetInvoice extends AbstractBusinessCentralTask implements RunnableT
                 var response = client.request(request, String.class);
                 body = response.getBody() != null ? response.getBody() : "";
             } catch (HttpClientResponseException e) {
-                parseAndThrowError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
-                throw new IllegalStateException("unreachable");
+                throw parseAndThrowError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
             }
 
             invoice = MAPPER.readValue(body, new TypeReference<>() {});

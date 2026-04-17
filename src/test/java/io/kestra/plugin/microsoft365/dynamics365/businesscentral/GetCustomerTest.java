@@ -14,10 +14,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
 
 @KestraTest
 class GetCustomerTest {
@@ -39,7 +35,7 @@ class GetCustomerTest {
         wm.stubFor(get(urlPathEqualTo("/v2.0/" + TENANT_ID + "/production/api/v2.0/companies(" + COMPANY_ID + ")/customers(" + CUSTOMER_ID + ")"))
             .willReturn(okJson("{\"id\":\"" + CUSTOMER_ID + "\",\"displayName\":\"Acme Corp\",\"email\":\"billing@acme.com\"}")));
 
-        var task = spy(GetCustomer.builder()
+        var task = TestableGetCustomer.builder()
             .tenantId(Property.ofValue(TENANT_ID))
             .clientId(Property.ofValue("test-client"))
             .clientSecret(Property.ofValue("test-secret"))
@@ -47,8 +43,7 @@ class GetCustomerTest {
             .apiEndpoint(Property.ofValue(wm.baseUrl()))
             .companyId(Property.ofValue(COMPANY_ID))
             .customerId(Property.ofValue(CUSTOMER_ID))
-            .build());
-        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+            .build();
 
         var output = task.run(runContextFactory.of(Map.of()));
 

@@ -15,10 +15,6 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
 
 @KestraTest
 class UpsertTest {
@@ -39,7 +35,7 @@ class UpsertTest {
         wm.stubFor(patch(urlPathEqualTo("/api/data/v9.2/accounts(" + RECORD_ID + ")"))
             .willReturn(aResponse().withStatus(204)));
 
-        var task = spy(Upsert.builder()
+        var task = TestableUpsert.builder()
             .tenantId(Property.ofValue(TENANT_ID))
             .clientId(Property.ofValue("test-client"))
             .clientSecret(Property.ofValue("test-secret"))
@@ -47,8 +43,7 @@ class UpsertTest {
             .entitySetName(Property.ofValue("accounts"))
             .recordId(Property.ofValue(RECORD_ID))
             .record(Property.ofValue(Map.of("name", "Contoso Ltd")))
-            .build());
-        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+            .build();
 
         var output = task.run(runContextFactory.of(Map.of()));
 
@@ -63,7 +58,7 @@ class UpsertTest {
                 .withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":{\"code\":\"0x80040217\",\"message\":\"Record not found\"}}")));
 
-        var task = spy(Upsert.builder()
+        var task = TestableUpsert.builder()
             .tenantId(Property.ofValue(TENANT_ID))
             .clientId(Property.ofValue("test-client"))
             .clientSecret(Property.ofValue("test-secret"))
@@ -71,8 +66,7 @@ class UpsertTest {
             .entitySetName(Property.ofValue("accounts"))
             .recordId(Property.ofValue(RECORD_ID))
             .record(Property.ofValue(Map.of("name", "Contoso Ltd")))
-            .build());
-        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+            .build();
 
         var ex = assertThrows(IllegalStateException.class,
             () -> task.run(runContextFactory.of(Map.of())));

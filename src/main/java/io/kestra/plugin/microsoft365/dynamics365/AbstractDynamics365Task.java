@@ -77,7 +77,7 @@ public abstract class AbstractDynamics365Task extends Task {
      * Acquires a Bearer access token for the given OAuth2 scope using the configured credentials.
      * A fresh token is obtained on every call — no caching between runs.
      */
-    public String getAccessToken(RunContext runContext, String scope) throws IllegalVariableEvaluationException {
+    protected String getAccessToken(RunContext runContext, String scope) throws IllegalVariableEvaluationException {
         var rTenantId = runContext.render(this.tenantId).as(String.class).orElseThrow(
             () -> new IllegalArgumentException("tenantId is required for authentication"));
         var rClientId = runContext.render(this.clientId).as(String.class).orElseThrow(

@@ -38,14 +38,14 @@ public abstract class AbstractBusinessCentralTask extends AbstractDynamics365Tas
         title = "Business Central API endpoint",
         description = """
             Override the Business Central API base URL.
-            Useful for sovereign clouds or for testing. Defaults to `https://api.businesscentral.dynamics.com` when not set.
+            Useful for sovereign clouds (e.g. GovCloud, China). Defaults to `https://api.businesscentral.dynamics.com` when not set.
             """
     )
     @PluginProperty(group = "advanced", hidden = true)
     protected Property<String> apiEndpoint;
 
     private static final String DEFAULT_BC_ENDPOINT = "https://api.businesscentral.dynamics.com";
-    private static final ObjectMapper MAPPER = JacksonMapper.ofJson();
+    protected static final ObjectMapper MAPPER = JacksonMapper.ofJson();
 
     /**
      * Returns the Business Central API v2.0 base URL.
@@ -62,7 +62,7 @@ public abstract class AbstractBusinessCentralTask extends AbstractDynamics365Tas
 
     /**
      * Returns the OAuth2 scope for Business Central.
-     * When apiEndpoint is overridden, derive the scope from it to allow testing against local stubs.
+     * When apiEndpoint is overridden (e.g. sovereign cloud), derive the scope from it.
      */
     protected String scope(RunContext runContext) throws IllegalVariableEvaluationException {
         var rApiEndpoint = runContext.render(this.apiEndpoint).as(String.class).orElse(null);
@@ -73,7 +73,7 @@ public abstract class AbstractBusinessCentralTask extends AbstractDynamics365Tas
         return DEFAULT_BC_ENDPOINT + "/.default";
     }
 
-    protected static void parseAndThrowError(int statusCode, String body) {
+    protected static RuntimeException parseAndThrowError(int statusCode, String body) {
         String message = body;
         try {
             var error = MAPPER.readTree(body).path("error");
@@ -83,6 +83,6 @@ public abstract class AbstractBusinessCentralTask extends AbstractDynamics365Tas
         } catch (Exception ignored) {
             // fall back to raw body
         }
-        throw new IllegalStateException("Business Central API returned HTTP " + statusCode + ": " + message);
+        return new IllegalStateException("Business Central API returned HTTP " + statusCode + ": " + message);
     }
 }

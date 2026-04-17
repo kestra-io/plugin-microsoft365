@@ -15,10 +15,6 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
 
 @KestraTest
 class DeleteTest {
@@ -39,15 +35,14 @@ class DeleteTest {
         wm.stubFor(delete(urlPathEqualTo("/api/data/v9.2/contacts(" + RECORD_ID + ")"))
             .willReturn(aResponse().withStatus(204)));
 
-        var task = spy(Delete.builder()
+        var task = TestableDelete.builder()
             .tenantId(Property.ofValue(TENANT_ID))
             .clientId(Property.ofValue("test-client"))
             .clientSecret(Property.ofValue("test-secret"))
             .orgUrl(Property.ofValue(wm.baseUrl()))
             .entitySetName(Property.ofValue("contacts"))
             .recordId(Property.ofValue(RECORD_ID))
-            .build());
-        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+            .build();
 
         task.run(runContextFactory.of(Map.of()));
 
@@ -61,15 +56,14 @@ class DeleteTest {
                 .withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":{\"code\":\"0x80040217\",\"message\":\"Record not found\"}}")));
 
-        var task = spy(Delete.builder()
+        var task = TestableDelete.builder()
             .tenantId(Property.ofValue(TENANT_ID))
             .clientId(Property.ofValue("test-client"))
             .clientSecret(Property.ofValue("test-secret"))
             .orgUrl(Property.ofValue(wm.baseUrl()))
             .entitySetName(Property.ofValue("contacts"))
             .recordId(Property.ofValue(RECORD_ID))
-            .build());
-        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+            .build();
 
         var ex = assertThrows(IllegalStateException.class,
             () -> task.run(runContextFactory.of(Map.of())));
