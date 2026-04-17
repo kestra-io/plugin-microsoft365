@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.http.HttpRequest;
 import io.kestra.core.http.client.HttpClient;
+import io.kestra.core.http.client.HttpClientResponseException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -104,7 +105,7 @@ public class ListItems extends AbstractBusinessCentralTask implements RunnableTa
         var rFilter = runContext.render(filter).as(String.class).orElse(null);
         var rTop = runContext.render(top).as(Integer.class).orElse(100);
 
-        var token = getAccessToken(runContext, scope());
+        var token = getAccessToken(runContext, scope(runContext));
         var urlBuilder = new StringBuilder(baseUrl(runContext))
             .append("/companies(").append(rCompanyId).append(")/items")
             .append("?$top=").append(rTop);
@@ -123,12 +124,13 @@ public class ListItems extends AbstractBusinessCentralTask implements RunnableTa
                 .method("GET")
                 .build();
 
-            var response = client.request(request, String.class);
-            var statusCode = response.getStatus().getCode();
-            var body = response.getBody() != null ? response.getBody() : "";
-
-            if (statusCode < 200 || statusCode >= 300) {
-                ListCompanies.parseAndThrowError(statusCode, body);
+            String body;
+            try {
+                var response = client.request(request, String.class);
+                body = response.getBody() != null ? response.getBody() : "";
+            } catch (HttpClientResponseException e) {
+                parseAndThrowError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
+                throw new IllegalStateException("unreachable");
             }
 
             var page = MAPPER.readValue(body, BcListResponse.class);

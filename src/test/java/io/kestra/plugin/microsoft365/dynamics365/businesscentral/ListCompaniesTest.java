@@ -1,50 +1,77 @@
 package io.kestra.plugin.microsoft365.dynamics365.businesscentral;
 
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContextFactory;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import java.util.List;
 import java.util.Map;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
 @KestraTest
 class ListCompaniesTest {
 
+    @RegisterExtension
+    static WireMockExtension wm = WireMockExtension.newInstance()
+        .options(wireMockConfig().dynamicPort())
+        .build();
+
     @Inject
     private RunContextFactory runContextFactory;
 
+    private static final String TENANT_ID = "test-tenant";
+
     @Test
-    void shouldBuildTaskWithRequiredProperties() {
-        var task = ListCompanies.builder()
-            .tenantId(Property.ofValue("test-tenant-id"))
-            .clientId(Property.ofValue("test-client-id"))
-            .clientSecret(Property.ofValue("test-client-secret"))
+    void listCompaniesReturnsCompanies() throws Exception {
+        wm.stubFor(get(urlPathEqualTo("/v2.0/" + TENANT_ID + "/production/api/v2.0/companies"))
+            .willReturn(okJson("{\"value\":[{\"id\":\"company-1\",\"name\":\"Cronus International Ltd.\"},{\"id\":\"company-2\",\"name\":\"CRONUS USA Inc.\"}]}")));
+
+        var task = spy(ListCompanies.builder()
+            .tenantId(Property.ofValue(TENANT_ID))
+            .clientId(Property.ofValue("test-client"))
+            .clientSecret(Property.ofValue("test-secret"))
             .environment(Property.ofValue("production"))
-            .build();
+            .apiEndpoint(Property.ofValue(wm.baseUrl()))
+            .build());
+        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
 
-        assertThat(task.getTenantId(), notNullValue());
-        assertThat(task.getEnvironment(), notNullValue());
-    }
-
-    @Test
-    void shouldBuildOutputWithCompanies() {
-        var companies = List.of(
-            Map.<String, Object>of("id", "company-1", "name", "Cronus International Ltd."),
-            Map.<String, Object>of("id", "company-2", "name", "CRONUS USA Inc.")
-        );
-
-        var output = ListCompanies.Output.builder()
-            .companies(companies)
-            .size(companies.size())
-            .build();
+        var output = task.run(runContextFactory.of(Map.of()));
 
         assertThat(output.getCompanies(), hasSize(2));
         assertThat(output.getSize(), is(2));
         assertThat(output.getCompanies().getFirst().get("name"), is("Cronus International Ltd."));
+    }
+
+    @Test
+    void listCompaniesThrowsOnApiError() throws Exception {
+        wm.stubFor(get(urlPathEqualTo("/v2.0/" + TENANT_ID + "/production/api/v2.0/companies"))
+            .willReturn(aResponse().withStatus(401)
+                .withHeader("Content-Type", "application/json")
+                .withBody("{\"error\":{\"code\":\"Unauthorized\",\"message\":\"Invalid credentials\"}}")));
+
+        var task = spy(ListCompanies.builder()
+            .tenantId(Property.ofValue(TENANT_ID))
+            .clientId(Property.ofValue("test-client"))
+            .clientSecret(Property.ofValue("test-secret"))
+            .environment(Property.ofValue("production"))
+            .apiEndpoint(Property.ofValue(wm.baseUrl()))
+            .build());
+        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+
+        var ex = assertThrows(IllegalStateException.class,
+            () -> task.run(runContextFactory.of(Map.of())));
+        assertThat(ex.getMessage(), containsString("Unauthorized"));
     }
 }

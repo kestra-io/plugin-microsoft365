@@ -1,8 +1,8 @@
 package io.kestra.plugin.microsoft365.dynamics365.dataverse;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.http.HttpRequest;
 import io.kestra.core.http.client.HttpClient;
+import io.kestra.core.http.client.HttpClientResponseException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
@@ -10,7 +10,6 @@ import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.VoidOutput;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.JacksonMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -70,8 +69,6 @@ public class Delete extends AbstractDataverseTask implements RunnableTask<VoidOu
     @PluginProperty(group = "main")
     private Property<String> recordId;
 
-    private static final ObjectMapper MAPPER = JacksonMapper.ofJson();
-
     @Override
     public VoidOutput run(RunContext runContext) throws Exception {
         var logger = runContext.logger();
@@ -92,30 +89,15 @@ public class Delete extends AbstractDataverseTask implements RunnableTask<VoidOu
                 .method("DELETE")
                 .build();
 
-            var response = client.request(request, String.class);
-            var statusCode = response.getStatus().getCode();
-
-            // 204 No Content on successful delete
-            if (statusCode < 200 || statusCode >= 300) {
-                var responseBody = response.getBody() != null ? response.getBody() : "";
-                parseAndThrowODataError(statusCode, responseBody);
+            try {
+                client.request(request, String.class);
+            } catch (HttpClientResponseException e) {
+                parseAndThrowODataError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
+                throw new IllegalStateException("unreachable");
             }
         }
 
         logger.info("Deleted Dataverse record {}/({}) successfully", rEntitySetName, rRecordId);
         return null;
-    }
-
-    private static void parseAndThrowODataError(int statusCode, String body) {
-        String message = body;
-        try {
-            var error = MAPPER.readTree(body).path("error");
-            var code = error.path("code").asText("");
-            var msg = error.path("message").asText(body);
-            message = code.isBlank() ? msg : "[" + code + "] " + msg;
-        } catch (Exception ignored) {
-            // fall back to raw body
-        }
-        throw new IllegalStateException("Dataverse API returned HTTP " + statusCode + ": " + message);
     }
 }

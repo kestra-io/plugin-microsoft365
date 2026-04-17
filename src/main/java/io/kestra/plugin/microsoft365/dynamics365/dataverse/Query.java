@@ -1,11 +1,11 @@
 package io.kestra.plugin.microsoft365.dynamics365.dataverse;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.http.HttpRequest;
 import io.kestra.core.http.HttpResponse;
 import io.kestra.core.http.client.HttpClient;
+import io.kestra.core.http.client.HttpClientResponseException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -95,7 +95,8 @@ import java.util.Map;
     description = """
         Executes an OData GET request against a Dataverse entity set.
         Supports `$filter`, `$select`, and `$top` query parameters.
-        When `fetchType` is `STORE`, follows `@odata.nextLink` pagination to retrieve all pages.
+        When `fetchType` is `FETCH` or `STORE`, follows `@odata.nextLink` pagination to retrieve all pages.
+        When `fetchType` is `FETCH_ONE`, returns only the first record from the first page.
         Requires the Dataverse application permission `Dynamics CRM user` on the service principal.
         """
 )
@@ -127,7 +128,8 @@ public class Query extends AbstractDataverseTask implements RunnableTask<Query.O
         title = "Maximum records per page ($top)",
         description = """
             Maximum number of records to return per OData page.
-            When `fetchType` is `STORE`, all pages are followed regardless of this value.
+            When `fetchType` is `STORE` or `FETCH`, all pages are followed regardless of this value.
+            When `fetchType` is `FETCH_ONE`, this is ignored and only the first record is returned.
             Defaults to 100.
             """
     )
@@ -138,7 +140,8 @@ public class Query extends AbstractDataverseTask implements RunnableTask<Query.O
     @Schema(
         title = "Fetch type",
         description = """
-            FETCH — returns records as a list in the task output.
+            FETCH_ONE — returns only the first record from the first page.
+            FETCH — returns all records (following pagination) as a list in the task output.
             STORE — writes all records (following pagination) to Kestra internal storage as an Ion file.
             """
     )
@@ -164,7 +167,11 @@ public class Query extends AbstractDataverseTask implements RunnableTask<Query.O
         var token = getAccessToken(runContext, rScope);
 
         var urlBuilder = new StringBuilder(rBaseUrl).append(rEntitySetName);
-        urlBuilder.append("?$top=").append(rTop);
+        if (rFetchType == FetchType.FETCH_ONE) {
+            urlBuilder.append("?$top=1");
+        } else {
+            urlBuilder.append("?$top=").append(rTop);
+        }
         if (rFilter != null) {
             urlBuilder.append("&$filter=").append(URLEncoder.encode(rFilter, StandardCharsets.UTF_8));
         }
@@ -186,19 +193,23 @@ public class Query extends AbstractDataverseTask implements RunnableTask<Query.O
                     .method("GET")
                     .build();
 
-                HttpResponse<String> response = client.request(request, String.class);
-                var statusCode = response.getStatus().getCode();
-                var body = response.getBody() != null ? response.getBody() : "";
-
-                if (statusCode < 200 || statusCode >= 300) {
-                    parseAndThrowODataError(statusCode, body);
+                HttpResponse<String> response;
+                try {
+                    response = client.request(request, String.class);
+                } catch (HttpClientResponseException e) {
+                    parseAndThrowODataError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
+                    throw new IllegalStateException("unreachable");
                 }
+                var body = response.getBody() != null ? response.getBody() : "";
 
                 var page = MAPPER.readValue(body, ODataResponse.class);
                 allRecords.addAll(page.getValue());
 
-                // Only follow nextLink when storing all pages
-                nextUrl = (rFetchType == FetchType.STORE) ? page.getOdataNextLink() : null;
+                if (rFetchType == FetchType.FETCH_ONE) {
+                    break;
+                }
+
+                nextUrl = page.getOdataNextLink();
                 if (nextUrl != null) {
                     logger.debug("Following OData nextLink, total so far: {}", allRecords.size());
                 }
@@ -207,6 +218,14 @@ public class Query extends AbstractDataverseTask implements RunnableTask<Query.O
 
         runContext.metric(Counter.of("count", allRecords.size()));
         logger.info("Dataverse query on '{}' returned {} record(s)", rEntitySetName, allRecords.size());
+
+        if (rFetchType == FetchType.FETCH_ONE) {
+            var record = allRecords.isEmpty() ? null : allRecords.getFirst();
+            return Output.builder()
+                .records(record == null ? List.of() : List.of(record))
+                .size(record == null ? 0 : 1)
+                .build();
+        }
 
         if (rFetchType == FetchType.STORE) {
             var tempFile = storeRecords(runContext, allRecords);
@@ -230,19 +249,6 @@ public class Query extends AbstractDataverseTask implements RunnableTask<Query.O
         return tempFile;
     }
 
-    private static void parseAndThrowODataError(int statusCode, String body) {
-        String message = body;
-        try {
-            var error = MAPPER.readTree(body).path("error");
-            var code = error.path("code").asText("");
-            var msg = error.path("message").asText(body);
-            message = code.isBlank() ? msg : "[" + code + "] " + msg;
-        } catch (Exception ignored) {
-            // fall back to raw body
-        }
-        throw new IllegalStateException("Dataverse API returned HTTP " + statusCode + ": " + message);
-    }
-
     @JsonIgnoreProperties(ignoreUnknown = true)
     @lombok.Data
     static class ODataResponse {
@@ -258,7 +264,7 @@ public class Query extends AbstractDataverseTask implements RunnableTask<Query.O
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
             title = "Records",
-            description = "List of entity records returned; populated when fetchType is FETCH."
+            description = "List of entity records returned; populated when fetchType is FETCH or FETCH_ONE."
         )
         private final List<Map<String, Object>> records;
 

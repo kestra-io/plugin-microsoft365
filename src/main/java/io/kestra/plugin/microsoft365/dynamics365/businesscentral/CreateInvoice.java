@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.http.HttpRequest;
 import io.kestra.core.http.client.HttpClient;
+import io.kestra.core.http.client.HttpClientResponseException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
@@ -83,7 +84,7 @@ public class CreateInvoice extends AbstractBusinessCentralTask implements Runnab
         var rCompanyId = runContext.render(companyId).as(String.class).orElseThrow();
         var rInvoice = runContext.render(invoice).asMap(String.class, Object.class);
 
-        var token = getAccessToken(runContext, scope());
+        var token = getAccessToken(runContext, scope(runContext));
         var url = baseUrl(runContext) + "/companies(" + rCompanyId + ")/salesInvoices";
         var body = MAPPER.writeValueAsString(rInvoice);
 
@@ -99,12 +100,13 @@ public class CreateInvoice extends AbstractBusinessCentralTask implements Runnab
                 .body(HttpRequest.StringRequestBody.builder().content(body).build())
                 .build();
 
-            var response = client.request(request, String.class);
-            var statusCode = response.getStatus().getCode();
-            var responseBody = response.getBody() != null ? response.getBody() : "";
-
-            if (statusCode < 200 || statusCode >= 300) {
-                ListCompanies.parseAndThrowError(statusCode, responseBody);
+            String responseBody;
+            try {
+                var response = client.request(request, String.class);
+                responseBody = response.getBody() != null ? response.getBody() : "";
+            } catch (HttpClientResponseException e) {
+                parseAndThrowError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
+                throw new IllegalStateException("unreachable");
             }
 
             created = MAPPER.readValue(responseBody, new TypeReference<>() {});

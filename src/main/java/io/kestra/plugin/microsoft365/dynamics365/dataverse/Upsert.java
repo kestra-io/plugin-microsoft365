@@ -3,6 +3,7 @@ package io.kestra.plugin.microsoft365.dynamics365.dataverse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.http.HttpRequest;
 import io.kestra.core.http.client.HttpClient;
+import io.kestra.core.http.client.HttpClientResponseException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
@@ -111,13 +112,11 @@ public class Upsert extends AbstractDataverseTask implements RunnableTask<Upsert
                 .body(HttpRequest.StringRequestBody.builder().content(body).build())
                 .build();
 
-            var response = client.request(request, String.class);
-            var statusCode = response.getStatus().getCode();
-
-            // 204 No Content on success (upsert returns no body)
-            if (statusCode < 200 || statusCode >= 300) {
-                var responseBody = response.getBody() != null ? response.getBody() : "";
-                parseAndThrowODataError(statusCode, responseBody);
+            try {
+                client.request(request, String.class);
+            } catch (HttpClientResponseException e) {
+                parseAndThrowODataError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
+                throw new IllegalStateException("unreachable");
             }
         }
 
@@ -126,19 +125,6 @@ public class Upsert extends AbstractDataverseTask implements RunnableTask<Upsert
         return Output.builder()
             .recordId(rRecordId)
             .build();
-    }
-
-    private static void parseAndThrowODataError(int statusCode, String body) {
-        String message = body;
-        try {
-            var error = MAPPER.readTree(body).path("error");
-            var code = error.path("code").asText("");
-            var msg = error.path("message").asText(body);
-            message = code.isBlank() ? msg : "[" + code + "] " + msg;
-        } catch (Exception ignored) {
-            // fall back to raw body
-        }
-        throw new IllegalStateException("Dataverse API returned HTTP " + statusCode + ": " + message);
     }
 
     @Builder

@@ -1,71 +1,127 @@
 package io.kestra.plugin.microsoft365.dynamics365.dataverse;
 
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContextFactory;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import java.util.List;
 import java.util.Map;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
 @KestraTest
 class QueryTest {
 
+    @RegisterExtension
+    static WireMockExtension wm = WireMockExtension.newInstance()
+        .options(wireMockConfig().dynamicPort())
+        .build();
+
     @Inject
     private RunContextFactory runContextFactory;
 
-    @Test
-    void shouldBuildTaskWithRequiredProperties() {
-        var task = Query.builder()
-            .tenantId(Property.ofValue("test-tenant-id"))
-            .clientId(Property.ofValue("test-client-id"))
-            .clientSecret(Property.ofValue("test-client-secret"))
-            .orgUrl(Property.ofValue("https://myorg.api.crm.dynamics.com"))
-            .entitySetName(Property.ofValue("accounts"))
-            .filter(Property.ofValue("statecode eq 0"))
-            .select(Property.ofValue("accountid,name"))
-            .top(Property.ofValue(50))
-            .fetchType(Property.ofValue(FetchType.FETCH))
-            .build();
+    private static final String TENANT_ID = "test-tenant";
 
-        assertThat(task.getEntitySetName(), notNullValue());
-        assertThat(task.getOrgUrl(), notNullValue());
-        assertThat(task.getTenantId(), notNullValue());
-        assertThat(task.getClientId(), notNullValue());
-        assertThat(task.getClientSecret(), notNullValue());
+    private Query.QueryBuilder<?, ?> baseTask() {
+        return Query.builder()
+            .tenantId(Property.ofValue(TENANT_ID))
+            .clientId(Property.ofValue("test-client"))
+            .clientSecret(Property.ofValue("test-secret"))
+            .orgUrl(Property.ofValue(wm.baseUrl()));
     }
 
     @Test
-    void shouldBuildFetchOutput() {
-        var records = List.of(
-            Map.<String, Object>of("accountid", "id-1", "name", "Contoso"),
-            Map.<String, Object>of("accountid", "id-2", "name", "Fabrikam")
-        );
+    void fetchReturnsAllRecordsFollowingPagination() throws Exception {
+        var page1 = ("{\"value\":[{\"accountid\":\"id-1\",\"name\":\"Contoso\"}],"
+            + "\"@odata.nextLink\":\"" + wm.baseUrl() + "/api/data/v9.2/accounts?$top=1&$skiptoken=abc\"}");
+        var page2 = "{\"value\":[{\"accountid\":\"id-2\",\"name\":\"Fabrikam\"}]}";
 
-        var output = Query.Output.builder()
-            .records(records)
-            .size(records.size())
-            .build();
+        wm.stubFor(get(urlPathEqualTo("/api/data/v9.2/accounts"))
+            .withQueryParam("$skiptoken", equalTo("abc"))
+            .atPriority(1)
+            .willReturn(okJson(page2)));
+
+        wm.stubFor(get(urlPathEqualTo("/api/data/v9.2/accounts"))
+            .withQueryParam("$top", equalTo("1"))
+            .atPriority(2)
+            .willReturn(okJson(page1)));
+
+        var task = spy(baseTask()
+            .entitySetName(Property.ofValue("accounts"))
+            .top(Property.ofValue(1))
+            .fetchType(Property.ofValue(FetchType.FETCH))
+            .build());
+        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+
+        var output = task.run(runContextFactory.of(Map.of()));
 
         assertThat(output.getRecords(), hasSize(2));
         assertThat(output.getSize(), is(2));
         assertThat(output.getRecords().getFirst().get("name"), is("Contoso"));
+        assertThat(output.getUri(), nullValue());
     }
 
     @Test
-    void shouldBuildStoreOutput() {
-        var output = Query.Output.builder()
-            .uri(java.net.URI.create("kestra:///test/file.ion"))
-            .size(100)
-            .build();
+    void fetchOneReturnsFirstRecordOnly() throws Exception {
+        wm.stubFor(get(urlPathEqualTo("/api/data/v9.2/accounts"))
+            .withQueryParam("$top", equalTo("1"))
+            .willReturn(okJson("{\"value\":[{\"accountid\":\"id-1\",\"name\":\"Contoso\"},{\"accountid\":\"id-2\",\"name\":\"Fabrikam\"}]}")));
+
+        var task = spy(baseTask()
+            .entitySetName(Property.ofValue("accounts"))
+            .fetchType(Property.ofValue(FetchType.FETCH_ONE))
+            .build());
+        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+
+        var output = task.run(runContextFactory.of(Map.of()));
+
+        assertThat(output.getRecords(), hasSize(1));
+        assertThat(output.getSize(), is(1));
+        assertThat(output.getRecords().getFirst().get("name"), is("Contoso"));
+    }
+
+    @Test
+    void storeWritesToInternalStorage() throws Exception {
+        wm.stubFor(get(urlPathEqualTo("/api/data/v9.2/contacts"))
+            .willReturn(okJson("{\"value\":[{\"contactid\":\"c-1\",\"fullname\":\"Alice\"},{\"contactid\":\"c-2\",\"fullname\":\"Bob\"}]}")));
+
+        var task = spy(baseTask()
+            .entitySetName(Property.ofValue("contacts"))
+            .fetchType(Property.ofValue(FetchType.STORE))
+            .build());
+        doReturn("fake-token").when(task).getAccessToken(any(), anyString());
+
+        var output = task.run(runContextFactory.of(Map.of()));
 
         assertThat(output.getUri(), notNullValue());
-        assertThat(output.getSize(), is(100));
+        assertThat(output.getSize(), is(2));
         assertThat(output.getRecords(), nullValue());
+    }
+
+    @Test
+    void throwsWhenBothClientSecretAndCertProvided() {
+        var task = spy(Query.builder()
+            .tenantId(Property.ofValue(TENANT_ID))
+            .clientId(Property.ofValue("test-client"))
+            .clientSecret(Property.ofValue("test-secret"))
+            .pemCertificate(Property.ofValue("-----BEGIN CERTIFICATE-----"))
+            .orgUrl(Property.ofValue(wm.baseUrl()))
+            .entitySetName(Property.ofValue("accounts"))
+            .build());
+
+        assertThrows(IllegalArgumentException.class,
+            () -> task.run(runContextFactory.of(Map.of())));
     }
 }

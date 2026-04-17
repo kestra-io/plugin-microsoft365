@@ -1,9 +1,11 @@
 package io.kestra.plugin.microsoft365.dynamics365.dataverse;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.microsoft365.dynamics365.AbstractDynamics365Task;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
@@ -52,5 +54,20 @@ public abstract class AbstractDataverseTask extends AbstractDynamics365Task {
      */
     protected String scope(RunContext runContext) throws IllegalVariableEvaluationException {
         return resolvedOrgUrl(runContext) + "/.default";
+    }
+
+    private static final ObjectMapper MAPPER = JacksonMapper.ofJson();
+
+    protected static void parseAndThrowODataError(int statusCode, String body) {
+        String message = body;
+        try {
+            var error = MAPPER.readTree(body).path("error");
+            var code = error.path("code").asText("");
+            var msg = error.path("message").asText(body);
+            message = code.isBlank() ? msg : "[" + code + "] " + msg;
+        } catch (Exception ignored) {
+            // fall back to raw body
+        }
+        throw new IllegalStateException("Dataverse API returned HTTP " + statusCode + ": " + message);
     }
 }
