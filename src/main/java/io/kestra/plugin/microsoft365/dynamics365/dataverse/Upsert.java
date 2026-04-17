@@ -1,0 +1,153 @@
+package io.kestra.plugin.microsoft365.dynamics365.dataverse;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.kestra.core.http.HttpRequest;
+import io.kestra.core.http.client.HttpClient;
+import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.models.tasks.RunnableTask;
+import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.JacksonMapper;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
+
+import java.net.URI;
+import java.util.Map;
+
+@SuperBuilder
+@ToString
+@EqualsAndHashCode
+@Getter
+@NoArgsConstructor
+@Plugin(
+    examples = {
+        @Example(
+            title = "Upsert an account record in Dataverse",
+            full = true,
+            code = """
+                id: dataverse_upsert_account
+                namespace: company.team
+
+                tasks:
+                  - id: upsert
+                    type: io.kestra.plugin.microsoft365.dynamics365.dataverse.Upsert
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    orgUrl: "https://myorg.api.crm.dynamics.com"
+                    entitySetName: "accounts"
+                    recordId: "00000000-0000-0000-0000-000000000001"
+                    record:
+                      name: "Contoso Ltd"
+                      emailaddress1: "info@contoso.com"
+                """
+        )
+    }
+)
+@Schema(
+    title = "Upsert a Dataverse entity record",
+    description = """
+        Issues an OData PATCH request to create or update a record identified by its GUID.
+        If the record exists it is updated; if it does not exist it is created (upsert semantics).
+        Requires the Dataverse application permission `Dynamics CRM user` on the service principal.
+        """
+)
+public class Upsert extends AbstractDataverseTask implements RunnableTask<Upsert.Output> {
+
+    @Schema(
+        title = "Entity set name",
+        description = "OData entity set name, e.g. `accounts`, `contacts`, `leads`."
+    )
+    @NotNull
+    @PluginProperty(group = "main")
+    private Property<String> entitySetName;
+
+    @Schema(
+        title = "Record ID",
+        description = "GUID of the record to create or update, e.g. `00000000-0000-0000-0000-000000000001`."
+    )
+    @NotNull
+    @PluginProperty(group = "main")
+    private Property<String> recordId;
+
+    @Schema(
+        title = "Record fields",
+        description = "Map of field names to values to set on the record."
+    )
+    @NotNull
+    @PluginProperty(group = "main")
+    private Property<Map<String, Object>> record;
+
+    private static final ObjectMapper MAPPER = JacksonMapper.ofJson();
+
+    @Override
+    public Output run(RunContext runContext) throws Exception {
+        var logger = runContext.logger();
+
+        var rEntitySetName = runContext.render(entitySetName).as(String.class).orElseThrow();
+        var rRecordId = runContext.render(recordId).as(String.class).orElseThrow();
+        var rRecord = runContext.render(record).asMap(String.class, Object.class);
+
+        var rScope = scope(runContext);
+        var token = getAccessToken(runContext, rScope);
+        var url = baseUrl(runContext) + rEntitySetName + "(" + rRecordId + ")";
+
+        var body = MAPPER.writeValueAsString(rRecord);
+
+        try (var client = new HttpClient(runContext, httpConfiguration())) {
+            var request = HttpRequest.builder()
+                .addHeader("Authorization", "Bearer " + token)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeader("OData-MaxVersion", "4.0")
+                .addHeader("OData-Version", "4.0")
+                .addHeader("If-Match", "*")
+                .uri(URI.create(url))
+                .method("PATCH")
+                .body(HttpRequest.StringRequestBody.builder().content(body).build())
+                .build();
+
+            var response = client.request(request, String.class);
+            var statusCode = response.getStatus().getCode();
+
+            // 204 No Content on success (upsert returns no body)
+            if (statusCode < 200 || statusCode >= 300) {
+                var responseBody = response.getBody() != null ? response.getBody() : "";
+                parseAndThrowODataError(statusCode, responseBody);
+            }
+        }
+
+        logger.info("Upserted Dataverse record {}/({}) successfully", rEntitySetName, rRecordId);
+
+        return Output.builder()
+            .recordId(rRecordId)
+            .build();
+    }
+
+    private static void parseAndThrowODataError(int statusCode, String body) {
+        String message = body;
+        try {
+            var error = MAPPER.readTree(body).path("error");
+            var code = error.path("code").asText("");
+            var msg = error.path("message").asText(body);
+            message = code.isBlank() ? msg : "[" + code + "] " + msg;
+        } catch (Exception ignored) {
+            // fall back to raw body
+        }
+        throw new IllegalStateException("Dataverse API returned HTTP " + statusCode + ": " + message);
+    }
+
+    @Builder
+    @Getter
+    public static class Output implements io.kestra.core.models.tasks.Output {
+        @Schema(
+            title = "Record ID",
+            description = "GUID of the created or updated record."
+        )
+        private final String recordId;
+    }
+}
