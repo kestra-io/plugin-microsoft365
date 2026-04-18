@@ -2,11 +2,14 @@
 
 ## What
 
-description = 'Microsoft 365 plugin for Kestra Exposes 20 plugin components (tasks, triggers, and/or conditions).
+- Provides plugin components under `io.kestra.plugin.microsoft365`.
+- Covers Microsoft Graph-based integrations for Outlook, OneShare and SharePoint file operations, and Teams notifications.
+- Includes classes such as `Send`, `MailReceivedTrigger`, `Upload`, `Trigger`, and `TeamsIncomingWebhook`.
 
 ## Why
 
-Enables Kestra workflows to interact with Microsoft 365, allowing orchestration of Microsoft 365-based operations as part of data pipelines and automation workflows.
+- This plugin integrates Kestra with Microsoft 365 through Microsoft Graph.
+- It lets workflows send and read Outlook mail, manage OneDrive and SharePoint files, and post Teams notifications.
 
 ## How
 
@@ -71,6 +74,7 @@ plugin-microsoft365/
 All tasks and triggers accept standard Kestra plugin properties. Credentials should use
 `{{ secret('SECRET_NAME') }}` — never hardcode real values.
 
-## Agents
+## References
 
-**IMPORTANT:** This is a Kestra plugin repository (prefixed by `plugin-`, `storage-`, or `secret-`). You **MUST** delegate all coding tasks to the `kestra-plugin-developer` agent. Do NOT implement code changes directly — always use this agent.
+- https://kestra.io/docs/plugin-developer-guide
+- https://kestra.io/docs/plugin-developer-guide/contribution-guidelines
