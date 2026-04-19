@@ -8,8 +8,9 @@
 
 ## Why
 
-- This plugin integrates Kestra with Microsoft 365 through Microsoft Graph.
-- It lets workflows send and read Outlook mail, manage OneDrive and SharePoint files, and post Teams notifications.
+- What user problem does this solve? Teams need to integrate Microsoft 365 services through the Microsoft Graph API from orchestrated workflows instead of relying on manual console work, ad hoc scripts, or disconnected schedulers.
+- Why would a team adopt this plugin in a workflow? It keeps Microsoft 365 steps in the same Kestra flow as upstream preparation, approvals, retries, notifications, and downstream systems.
+- What operational/business outcome does it enable? It reduces manual handoffs and fragmented tooling while improving reliability, traceability, and delivery speed for processes that depend on Microsoft 365.
 
 ## How
 
