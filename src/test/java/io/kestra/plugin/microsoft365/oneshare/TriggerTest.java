@@ -9,42 +9,30 @@ import com.microsoft.graph.drives.item.items.item.delta.DeltaGetResponse;
 import com.microsoft.graph.drives.item.items.item.delta.DeltaRequestBuilder;
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.kestra.core.junit.annotations.EvaluateTrigger;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.property.Property;
-import io.kestra.core.queues.QueueFactoryInterface;
-import io.kestra.core.queues.QueueInterface;
-import io.kestra.core.repositories.LocalFlowRepositoryLoader;
-import io.kestra.core.runners.FlowListeners;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.core.utils.TestsUtils;
-import io.kestra.jdbc.runner.JdbcScheduler;
 import io.kestra.plugin.microsoft365.oneshare.models.OneShareFile;
-import io.kestra.scheduler.AbstractScheduler;
-import io.kestra.worker.DefaultWorker;
-import io.micronaut.context.ApplicationContext;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
-import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
-import static io.kestra.core.tenant.TenantService.MAIN_TENANT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
@@ -56,23 +44,11 @@ import static org.mockito.Mockito.when;
 @KestraTest
 class TriggerTest extends AbstractOneShareTest {
     @Inject
-    private ApplicationContext applicationContext;
-
-    @Inject
-    private FlowListeners flowListenersService;
-
-    @Inject
-    @Named(QueueFactoryInterface.EXECUTION_NAMED)
-    private QueueInterface<Execution> executionQueue;
-
-    @Inject
-    protected LocalFlowRepositoryLoader repositoryLoader;
-
-    @Inject
     protected OnesShareTestUtils testUtils;
 
     private static MockedConstruction<GraphServiceClient> graphClientMock;
     private static MockedConstruction<DeltaRequestBuilder> deltaBuilderMock;
+    private static final String LISTEN_FLOW_PATH = "flows/oneshare/oneshare-listen.yml";
     
     @BeforeAll
     static void setupMocks() {
@@ -163,6 +139,18 @@ class TriggerTest extends AbstractOneShareTest {
         }
     }
 
+    @BeforeEach
+    void prepareListenFlowInputs(TestInfo testInfo) throws Exception {
+        if (!credentialsAvailable || !"listenFromFlow".equals(testInfo.getTestMethod().map(method -> method.getName()).orElse(null))) {
+            return;
+        }
+
+        String out1 = FriendlyId.createFriendlyId() + ".yml";
+        testUtils.uploadNamed("Documents/TestTrigger", out1);
+        String out2 = FriendlyId.createFriendlyId() + ".yml";
+        testUtils.uploadNamed("Documents/TestTrigger", out2);
+    }
+
     // ================== Mock-based Unit Tests ==================
     
     @Test
@@ -184,11 +172,11 @@ class TriggerTest extends AbstractOneShareTest {
             .clientSecret(Property.ofValue("mock-secret"))
             .build();
         
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = 
+        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = 
             TestsUtils.mockTrigger(runContextFactory, trigger);
         
         // The GraphServiceClient created in the evaluate method will be mocked
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
         
         // On first run, the trigger should not fire (to avoid flooding with existing files)
         // It should return empty but successfully process the files and store state
@@ -223,49 +211,13 @@ class TriggerTest extends AbstractOneShareTest {
 
     @Test
     @EnabledIf("isIntegrationTestEnabled")
-    void listenFromFlow() throws Exception {
-        // mock flow listeners
-        CountDownLatch queueCount = new CountDownLatch(1);
+    @EvaluateTrigger(flow = LISTEN_FLOW_PATH, triggerId = "file_created")
+    void listenFromFlow(Optional<Execution> optionalExecution) {
+        assertThat(optionalExecution.isPresent(), is(true));
 
-        try (
-            DefaultWorker worker = applicationContext.createBean(DefaultWorker.class, IdUtils.create(), 8, null);
-            AbstractScheduler scheduler = new JdbcScheduler(
-                this.applicationContext,
-                this.flowListenersService
-            )
-        ) {
-            AtomicReference<Execution> last = new AtomicReference<>();
-
-            // wait for execution
-            Flux<Execution> receive = TestsUtils.receive(executionQueue, executionWithError -> {
-                Execution execution = executionWithError.getLeft();
-                if (execution.getFlowId().equals("oneshare-listen")) {
-                    last.set(execution);
-                    queueCount.countDown();
-                }
-            });
-
-            // prepare two files in the monitored folder
-            String out1 = FriendlyId.createFriendlyId() + ".yml";
-            testUtils.uploadNamed("Documents/TestTrigger", out1);
-            String out2 = FriendlyId.createFriendlyId() + ".yml";
-            testUtils.uploadNamed("Documents/TestTrigger", out2);
-
-            worker.run();
-            scheduler.run();
-            repositoryLoader.load(MAIN_TENANT, Objects.requireNonNull(TriggerTest.class.getClassLoader().getResource("flows/oneshare")));
-
-            boolean await = queueCount.await(60, TimeUnit.SECONDS);
-            try {
-                assertThat(await, is(true));
-            } finally {
-                receive.blockLast();
-            }
-
-            @SuppressWarnings("unchecked")
-            List<Object> files = (List<Object>) last.get().getTrigger().getVariables().get("files");
-            assertThat(files.size(), greaterThanOrEqualTo(2));
-        }
+        @SuppressWarnings("unchecked")
+        List<Object> files = (List<Object>) optionalExecution.get().getTrigger().getVariables().get("files");
+        assertThat(files.size(), greaterThanOrEqualTo(2));
     }
 
     @Test
@@ -288,8 +240,8 @@ class TriggerTest extends AbstractOneShareTest {
         // Give delta API time to process
         Thread.sleep(2000);
 
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
 
         assertThat(execution.isPresent(), is(true));
 
@@ -316,8 +268,8 @@ class TriggerTest extends AbstractOneShareTest {
             .interval(Duration.ofSeconds(10))
             .build();
 
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
 
         // First evaluation should return empty as no new files
         assertThat(execution.isPresent(), is(false));
@@ -349,8 +301,8 @@ class TriggerTest extends AbstractOneShareTest {
         // Give delta API time to process
         Thread.sleep(2000);
 
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
 
         assertThat(execution.isPresent(), is(true));
 
@@ -379,8 +331,8 @@ class TriggerTest extends AbstractOneShareTest {
         testUtils.uploadNamed("Documents/TestTriggerState", file1);
         Thread.sleep(2000);
 
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context1 = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution1 = trigger.evaluate(context1.getKey(), context1.getValue());
+        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context1 = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution1 = trigger.evaluate(context1.getKey(), context1.getValue().context());
 
         assertThat(execution1.isPresent(), is(true));
 
@@ -390,8 +342,8 @@ class TriggerTest extends AbstractOneShareTest {
 
         // Second evaluation without new files - should not trigger
         Thread.sleep(2000);
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context2 = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution2 = trigger.evaluate(context2.getKey(), context2.getValue());
+        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context2 = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution2 = trigger.evaluate(context2.getKey(), context2.getValue().context());
 
         assertThat(execution2.isPresent(), is(false));
 
@@ -400,8 +352,8 @@ class TriggerTest extends AbstractOneShareTest {
         testUtils.uploadNamed("Documents/TestTriggerState", file2);
         Thread.sleep(2000);
 
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context3 = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution3 = trigger.evaluate(context3.getKey(), context3.getValue());
+        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context3 = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution3 = trigger.evaluate(context3.getKey(), context3.getValue().context());
 
         assertThat(execution3.isPresent(), is(true));
 
@@ -435,10 +387,10 @@ class TriggerTest extends AbstractOneShareTest {
             .interval(Duration.ofSeconds(10))
             .build();
 
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, triggerWithDrive);
+        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, triggerWithDrive);
 
         // Should not throw exception
-        Optional<Execution> execution = triggerWithDrive.evaluate(context.getKey(), context.getValue());
+        Optional<Execution> execution = triggerWithDrive.evaluate(context.getKey(), context.getValue().context());
 
         // Execution may or may not be present depending on files, but should not throw
         assertThat(execution, notNullValue());
