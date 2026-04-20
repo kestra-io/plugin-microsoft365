@@ -1,0 +1,8 @@
+group: io.kestra.plugin.microsoft365.dynamics365.businesscentral
+name: "dynamics365-businesscentral"
+title: "Dynamics 365 Business Central"
+description: "Tasks that interact with Microsoft Dynamics 365 Business Central for finance and operations."
+body: "Configure the `environment`, tenant ID, and Azure authentication properties to manage companies, customers, sales invoices, and items via the Business Central API v2.0."
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"
