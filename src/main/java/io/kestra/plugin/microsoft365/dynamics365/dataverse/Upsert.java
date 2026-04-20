@@ -100,8 +100,8 @@ public class Upsert extends AbstractDataverseTask implements RunnableTask<Upsert
                 .addHeader("Authorization", "Bearer " + token)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Accept", "application/json")
-                .addHeader("OData-MaxVersion", "4.0")
-                .addHeader("OData-Version", "4.0")
+                .addHeader("OData-MaxVersion", ODATA_VERSION)
+                .addHeader("OData-Version", ODATA_VERSION)
                 .addHeader("If-Match", "*")
                 .uri(URI.create(url))
                 .method("PATCH")
@@ -111,7 +111,7 @@ public class Upsert extends AbstractDataverseTask implements RunnableTask<Upsert
             try {
                 client.request(request, String.class);
             } catch (HttpClientResponseException e) {
-                throw parseAndThrowODataError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
+                throw parseAndThrowError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
             }
         }
 

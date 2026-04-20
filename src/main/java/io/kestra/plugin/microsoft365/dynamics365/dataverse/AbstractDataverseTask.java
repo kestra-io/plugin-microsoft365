@@ -1,11 +1,9 @@
 package io.kestra.plugin.microsoft365.dynamics365.dataverse;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.microsoft365.dynamics365.AbstractDynamics365Task;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
@@ -21,6 +19,8 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @NoArgsConstructor
 public abstract class AbstractDataverseTask extends AbstractDynamics365Task {
+
+    protected static final String ODATA_VERSION = "4.0";
 
     @Schema(
         title = "Dataverse Organization URL",
@@ -56,18 +56,4 @@ public abstract class AbstractDataverseTask extends AbstractDynamics365Task {
         return resolvedOrgUrl(runContext) + "/.default";
     }
 
-    protected static final ObjectMapper MAPPER = JacksonMapper.ofJson();
-
-    protected static RuntimeException parseAndThrowODataError(int statusCode, String body) {
-        String message = body;
-        try {
-            var error = MAPPER.readTree(body).path("error");
-            var code = error.path("code").asText("");
-            var msg = error.path("message").asText(body);
-            message = code.isBlank() ? msg : "[" + code + "] " + msg;
-        } catch (Exception ignored) {
-            // fall back to raw body
-        }
-        return new IllegalStateException("Dataverse API returned HTTP " + statusCode + ": " + message);
-    }
 }

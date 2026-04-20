@@ -83,8 +83,8 @@ public class Delete extends AbstractDataverseTask implements RunnableTask<VoidOu
         try (var client = new HttpClient(runContext, httpConfiguration())) {
             var request = HttpRequest.builder()
                 .addHeader("Authorization", "Bearer " + token)
-                .addHeader("OData-MaxVersion", "4.0")
-                .addHeader("OData-Version", "4.0")
+                .addHeader("OData-MaxVersion", ODATA_VERSION)
+                .addHeader("OData-Version", ODATA_VERSION)
                 .uri(URI.create(url))
                 .method("DELETE")
                 .build();
@@ -92,7 +92,7 @@ public class Delete extends AbstractDataverseTask implements RunnableTask<VoidOu
             try {
                 client.request(request, String.class);
             } catch (HttpClientResponseException e) {
-                throw parseAndThrowODataError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
+                throw parseAndThrowError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
             }
         }
 

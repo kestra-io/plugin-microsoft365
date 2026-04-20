@@ -3,6 +3,7 @@ package io.kestra.plugin.microsoft365.dynamics365;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientCertificateCredentialBuilder;
 import com.azure.identity.ClientSecretCredentialBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.http.client.HttpClientResponseException;
 import io.kestra.core.http.client.configurations.HttpConfiguration;
@@ -11,6 +12,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.serializers.JacksonMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
@@ -137,5 +139,20 @@ public abstract class AbstractDynamics365Task extends Task {
         if (body instanceof String s) return s;
         if (body instanceof byte[] b) return new String(b, StandardCharsets.UTF_8);
         return body.toString();
+    }
+
+    protected static final ObjectMapper MAPPER = JacksonMapper.ofJson();
+
+    protected static RuntimeException parseAndThrowError(int statusCode, String body) {
+        String message = body;
+        try {
+            var error = MAPPER.readTree(body).path("error");
+            var code = error.path("code").asText("");
+            var msg = error.path("message").asText(body);
+            message = code.isBlank() ? msg : "[" + code + "] " + msg;
+        } catch (Exception ignored) {
+            // fall back to raw body
+        }
+        return new IllegalStateException("Dynamics 365 API returned HTTP " + statusCode + ": " + message);
     }
 }

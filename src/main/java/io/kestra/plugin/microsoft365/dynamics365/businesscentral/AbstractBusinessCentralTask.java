@@ -1,11 +1,9 @@
 package io.kestra.plugin.microsoft365.dynamics365.businesscentral;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.microsoft365.dynamics365.AbstractDynamics365Task;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
@@ -45,7 +43,6 @@ public abstract class AbstractBusinessCentralTask extends AbstractDynamics365Tas
     protected Property<String> apiEndpoint;
 
     private static final String DEFAULT_BC_ENDPOINT = "https://api.businesscentral.dynamics.com";
-    protected static final ObjectMapper MAPPER = JacksonMapper.ofJson();
 
     /**
      * Returns the Business Central API v2.0 base URL.
@@ -73,16 +70,4 @@ public abstract class AbstractBusinessCentralTask extends AbstractDynamics365Tas
         return DEFAULT_BC_ENDPOINT + "/.default";
     }
 
-    protected static RuntimeException parseAndThrowError(int statusCode, String body) {
-        String message = body;
-        try {
-            var error = MAPPER.readTree(body).path("error");
-            var code = error.path("code").asText("");
-            var msg = error.path("message").asText(body);
-            message = code.isBlank() ? msg : "[" + code + "] " + msg;
-        } catch (Exception ignored) {
-            // fall back to raw body
-        }
-        return new IllegalStateException("Business Central API returned HTTP " + statusCode + ": " + message);
-    }
 }

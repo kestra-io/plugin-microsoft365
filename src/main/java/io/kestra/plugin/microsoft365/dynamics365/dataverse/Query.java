@@ -183,8 +183,8 @@ public class Query extends AbstractDataverseTask implements RunnableTask<Query.O
                 var request = HttpRequest.builder()
                     .addHeader("Authorization", "Bearer " + token)
                     .addHeader("Accept", "application/json")
-                    .addHeader("OData-MaxVersion", "4.0")
-                    .addHeader("OData-Version", "4.0")
+                    .addHeader("OData-MaxVersion", ODATA_VERSION)
+                    .addHeader("OData-Version", ODATA_VERSION)
                     .uri(URI.create(nextUrl))
                     .method("GET")
                     .build();
@@ -193,7 +193,7 @@ public class Query extends AbstractDataverseTask implements RunnableTask<Query.O
                 try {
                     response = client.request(request, String.class);
                 } catch (HttpClientResponseException e) {
-                    throw parseAndThrowODataError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
+                    throw parseAndThrowError(e.getResponse().getStatus().getCode(), responseBodyAsString(e));
                 }
                 var body = response.getBody() != null ? response.getBody() : "";
 
