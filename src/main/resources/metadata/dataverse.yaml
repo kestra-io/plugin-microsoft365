@@ -1,0 +1,8 @@
+group: io.kestra.plugin.microsoft365.dynamics365.dataverse
+name: "dynamics365-dataverse"
+title: "Dynamics 365 Dataverse"
+description: "Tasks that interact with Microsoft Dynamics 365 Dataverse for OData entity operations."
+body: "Configure the `orgUrl` and Azure authentication properties to query, upsert, and delete Dataverse entity records using the OData v9.2 API."
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"

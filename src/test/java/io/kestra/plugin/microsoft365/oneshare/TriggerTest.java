@@ -13,38 +13,25 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.property.Property;
-import io.kestra.core.queues.QueueFactoryInterface;
-import io.kestra.core.queues.QueueInterface;
-import io.kestra.core.repositories.LocalFlowRepositoryLoader;
-import io.kestra.core.runners.FlowListeners;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.core.utils.TestsUtils;
-import io.kestra.jdbc.runner.JdbcScheduler;
 import io.kestra.plugin.microsoft365.oneshare.models.OneShareFile;
-import io.kestra.scheduler.AbstractScheduler;
-import io.kestra.worker.DefaultWorker;
-import io.micronaut.context.ApplicationContext;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
-import reactor.core.publisher.Flux;
+
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
-import static io.kestra.core.tenant.TenantService.MAIN_TENANT;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
@@ -55,19 +42,6 @@ import static org.mockito.Mockito.when;
 
 @KestraTest
 class TriggerTest extends AbstractOneShareTest {
-    @Inject
-    private ApplicationContext applicationContext;
-
-    @Inject
-    private FlowListeners flowListenersService;
-
-    @Inject
-    @Named(QueueFactoryInterface.EXECUTION_NAMED)
-    private QueueInterface<Execution> executionQueue;
-
-    @Inject
-    protected LocalFlowRepositoryLoader repositoryLoader;
-
     @Inject
     protected OnesShareTestUtils testUtils;
 
@@ -224,48 +198,36 @@ class TriggerTest extends AbstractOneShareTest {
     @Test
     @EnabledIf("isIntegrationTestEnabled")
     void listenFromFlow() throws Exception {
-        // mock flow listeners
-        CountDownLatch queueCount = new CountDownLatch(1);
+        // prepare two files in the monitored folder
+        String out1 = FriendlyId.createFriendlyId() + ".yml";
+        testUtils.uploadNamed("Documents/TestTrigger", out1);
+        String out2 = FriendlyId.createFriendlyId() + ".yml";
+        testUtils.uploadNamed("Documents/TestTrigger", out2);
 
-        try (
-            DefaultWorker worker = applicationContext.createBean(DefaultWorker.class, IdUtils.create(), 8, null);
-            AbstractScheduler scheduler = new JdbcScheduler(
-                this.applicationContext,
-                this.flowListenersService
-            )
-        ) {
-            AtomicReference<Execution> last = new AtomicReference<>();
+        Trigger trigger = Trigger.builder()
+            .id("oneshare-trigger")
+            .type(Trigger.class.getName())
+            .driveId(Property.ofValue(driveId))
+            .path(Property.ofValue("/Documents/TestTrigger"))
+            .interval(Duration.ofSeconds(30))
+            .tenantId(Property.ofValue(tenantId))
+            .clientId(Property.ofValue(clientId))
+            .clientSecret(Property.ofValue(clientSecret))
+            .build();
 
-            // wait for execution
-            Flux<Execution> receive = TestsUtils.receive(executionQueue, executionWithError -> {
-                Execution execution = executionWithError.getLeft();
-                if (execution.getFlowId().equals("oneshare-listen")) {
-                    last.set(execution);
-                    queueCount.countDown();
-                }
-            });
+        // First evaluate to initialize state
+        var context = TestsUtils.mockTrigger(runContextFactory, trigger);
+        trigger.evaluate(context.getKey(), context.getValue());
 
-            // prepare two files in the monitored folder
-            String out1 = FriendlyId.createFriendlyId() + ".yml";
-            testUtils.uploadNamed("Documents/TestTrigger", out1);
-            String out2 = FriendlyId.createFriendlyId() + ".yml";
-            testUtils.uploadNamed("Documents/TestTrigger", out2);
+        // Second evaluate should detect the files
+        context = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
 
-            worker.run();
-            scheduler.run();
-            repositoryLoader.load(MAIN_TENANT, Objects.requireNonNull(TriggerTest.class.getClassLoader().getResource("flows/oneshare")));
+        assertThat(execution.isPresent(), is(true));
 
-            boolean await = queueCount.await(60, TimeUnit.SECONDS);
-            try {
-                assertThat(await, is(true));
-            } finally {
-                receive.blockLast();
-            }
-
-            @SuppressWarnings("unchecked")
-            List<Object> files = (List<Object>) last.get().getTrigger().getVariables().get("files");
-            assertThat(files.size(), greaterThanOrEqualTo(2));
-        }
+        @SuppressWarnings("unchecked")
+        List<Object> files = (List<Object>) execution.get().getTrigger().getVariables().get("files");
+        assertThat(files.size(), greaterThanOrEqualTo(2));
     }
 
     @Test
