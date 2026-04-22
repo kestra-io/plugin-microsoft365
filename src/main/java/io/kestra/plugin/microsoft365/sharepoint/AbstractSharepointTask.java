@@ -40,7 +40,7 @@ public abstract class AbstractSharepointTask extends Task {
         description = "Client secret for the app registration; required for client-credentials flow"
     )
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(group = "main", secret = true)
     protected Property<String> clientSecret;
 
     @Schema(

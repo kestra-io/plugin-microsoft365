@@ -35,7 +35,7 @@ public abstract class AbstractMicrosoftGraphIdentityPollingTrigger extends Abstr
 
     @Schema(title = "Azure client secret", description = "Client secret for the app registration; required for client-credentials flow")
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(group = "main", secret = true)
     protected Property<String> clientSecret;
 
     @Schema(title = "User principal name", description = "Mailbox UPN/email to act on; defaults to app context when omitted")

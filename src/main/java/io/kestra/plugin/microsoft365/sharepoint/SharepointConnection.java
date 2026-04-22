@@ -39,7 +39,7 @@ public class SharepointConnection {
         description = "Client secret for the app registration; required for client-credentials flow"
     )
     @NotNull
-    @PluginProperty(group = "main")
+    @PluginProperty(group = "main", secret = true)
     private Property<String> clientSecret;
 
     @Schema(
