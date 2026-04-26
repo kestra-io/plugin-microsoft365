@@ -23,7 +23,7 @@ public interface MicrosoftGraphConnectionInterface {
                     Either clientSecret OR pemCertificate must be provided, not both.
                     """
     )
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     Property<String> getClientSecret();
 
     @Schema(

@@ -61,7 +61,7 @@ public abstract class AbstractDynamics365Task extends Task {
             Either clientSecret OR pemCertificate must be provided, not both.
             """
     )
-    @PluginProperty(group = "connection")
+    @PluginProperty(group = "connection", secret = true)
     protected Property<String> clientSecret;
 
     @Schema(
@@ -72,7 +72,7 @@ public abstract class AbstractDynamics365Task extends Task {
             Either clientSecret OR pemCertificate must be provided, not both.
             """
     )
-    @PluginProperty(group = "advanced")
+    @PluginProperty(group = "advanced", secret = true)
     protected Property<String> pemCertificate;
 
     /**

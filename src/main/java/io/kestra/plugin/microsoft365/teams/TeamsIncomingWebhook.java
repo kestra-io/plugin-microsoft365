@@ -140,7 +140,7 @@ public class TeamsIncomingWebhook  extends AbstractTeamsConnection {
     @Schema(
         title = "Teams incoming webhook URL"
     )
-    @PluginProperty(dynamic = true, group = "main")
+    @PluginProperty(dynamic = true, group = "main", secret = true)
     @NotEmpty
     private String url;
 

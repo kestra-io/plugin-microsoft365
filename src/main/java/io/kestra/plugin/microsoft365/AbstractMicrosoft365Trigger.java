@@ -19,15 +19,21 @@ import org.apache.commons.lang3.StringUtils;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 
+import io.kestra.core.models.annotations.PluginProperty;
+
 @SuperBuilder
 @ToString
 @EqualsAndHashCode
 @Getter
 @NoArgsConstructor
 public abstract class AbstractMicrosoft365Trigger extends AbstractTrigger implements MicrosoftGraphConnectionInterface {
+    @PluginProperty(group = "main")
     protected Property<String> tenantId;
+    @PluginProperty(group = "main")
     protected Property<String> clientId;
+    @PluginProperty(group = "main", secret = true)
     protected Property<String> clientSecret;
+    @PluginProperty(group = "main", secret = true)
     protected Property<String> pemCertificate;
 
     protected GraphServiceClient graphClient(RunContext runContext) throws IllegalVariableEvaluationException {
