@@ -1,6 +1,5 @@
 package io.kestra.plugin.microsoft365;
 
-import io.kestra.core.models.annotations.PluginProperty;
 import com.azure.core.credential.TokenCredential;
 import com.azure.identity.ClientCertificateCredentialBuilder;
 import com.azure.identity.ClientSecretCredentialBuilder;
@@ -28,7 +27,6 @@ import java.nio.charset.StandardCharsets;
 public abstract class AbstractGraphConnection extends Task implements MicrosoftGraphConnectionInterface {
     protected Property<String> tenantId;
     protected Property<String> clientId;
-    @PluginProperty(secret = true)
     protected Property<String> clientSecret;
     protected Property<String> pemCertificate;
 
