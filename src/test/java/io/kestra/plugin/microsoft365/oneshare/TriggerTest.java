@@ -9,16 +9,21 @@ import com.microsoft.graph.drives.item.items.item.delta.DeltaGetResponse;
 import com.microsoft.graph.drives.item.items.item.delta.DeltaRequestBuilder;
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
-import io.kestra.core.junit.annotations.EvaluateTrigger;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.property.Property;
-=======
-import io.kestra.core.queues.DispatchQueueInterface;
-import io.kestra.core.repositories.LocalFlowRepositoryLoader;
-import io.kestra.core.runners.FlowListeners;
->>>>>>> 381087c (fix: v2 compatibility)
+import io.kestra.core.utils.IdUtils;
+import io.kestra.core.utils.TestsUtils;
+import io.kestra.plugin.microsoft365.oneshare.models.OneShareFile;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.mockito.MockedConstruction;
+import org.mockito.Mockito;
+
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -27,11 +32,21 @@ import java.util.Map;
 import java.util.Optional;
 
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+@KestraTest
+class TriggerTest extends AbstractOneShareTest {
+    @Inject
     protected OnesShareTestUtils testUtils;
 
     private static MockedConstruction<GraphServiceClient> graphClientMock;
     private static MockedConstruction<DeltaRequestBuilder> deltaBuilderMock;
-    private static final String LISTEN_FLOW_PATH = "flows/oneshare/oneshare-listen.yml";
     
     @BeforeAll
     static void setupMocks() {
@@ -122,18 +137,6 @@ import java.util.Optional;
         }
     }
 
-    @BeforeEach
-    void prepareListenFlowInputs(TestInfo testInfo) throws Exception {
-        if (!credentialsAvailable || !"listenFromFlow".equals(testInfo.getTestMethod().map(method -> method.getName()).orElse(null))) {
-            return;
-        }
-
-        String out1 = FriendlyId.createFriendlyId() + ".yml";
-        testUtils.uploadNamed("Documents/TestTrigger", out1);
-        String out2 = FriendlyId.createFriendlyId() + ".yml";
-        testUtils.uploadNamed("Documents/TestTrigger", out2);
-    }
-
     // ================== Mock-based Unit Tests ==================
     
     @Test
@@ -155,11 +158,11 @@ import java.util.Optional;
             .clientSecret(Property.ofValue("mock-secret"))
             .build();
         
-        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = 
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = 
             TestsUtils.mockTrigger(runContextFactory, trigger);
         
         // The GraphServiceClient created in the evaluate method will be mocked
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
         
         // On first run, the trigger should not fire (to avoid flooding with existing files)
         // It should return empty but successfully process the files and store state
@@ -247,8 +250,8 @@ import java.util.Optional;
         // Give delta API time to process
         Thread.sleep(2000);
 
-        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
 
         assertThat(execution.isPresent(), is(true));
 
@@ -275,8 +278,8 @@ import java.util.Optional;
             .interval(Duration.ofSeconds(10))
             .build();
 
-        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
 
         // First evaluation should return empty as no new files
         assertThat(execution.isPresent(), is(false));
@@ -308,8 +311,8 @@ import java.util.Optional;
         // Give delta API time to process
         Thread.sleep(2000);
 
-        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
 
         assertThat(execution.isPresent(), is(true));
 
@@ -338,8 +341,8 @@ import java.util.Optional;
         testUtils.uploadNamed("Documents/TestTriggerState", file1);
         Thread.sleep(2000);
 
-        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context1 = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution1 = trigger.evaluate(context1.getKey(), context1.getValue().context());
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context1 = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution1 = trigger.evaluate(context1.getKey(), context1.getValue());
 
         assertThat(execution1.isPresent(), is(true));
 
@@ -349,8 +352,8 @@ import java.util.Optional;
 
         // Second evaluation without new files - should not trigger
         Thread.sleep(2000);
-        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context2 = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution2 = trigger.evaluate(context2.getKey(), context2.getValue().context());
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context2 = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution2 = trigger.evaluate(context2.getKey(), context2.getValue());
 
         assertThat(execution2.isPresent(), is(false));
 
@@ -359,8 +362,8 @@ import java.util.Optional;
         testUtils.uploadNamed("Documents/TestTriggerState", file2);
         Thread.sleep(2000);
 
-        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context3 = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution3 = trigger.evaluate(context3.getKey(), context3.getValue().context());
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context3 = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution3 = trigger.evaluate(context3.getKey(), context3.getValue());
 
         assertThat(execution3.isPresent(), is(true));
 
@@ -394,10 +397,10 @@ import java.util.Optional;
             .interval(Duration.ofSeconds(10))
             .build();
 
-        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, triggerWithDrive);
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, triggerWithDrive);
 
         // Should not throw exception
-        Optional<Execution> execution = triggerWithDrive.evaluate(context.getKey(), context.getValue().context());
+        Optional<Execution> execution = triggerWithDrive.evaluate(context.getKey(), context.getValue());
 
         // Execution may or may not be present depending on files, but should not throw
         assertThat(execution, notNullValue());
