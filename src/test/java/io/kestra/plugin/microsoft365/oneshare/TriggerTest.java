@@ -217,11 +217,11 @@ class TriggerTest extends AbstractOneShareTest {
 
         // First evaluate to initialize state
         var context = TestsUtils.mockTrigger(runContextFactory, trigger);
-        trigger.evaluate(context.getKey(), context.getValue());
+        trigger.evaluate(context.getKey(), context.getValue().context());
 
         // Second evaluate should detect the files
         context = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
 
         assertThat(execution.isPresent(), is(true));
 
