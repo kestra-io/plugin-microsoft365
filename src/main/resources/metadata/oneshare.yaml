@@ -1,6 +1,6 @@
 group: io.kestra.plugin.microsoft365.oneshare
 name: "oneshare"
-title: "OneShare"
+title: "MicrosoftOneShare"
 description: "Tasks that manage OneDrive/SharePoint files with a unified interface and trigger on file changes."
 body: "Use Graph credentials with drive or site identifiers to list, upload, export, download, or delete files and enable the polling trigger to react to create/update events; ensure `driveId`/`itemPath` and permissions are set for the target library."
 videos: []
