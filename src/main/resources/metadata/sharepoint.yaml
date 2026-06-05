@@ -1,6 +1,6 @@
 group: io.kestra.plugin.microsoft365.sharepoint
 name: "sharepoint"
-title: "SharePoint"
+title: "Microsoft SharePoint"
 description: "Tasks that interact with SharePoint document libraries for file operations."
 body: "Set the SharePoint `siteId` and drive or item paths along with Graph authentication to list, upload, export, download, or delete files, reusing the shared Microsoft 365 connection for consistent permissions and auditability."
 videos: []
