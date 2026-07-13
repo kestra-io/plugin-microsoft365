@@ -6,6 +6,7 @@ import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
@@ -27,7 +28,11 @@ import java.nio.charset.StandardCharsets;
 public abstract class AbstractGraphConnection extends Task implements MicrosoftGraphConnectionInterface {
     protected Property<String> tenantId;
     protected Property<String> clientId;
+    @PluginProperty(secret = true, group = "connection")
+    @ToString.Exclude
     protected Property<String> clientSecret;
+    @PluginProperty(secret = true, group = "advanced")
+    @ToString.Exclude
     protected Property<String> pemCertificate;
 
     public GraphServiceClient graphClient(RunContext runContext) throws IllegalVariableEvaluationException {

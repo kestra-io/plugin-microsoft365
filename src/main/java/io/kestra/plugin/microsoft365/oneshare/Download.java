@@ -68,7 +68,7 @@ import io.kestra.core.models.annotations.PluginProperty;
                     itemId: "01ABC123DEF456GHI789"
 
                   - id: read_csv
-                    type: io.kestra.plugin.serdes.csv.CsvReader
+                    type: io.kestra.plugin.serdes.csv.CsvToIon
                     from: "{{ outputs.download_file.uri }}"
                 """
         )
