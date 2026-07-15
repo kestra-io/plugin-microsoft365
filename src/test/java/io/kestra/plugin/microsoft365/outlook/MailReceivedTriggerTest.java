@@ -142,8 +142,8 @@ class MailReceivedTriggerTest {
             .includeAttachments(Property.ofValue(false))
             .build();
 
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
 
         assertThat(execution.isPresent(), is(true));
 
@@ -182,8 +182,8 @@ class MailReceivedTriggerTest {
             .interval(Duration.ofMinutes(5))
             .build();
 
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
 
         assertThat(execution.isPresent(), is(true));
 
@@ -207,8 +207,8 @@ class MailReceivedTriggerTest {
             .interval(Duration.ofMinutes(5))
             .build();
 
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, trigger);
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
 
         assertThat(execution.isPresent(), is(true));
 
@@ -231,12 +231,12 @@ class MailReceivedTriggerTest {
             .interval(Duration.ofMinutes(5))
             .build();
 
-        var context = TestsUtils.mockTrigger(runContextFactory, trigger);
+        Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, trigger);
 
-        var firstExecution = trigger.evaluate(context.getKey(), context.getValue());
+        var firstExecution = trigger.evaluate(context.getKey(), context.getValue().context());
         assertThat(firstExecution.isPresent(), is(true));
 
-        var secondExecution = trigger.evaluate(context.getKey(), context.getValue());
+        var secondExecution = trigger.evaluate(context.getKey(), context.getValue().context());
         assertThat(secondExecution.isEmpty(), is(true));
     }
 
@@ -277,8 +277,8 @@ class MailReceivedTriggerTest {
                 .interval(Duration.ofMinutes(5))
                 .build();
 
-            Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, trigger);
-            Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+            Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, trigger);
+            Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue().context());
 
             assertThat(execution.isEmpty(), is(true));
         } finally {
@@ -333,8 +333,8 @@ class MailReceivedTriggerTest {
                 .interval(Duration.ofMinutes(5))
                 .build();
 
-            var context = TestsUtils.mockTrigger(runContextFactory, trigger);
-            var execution = trigger.evaluate(context.getKey(), context.getValue());
+            Map.Entry<ConditionContext, io.kestra.core.scheduler.model.TriggerState> context = TestsUtils.mockTrigger(runContextFactory, trigger);
+            var execution = trigger.evaluate(context.getKey(), context.getValue().context());
             assertThat(execution.isPresent(), is(true));
 
             @SuppressWarnings("unchecked")
