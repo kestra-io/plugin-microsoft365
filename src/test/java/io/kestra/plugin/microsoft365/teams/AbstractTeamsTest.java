@@ -80,28 +80,16 @@ public class AbstractTeamsTest {
     }
 
     protected Execution runAndCaptureExecution(String triggeringFlowId, String notificationFlowId) throws Exception {
-        CountDownLatch queueCount = new CountDownLatch(1);
-        AtomicReference<Execution> last = new AtomicReference<>();
+        Execution execution = runnerUtils.runOne(MAIN_TENANT, "io.kestra.tests", triggeringFlowId);
 
-        executionQueue.addListener(execution -> {
-            if (execution.getFlowId().equals(notificationFlowId)) {
-                last.set(execution);
-                queueCount.countDown();
-            }
-        });
-
-        Execution execution;
-
-        execution = runnerUtils.runOne(
+        Execution triggeredExecution = runnerUtils.awaitFlowExecution(
+            e -> e.getTrigger() != null && execution.getId().equals(e.getTrigger().getVariables().get("executionId")),
             MAIN_TENANT,
             "io.kestra.tests",
-            triggeringFlowId
+            notificationFlowId,
+            java.time.Duration.ofSeconds(30)
         );
 
-        boolean await = queueCount.await(20, TimeUnit.SECONDS);
-        assertThat(await, is(true));
-
-        Execution triggeredExecution = last.get();
         assertThat(triggeredExecution, notNullValue());
         assertThat(triggeredExecution.getTrigger().getVariables().get("executionId"), is(execution.getId()));
 

@@ -7,12 +7,15 @@ kestra:
     type: local
     local:
       base-path: /tmp/unittest
+  controller:
+    port: ${random.port}
   worker:
     controllers:
       type: STATIC
       static:
         endpoints:
           - host: localhost
+            port: ${kestra.controller.port}
   tasks:
     oneshare:
       tenantId: "${MS365_TENANT_ID:}"
