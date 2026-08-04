@@ -1,0 +1,8 @@
+group: io.kestra.plugin.microsoft365.teams.adaptivecards
+name: "adaptivecards"
+title: "Microsoft Teams Adaptive Cards"
+description: "Tasks that send Microsoft Adaptive Cards to Teams channels and chats via the Microsoft Graph API."
+body: "Use the same Azure AD app registration as other Microsoft 365 tasks to post rich, interactive Adaptive Cards to any Teams channel or user chat and get back the message ID, instead of relying on a static incoming webhook URL."
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"

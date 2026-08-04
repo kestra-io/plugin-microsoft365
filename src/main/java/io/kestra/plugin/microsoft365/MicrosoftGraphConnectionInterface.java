@@ -40,4 +40,26 @@ public interface MicrosoftGraphConnectionInterface {
     @Schema(title = "Tenant ID")
     @PluginProperty(group = "connection")
     Property<String> getTenantId();
+
+    @Schema(
+            title = "Username",
+            description = """
+                    Username of the delegated user to authenticate as (Resource Owner Password Credentials flow).
+                    Set this together with password for delegated (acting-as-user) authentication instead of app-only \
+                    clientSecret/pemCertificate credentials. Required for operations Microsoft Graph rejects under \
+                    app-only auth, such as sending Teams channel or chat messages.
+                    """
+    )
+    @PluginProperty(group = "connection")
+    Property<String> getUsername();
+
+    @Schema(
+            title = "Password",
+            description = """
+                    Password of the delegated user, used together with username for Resource Owner Password \
+                    Credentials (ROPC) authentication.
+                    """
+    )
+    @PluginProperty(secret = true, group = "connection")
+    Property<String> getPassword();
 }
