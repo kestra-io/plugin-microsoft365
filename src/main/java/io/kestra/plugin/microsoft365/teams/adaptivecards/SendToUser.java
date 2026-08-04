@@ -4,6 +4,7 @@ import com.microsoft.graph.models.AadUserConversationMember;
 import com.microsoft.graph.models.Chat;
 import com.microsoft.graph.models.ChatMessage;
 import com.microsoft.graph.models.ChatType;
+import com.microsoft.graph.models.User;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 import io.kestra.core.models.annotations.Example;
@@ -21,6 +22,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -172,28 +174,38 @@ public class SendToUser extends AbstractGraphConnection implements RunnableTask<
         String rUserId = this.userId != null ? runContext.render(this.userId).as(String.class).orElse(null) : null;
         String rUserEmail = this.userEmail != null ? runContext.render(this.userEmail).as(String.class).orElse(null) : null;
 
-        if ((rUserId == null) == (rUserEmail == null)) {
+        if (StringUtils.isNotBlank(rUserId) == StringUtils.isNotBlank(rUserEmail)) {
             throw new IllegalArgumentException("Exactly one of `userId` or `userEmail` must be set, not both or neither");
         }
 
-        String rTargetUser = rUserId != null ? rUserId : rUserEmail;
-        String rCard = runContext.render(this.card).as(String.class).orElseThrow();
+        String rTargetUser = StringUtils.isNotBlank(rUserId) ? rUserId : rUserEmail;
+        String rCard = runContext.render(this.card).as(String.class)
+            .orElseThrow(() -> new IllegalArgumentException("card is required"));
 
         GraphServiceClient client = this.graphClient(runContext);
 
         logger.info("Resolving 1:1 chat with user '{}'", rTargetUser);
-        logger.warn("Creating a chat with application permissions is a restricted Graph capability: most tenants require delegated " +
+        logger.debug("Creating a chat with application permissions is a restricted Graph capability: most tenants require delegated " +
             "permissions, RSC, or a registered Teams bot; this call may fail with a 403 under pure app-only auth");
 
-        AadUserConversationMember member = new AadUserConversationMember();
-        member.setOdataType("#microsoft.graph.aadUserConversationMember");
-        member.setRoles(List.of("owner"));
-        // "user@odata.bind" links the member to an existing user resource; the SDK model has no typed setter for it.
-        member.getAdditionalData().put("user@odata.bind", "https://graph.microsoft.com/v1.0/users('" + rTargetUser + "')");
+        String rCallerId;
+        try {
+            User me = client.me().get();
+            if (me == null || me.getId() == null) {
+                throw new IllegalStateException("Microsoft Graph API did not return the authenticated user's ID; creating a 1:1 " +
+                    "chat requires delegated (username/password) authentication");
+            }
+            rCallerId = me.getId();
+        } catch (ApiException e) {
+            throw new IllegalStateException(
+                String.format("Failed to resolve the authenticated user via Microsoft Graph (HTTP %d): %s. Creating a 1:1 chat " +
+                        "requires delegated (username/password) authentication",
+                    e.getResponseStatusCode(), e.getMessage()), e);
+        }
 
         Chat chat = new Chat();
         chat.setChatType(ChatType.OneOnOne);
-        chat.setMembers(List.of(member));
+        chat.setMembers(List.of(conversationMember(rTargetUser), conversationMember(rCallerId)));
 
         Chat createdChat;
         try {
@@ -233,6 +245,21 @@ public class SendToUser extends AbstractGraphConnection implements RunnableTask<
             .chatId(rChatId)
             .messageId(createdMessage.getId())
             .build();
+    }
+
+    private static AadUserConversationMember conversationMember(String userId) {
+        AadUserConversationMember member = new AadUserConversationMember();
+        member.setOdataType("#microsoft.graph.aadUserConversationMember");
+        member.setRoles(List.of("owner"));
+        // "user@odata.bind" links the member to an existing user resource; the SDK model has no typed setter for it.
+        member.getAdditionalData().put("user@odata.bind", "https://graph.microsoft.com/v1.0/users('" + escapeODataStringLiteral(userId) + "')");
+        return member;
+    }
+
+    // OData string literals are single-quoted; a literal quote in the value must be doubled to stay inside the
+    // literal, otherwise a crafted userId/userEmail could break out of it and alter the bound resource path.
+    private static String escapeODataStringLiteral(String value) {
+        return value.replace("'", "''");
     }
 
     @Builder

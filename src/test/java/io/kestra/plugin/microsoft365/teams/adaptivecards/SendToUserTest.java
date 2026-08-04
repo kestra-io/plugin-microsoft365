@@ -6,7 +6,9 @@ import com.microsoft.graph.chats.item.messages.MessagesRequestBuilder;
 import com.microsoft.graph.models.Chat;
 import com.microsoft.graph.models.ChatMessage;
 import com.microsoft.graph.models.ChatType;
+import com.microsoft.graph.models.User;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import com.microsoft.graph.users.item.UserItemRequestBuilder;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContextFactory;
@@ -48,6 +50,7 @@ class SendToUserTest {
         var chatsBuilder = mock(ChatsRequestBuilder.class);
         var chatItemBuilder = mock(ChatItemRequestBuilder.class);
         var messagesBuilder = mock(MessagesRequestBuilder.class);
+        var meBuilder = mock(UserItemRequestBuilder.class);
 
         var createdChat = new Chat();
         createdChat.setId("19:chat-id@unq.gbl.spaces");
@@ -55,6 +58,11 @@ class SendToUserTest {
         var createdMessage = new ChatMessage();
         createdMessage.setId("msg-id");
 
+        var me = new User();
+        me.setId("caller-id");
+
+        when(graphClient.me()).thenReturn(meBuilder);
+        when(meBuilder.get()).thenReturn(me);
         when(graphClient.chats()).thenReturn(chatsBuilder);
         when(chatsBuilder.post(any(Chat.class))).thenReturn(createdChat);
         when(chatsBuilder.byChatId(anyString())).thenReturn(chatItemBuilder);
@@ -77,7 +85,7 @@ class SendToUserTest {
         verify(chatsBuilder, times(1)).post(chatCaptor.capture());
         var postedChat = chatCaptor.getValue();
         assertThat(postedChat.getChatType(), is(ChatType.OneOnOne));
-        assertThat(postedChat.getMembers(), hasSize(1));
+        assertThat(postedChat.getMembers(), hasSize(2));
 
         verify(chatsBuilder, times(1)).byChatId("19:chat-id@unq.gbl.spaces");
 

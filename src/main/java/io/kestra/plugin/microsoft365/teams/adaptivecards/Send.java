@@ -198,9 +198,12 @@ public class Send extends AbstractGraphConnection implements RunnableTask<Send.O
     public Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        String rTeamId = runContext.render(this.teamId).as(String.class).orElseThrow();
-        String rChannelId = runContext.render(this.channelId).as(String.class).orElseThrow();
-        String rCard = runContext.render(this.card).as(String.class).orElseThrow();
+        String rTeamId = runContext.render(this.teamId).as(String.class)
+            .orElseThrow(() -> new IllegalArgumentException("teamId is required"));
+        String rChannelId = runContext.render(this.channelId).as(String.class)
+            .orElseThrow(() -> new IllegalArgumentException("channelId is required"));
+        String rCard = runContext.render(this.card).as(String.class)
+            .orElseThrow(() -> new IllegalArgumentException("card is required"));
 
         ChatMessage message = AdaptiveCardMessage.build(rCard);
 
