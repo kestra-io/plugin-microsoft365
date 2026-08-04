@@ -190,7 +190,7 @@ public class SendToUser extends AbstractGraphConnection implements RunnableTask<
 
         String rCallerId;
         try {
-            User me = client.me().get();
+            User me = client.me().get(cfg -> cfg.queryParameters.select = new String[]{"id"});
             if (me == null || me.getId() == null) {
                 throw new IllegalStateException("Microsoft Graph API did not return the authenticated user's ID; creating a 1:1 " +
                     "chat requires delegated (username/password) authentication");
@@ -203,6 +203,12 @@ public class SendToUser extends AbstractGraphConnection implements RunnableTask<
                     e.getResponseStatusCode(), e.getMessage()), e);
         }
 
+        if (rCallerId.equals(rTargetUser)) {
+            throw new IllegalArgumentException("Cannot open a 1:1 chat with yourself: `userId` ('" + rTargetUser +
+                "') is the same as the authenticated account's object ID. The target user must be different from the " +
+                "authenticated account");
+        }
+
         Chat chat = new Chat();
         chat.setChatType(ChatType.OneOnOne);
         chat.setMembers(List.of(conversationMember(rTargetUser), conversationMember(rCallerId)));
@@ -213,7 +219,8 @@ public class SendToUser extends AbstractGraphConnection implements RunnableTask<
         } catch (ApiException e) {
             throw new IllegalStateException(
                 String.format("Failed to create or resolve chat with user '%s' (HTTP %d): %s. This often means the app registration " +
-                        "lacks delegated Chat.ReadWrite permission or RSC consent for app-only chat creation",
+                        "lacks delegated Chat.ReadWrite permission or RSC consent for app-only chat creation, but it can also mean " +
+                        "the chat members are duplicated (self-chat) or the target user ID/email is invalid",
                     rTargetUser, e.getResponseStatusCode(), e.getMessage()), e);
         }
 
