@@ -30,8 +30,10 @@ import java.nio.charset.StandardCharsets;
 public abstract class AbstractGraphConnection extends Task implements MicrosoftGraphConnectionInterface {
     protected Property<String> tenantId;
     protected Property<String> clientId;
+    @PluginProperty(secret = true, group = "connection")
     @ToString.Exclude
     protected Property<String> clientSecret;
+    @PluginProperty(secret = true, group = "advanced")
     @ToString.Exclude
     protected Property<String> pemCertificate;
 

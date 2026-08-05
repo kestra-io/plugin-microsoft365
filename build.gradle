@@ -1,13 +1,13 @@
 plugins {
-    id 'io.kestra.gradle.repository-conventions' version '1.2.3'
+    id 'io.kestra.gradle.repository-conventions' version '1.2.6'
     id "com.vanniktech.maven.publish" version "0.37.0"
-    id "io.kestra.gradle.inject-bom-versions" version "1.2.4"
-    id "io.kestra.gradle.plugin-doc-lint" version "1.2.4"
+    id "io.kestra.gradle.inject-bom-versions" version "1.2.6"
+    id "io.kestra.gradle.plugin-doc-lint" version "1.2.6"
     id 'java-library'
     id "idea"
     id 'jacoco'
     id "com.adarshr.test-logger" version "4.0.0"
-    id "com.gradleup.shadow" version "9.4.2"
+    id "com.gradleup.shadow" version "9.6.1"
     id 'signing'
     id "com.github.ben-manes.versions" version "0.54.0"
     id 'net.researchgate.release' version '3.1.0'
@@ -53,7 +53,7 @@ dependencies {
 
     // Microsoft
     api group: 'com.azure', name: 'azure-identity'
-    api (group: 'com.microsoft.graph', name: 'microsoft-graph', version: '6.65.0') {
+    api (group: 'com.microsoft.graph', name: 'microsoft-graph', version: '6.67.0') {
         // exclude libraries already provided by Kestra
         exclude group: 'com.fasterxml.jackson.core'
         exclude group: 'com.fasterxml.jackson.dataformat', module: 'jackson-dataformat-xml'
