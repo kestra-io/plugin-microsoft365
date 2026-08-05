@@ -20,15 +20,15 @@ import static org.hamcrest.Matchers.instanceOf;
 
 @KestraTest
 @Execution(ExecutionMode.SAME_THREAD)
-class AbstractGraphConnectionTest {
+class AbstractGraphDelegatedConnectionTest {
 
     @Inject
     private RunContextFactory runContextFactory;
 
-    // `credentials` is intentionally private: it is an implementation detail of AbstractGraphConnection, not part of
-    // the public task contract. Reflection lets the test assert branch selection without exposing it.
-    private static TokenCredential invokeCredentials(AbstractGraphConnection task, RunContext runContext) throws Exception {
-        Method credentialsMethod = AbstractGraphConnection.class.getDeclaredMethod("credentials", RunContext.class);
+    // `credentials` is an implementation detail of AbstractGraphConnection/AbstractGraphDelegatedConnection, not part
+    // of the public task contract. Reflection lets the test assert branch selection without exposing it.
+    private static TokenCredential invokeCredentials(AbstractGraphDelegatedConnection task, RunContext runContext) throws Exception {
+        Method credentialsMethod = AbstractGraphDelegatedConnection.class.getDeclaredMethod("credentials", RunContext.class);
         credentialsMethod.setAccessible(true);
         return (TokenCredential) credentialsMethod.invoke(task, runContext);
     }

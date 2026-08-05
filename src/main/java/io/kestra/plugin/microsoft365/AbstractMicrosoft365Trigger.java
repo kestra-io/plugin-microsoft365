@@ -4,7 +4,6 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.identity.ClientCertificateCredentialBuilder;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.identity.DefaultAzureCredentialBuilder;
-import com.azure.identity.UsernamePasswordCredentialBuilder;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.property.Property;
@@ -38,11 +37,6 @@ public abstract class AbstractMicrosoft365Trigger extends AbstractTrigger implem
     @PluginProperty(group = "main", secret = true)
     @ToString.Exclude
     protected Property<String> pemCertificate;
-    @PluginProperty(group = "main")
-    protected Property<String> username;
-    @PluginProperty(group = "main", secret = true)
-    @ToString.Exclude
-    protected Property<String> password;
 
     protected GraphServiceClient graphClient(RunContext runContext) throws IllegalVariableEvaluationException {
         TokenCredential credential = this.credentials(runContext);
@@ -54,21 +48,8 @@ public abstract class AbstractMicrosoft365Trigger extends AbstractTrigger implem
         final String clientId = runContext.render(this.clientId).as(String.class).orElse(null);
         final String clientSecret = runContext.render(this.clientSecret).as(String.class).orElse(null);
         final String pemCertificate = runContext.render(this.pemCertificate).as(String.class).orElse(null);
-        final String username = runContext.render(this.username).as(String.class).orElse(null);
-        final String password = runContext.render(this.password).as(String.class).orElse(null);
 
-        // Option 1: Username/Password (ROPC, delegated) authentication
-        if (StringUtils.isNotBlank(username) && StringUtils.isNotBlank(password)) {
-            runContext.logger().info("Authentication is using Username/Password (delegated) Credentials");
-            return new UsernamePasswordCredentialBuilder()
-                .clientId(clientId)
-                .tenantId(tenantId)
-                .username(username)
-                .password(password)
-                .build();
-        }
-
-        // Option 2: Client Secret authentication (recommended for most scenarios)
+        // Option 1: Client Secret authentication (recommended for most scenarios)
         if(StringUtils.isNotBlank(clientSecret)) {
             runContext.logger().info("Authentication is using Client Secret Credentials");
             return new ClientSecretCredentialBuilder()
@@ -78,7 +59,7 @@ public abstract class AbstractMicrosoft365Trigger extends AbstractTrigger implem
                 .build();
         }
 
-        // Option 3: Client Certificate authentication (alternative for enhanced security)
+        // Option 2: Client Certificate authentication (alternative for enhanced security)
         if(StringUtils.isNotBlank(pemCertificate)) {
             runContext.logger().info("Authentication is using Client Certificate Credentials");
             return new ClientCertificateCredentialBuilder()

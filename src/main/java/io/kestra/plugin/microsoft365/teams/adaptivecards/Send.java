@@ -8,7 +8,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.microsoft365.AbstractGraphConnection;
+import io.kestra.plugin.microsoft365.AbstractGraphDelegatedConnection;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
@@ -167,7 +167,7 @@ import org.slf4j.Logger;
         )
     }
 )
-public class Send extends AbstractGraphConnection implements RunnableTask<Send.Output> {
+public class Send extends AbstractGraphDelegatedConnection implements RunnableTask<Send.Output> {
 
     @Schema(
         title = "Team ID",
@@ -198,12 +198,9 @@ public class Send extends AbstractGraphConnection implements RunnableTask<Send.O
     public Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        String rTeamId = runContext.render(this.teamId).as(String.class)
-            .orElseThrow(() -> new IllegalArgumentException("teamId is required"));
-        String rChannelId = runContext.render(this.channelId).as(String.class)
-            .orElseThrow(() -> new IllegalArgumentException("channelId is required"));
-        String rCard = runContext.render(this.card).as(String.class)
-            .orElseThrow(() -> new IllegalArgumentException("card is required"));
+        String rTeamId = runContext.render(this.teamId).as(String.class).orElseThrow(() -> new IllegalArgumentException("teamId is required"));
+        String rChannelId = runContext.render(this.channelId).as(String.class).orElseThrow(() -> new IllegalArgumentException("channelId is required"));
+        String rCard = runContext.render(this.card).as(String.class).orElseThrow(() -> new IllegalArgumentException("card is required"));
 
         ChatMessage message = AdaptiveCardMessage.build(rCard);
 

@@ -12,7 +12,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.microsoft365.AbstractGraphConnection;
+import io.kestra.plugin.microsoft365.AbstractGraphDelegatedConnection;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
@@ -141,7 +141,7 @@ import java.util.List;
         )
     }
 )
-public class SendToUser extends AbstractGraphConnection implements RunnableTask<SendToUser.Output> {
+public class SendToUser extends AbstractGraphDelegatedConnection implements RunnableTask<SendToUser.Output> {
 
     @Schema(
         title = "Target user ID",
@@ -172,16 +172,15 @@ public class SendToUser extends AbstractGraphConnection implements RunnableTask<
     public Output run(RunContext runContext) throws Exception {
         Logger logger = runContext.logger();
 
-        String rUserId = this.userId != null ? runContext.render(this.userId).as(String.class).orElse(null) : null;
-        String rUserEmail = this.userEmail != null ? runContext.render(this.userEmail).as(String.class).orElse(null) : null;
+        String rUserId = runContext.render(this.userId).as(String.class).orElse(null);
+        String rUserEmail = runContext.render(this.userEmail).as(String.class).orElse(null);
 
         if (StringUtils.isNotBlank(rUserId) == StringUtils.isNotBlank(rUserEmail)) {
             throw new IllegalArgumentException("Exactly one of `userId` or `userEmail` must be set, not both or neither");
         }
 
         String rTargetUser = StringUtils.isNotBlank(rUserId) ? rUserId : rUserEmail;
-        String rCard = runContext.render(this.card).as(String.class)
-            .orElseThrow(() -> new IllegalArgumentException("card is required"));
+        String rCard = runContext.render(this.card).as(String.class).orElseThrow(() -> new IllegalArgumentException("card is required"));
 
         String rCaller = runContext.render(this.getUsername()).as(String.class).orElse(null);
         // Rendered only to check presence, never logged: AbstractGraphConnection.credentials() only takes the
@@ -208,8 +207,6 @@ public class SendToUser extends AbstractGraphConnection implements RunnableTask<
         GraphServiceClient client = this.graphClient(runContext);
 
         logger.info("Resolving 1:1 chat with user '{}'", rTargetUser);
-        logger.debug("Creating a chat with application permissions is a restricted Graph capability: most tenants require delegated " +
-            "permissions, RSC, or a registered Teams bot; this call may fail with a 403 under pure app-only auth");
 
         Chat chat = new Chat();
         chat.setChatType(ChatType.OneOnOne);
