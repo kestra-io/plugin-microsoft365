@@ -186,6 +186,22 @@ class SendToUserTest {
     }
 
     @Test
+    void usernameWithBlankPasswordAndClientSecretThrows() {
+        var runContext = runContextFactory.of();
+        var task = SendToUser.builder()
+            .tenantId(Property.ofValue("mock-tenant-id"))
+            .clientId(Property.ofValue("mock-client-id"))
+            .clientSecret(Property.ofValue("mock-client-secret"))
+            .username(Property.ofValue("caller@company.com"))
+            .userEmail(Property.ofValue("oncall@company.com"))
+            .card(Property.ofValue(CARD_JSON))
+            .build();
+
+        var exception = assertThrows(IllegalArgumentException.class, () -> task.run(runContext));
+        assertThat(exception.getMessage(), containsString("delegated (username/password) authentication"));
+    }
+
+    @Test
     void selfChatThrows() {
         var runContext = runContextFactory.of();
         var task = SendToUser.builder()

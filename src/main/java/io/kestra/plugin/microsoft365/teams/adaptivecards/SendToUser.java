@@ -145,7 +145,9 @@ public class SendToUser extends AbstractGraphConnection implements RunnableTask<
 
     @Schema(
         title = "Target user ID",
-        description = "Azure AD object ID of the user to message. Exactly one of `userId` or `userEmail` must be set."
+        description = "Azure AD object ID of the user to message. Exactly one of `userId` or `userEmail` must be set. Must " +
+            "differ from the authenticated account: Microsoft Graph rejects a self-target given as `userId` as a duplicate " +
+            "chat member."
     )
     @PluginProperty(group = "main")
     private Property<String> userId;
@@ -182,11 +184,21 @@ public class SendToUser extends AbstractGraphConnection implements RunnableTask<
             .orElseThrow(() -> new IllegalArgumentException("card is required"));
 
         String rCaller = runContext.render(this.getUsername()).as(String.class).orElse(null);
-        if (StringUtils.isBlank(rCaller)) {
-            throw new IllegalArgumentException("SendToUser requires delegated (username/password) authentication: `username` " +
-                "must be set, since creating a 1:1 chat needs a user context to act as the chat caller");
+        // Rendered only to check presence, never logged: AbstractGraphConnection.credentials() only takes the
+        // ROPC (delegated) branch when BOTH username and password are non-blank. If password is blank here, auth
+        // silently falls through to app-only (clientSecret/pemCertificate), and rCaller would then be bound as the
+        // chat caller without actually being the authenticated identity.
+        String rPassword = runContext.render(this.getPassword()).as(String.class).orElse(null);
+        if (StringUtils.isBlank(rCaller) || StringUtils.isBlank(rPassword)) {
+            throw new IllegalArgumentException("SendToUser requires delegated (username/password) authentication: both " +
+                "`username` and `password` must be set, since creating a 1:1 chat and attributing the caller needs a real " +
+                "user context; app-only clientSecret/pemCertificate authentication cannot be used here");
         }
 
+        // Self-chat guard: only catches the case where the target is a userEmail (UPN), since rCaller is always a
+        // UPN. A self-target passed as userId (object id) cannot be detected this way without an extra Graph call
+        // to resolve the caller's object id, which we deliberately avoid; Microsoft Graph rejects that case as a
+        // duplicate chat member instead, surfaced by the ApiException message below.
         if (rCaller.trim().equalsIgnoreCase(rTargetUser.trim())) {
             throw new IllegalArgumentException("Cannot open a 1:1 chat with yourself: `userId`/`userEmail` ('" + rTargetUser +
                 "') is the same as the authenticated account's username. The target user must be different from the " +
