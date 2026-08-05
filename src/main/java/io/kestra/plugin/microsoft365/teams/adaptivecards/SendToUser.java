@@ -4,7 +4,6 @@ import com.microsoft.graph.models.AadUserConversationMember;
 import com.microsoft.graph.models.Chat;
 import com.microsoft.graph.models.ChatMessage;
 import com.microsoft.graph.models.ChatType;
-import com.microsoft.graph.models.User;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 import io.kestra.core.models.annotations.Example;
@@ -182,36 +181,27 @@ public class SendToUser extends AbstractGraphConnection implements RunnableTask<
         String rCard = runContext.render(this.card).as(String.class)
             .orElseThrow(() -> new IllegalArgumentException("card is required"));
 
+        String rCaller = runContext.render(this.getUsername()).as(String.class).orElse(null);
+        if (StringUtils.isBlank(rCaller)) {
+            throw new IllegalArgumentException("SendToUser requires delegated (username/password) authentication: `username` " +
+                "must be set, since creating a 1:1 chat needs a user context to act as the chat caller");
+        }
+
+        if (rCaller.trim().equalsIgnoreCase(rTargetUser.trim())) {
+            throw new IllegalArgumentException("Cannot open a 1:1 chat with yourself: `userId`/`userEmail` ('" + rTargetUser +
+                "') is the same as the authenticated account's username. The target user must be different from the " +
+                "authenticated account");
+        }
+
         GraphServiceClient client = this.graphClient(runContext);
 
         logger.info("Resolving 1:1 chat with user '{}'", rTargetUser);
         logger.debug("Creating a chat with application permissions is a restricted Graph capability: most tenants require delegated " +
             "permissions, RSC, or a registered Teams bot; this call may fail with a 403 under pure app-only auth");
 
-        String rCallerId;
-        try {
-            User me = client.me().get(cfg -> cfg.queryParameters.select = new String[]{"id"});
-            if (me == null || me.getId() == null) {
-                throw new IllegalStateException("Microsoft Graph API did not return the authenticated user's ID; creating a 1:1 " +
-                    "chat requires delegated (username/password) authentication");
-            }
-            rCallerId = me.getId();
-        } catch (ApiException e) {
-            throw new IllegalStateException(
-                String.format("Failed to resolve the authenticated user via Microsoft Graph (HTTP %d): %s. Creating a 1:1 chat " +
-                        "requires delegated (username/password) authentication",
-                    e.getResponseStatusCode(), e.getMessage()), e);
-        }
-
-        if (rCallerId.equals(rTargetUser)) {
-            throw new IllegalArgumentException("Cannot open a 1:1 chat with yourself: `userId` ('" + rTargetUser +
-                "') is the same as the authenticated account's object ID. The target user must be different from the " +
-                "authenticated account");
-        }
-
         Chat chat = new Chat();
         chat.setChatType(ChatType.OneOnOne);
-        chat.setMembers(List.of(conversationMember(rTargetUser), conversationMember(rCallerId)));
+        chat.setMembers(List.of(conversationMember(rCaller), conversationMember(rTargetUser)));
 
         Chat createdChat;
         try {
@@ -219,8 +209,9 @@ public class SendToUser extends AbstractGraphConnection implements RunnableTask<
         } catch (ApiException e) {
             throw new IllegalStateException(
                 String.format("Failed to create or resolve chat with user '%s' (HTTP %d): %s. This often means the app registration " +
-                        "lacks delegated Chat.ReadWrite permission or RSC consent for app-only chat creation, but it can also mean " +
-                        "the chat members are duplicated (self-chat) or the target user ID/email is invalid",
+                        "lacks delegated Chat.ReadWrite permission or the account is not authenticated with delegated " +
+                        "(username/password) auth, but it can also mean the chat members are duplicated (self-chat) or the target " +
+                        "user ID/email is invalid",
                     rTargetUser, e.getResponseStatusCode(), e.getMessage()), e);
         }
 
