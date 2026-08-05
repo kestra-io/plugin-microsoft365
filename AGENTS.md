@@ -46,6 +46,8 @@ Infrastructure dependencies (Docker Compose services):
 - `io.kestra.plugin.microsoft365.sharepoint.Upload`
 - `io.kestra.plugin.microsoft365.teams.TeamsExecution`
 - `io.kestra.plugin.microsoft365.teams.TeamsIncomingWebhook`
+- `io.kestra.plugin.microsoft365.teams.adaptivecards.Send`
+- `io.kestra.plugin.microsoft365.teams.adaptivecards.SendToUser`
 
 ### Project Structure
 

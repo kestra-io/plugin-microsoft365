@@ -32,8 +32,10 @@ public abstract class AbstractMicrosoft365Trigger extends AbstractTrigger implem
     @PluginProperty(group = "main")
     protected Property<String> clientId;
     @PluginProperty(group = "main", secret = true)
+    @ToString.Exclude
     protected Property<String> clientSecret;
     @PluginProperty(group = "main", secret = true)
+    @ToString.Exclude
     protected Property<String> pemCertificate;
 
     protected GraphServiceClient graphClient(RunContext runContext) throws IllegalVariableEvaluationException {

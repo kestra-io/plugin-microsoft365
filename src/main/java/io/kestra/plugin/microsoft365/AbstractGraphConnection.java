@@ -40,7 +40,7 @@ public abstract class AbstractGraphConnection extends Task implements MicrosoftG
         return new GraphServiceClient(credential);
     }
 
-    private TokenCredential credentials(RunContext runContext) throws IllegalVariableEvaluationException {
+    protected TokenCredential credentials(RunContext runContext) throws IllegalVariableEvaluationException {
         final String tenantId = runContext.render(this.tenantId).as(String.class).orElse(null);
         final String clientId = runContext.render(this.clientId).as(String.class).orElse(null);
 
