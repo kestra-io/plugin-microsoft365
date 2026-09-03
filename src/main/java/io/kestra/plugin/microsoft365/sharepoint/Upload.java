@@ -34,10 +34,10 @@ import io.kestra.core.models.annotations.PluginProperty;
     title = "Upload file to SharePoint",
     description = """
         Uploads a file from Kestra internal storage to a SharePoint document library. Files up to 4MB are \
-        uploaded with a single Microsoft Graph PUT (simple upload); larger files are uploaded through a \
-        resumable upload session in chunks of `chunkSize`. `conflictBehavior` is honored for resumable \
-        uploads but ignored for simple uploads, which always overwrite an existing file. Requires \
-        Microsoft Graph permissions Files.ReadWrite.All and Sites.ReadWrite.All."""
+        uploaded with a single Microsoft Graph PUT (simple upload); above that threshold the file is uploaded through a \
+        resumable upload session in chunks of `chunkSize`. `conflictBehavior` is honored for resumable uploads but ignored for simple uploads, \
+        which always overwrite an existing file. Requires Microsoft Graph permissions Files.ReadWrite.All \
+        and Sites.ReadWrite.All."""
 )
 @Plugin(
     examples = {
@@ -150,18 +150,20 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
         description = """
             Size, in bytes, of each chunk sent when uploading a file larger than 4MB through a Microsoft \
             Graph resumable upload session; files at or below 4MB use simple upload and are not chunked. \
-            Must be a positive multiple of 320 KiB (327,680 bytes) and not exceed 60 MiB (62,914,560 \
-            bytes), as required/recommended by the Graph API; an invalid value fails the task whatever the \
-            file size. Defaults to 5MB (5,242,880 bytes)."""
+            Must be a positive multiple of 320 KiB (327,680 bytes) and strictly less than 60 MiB \
+            (62,914,560 bytes), as required by the Graph API; an invalid value fails the task whatever the \
+            file size. Microsoft recommends a value between 5 and 10 MiB. Defaults to 5MB (5,242,880 bytes)."""
     )
     @Builder.Default
     @PluginProperty(group = "advanced")
     private Property<Long> chunkSize = Property.ofValue(DEFAULT_CHUNK_SIZE);
 
     private static final long DEFAULT_CHUNK_SIZE = 5L * 1024 * 1024; // 5MB
-    private static final long SIMPLE_UPLOAD_SIZE_LIMIT = 4L * 1024 * 1024; // 4MB, Graph's documented simple-upload limit
+    // Simple upload itself supports files up to 250MB; 4MB is the point at which this plugin switches to a
+    // resumable transfer, matching the default of oneshare.Upload's largeFileThreshold.
+    private static final long RESUMABLE_UPLOAD_THRESHOLD = 4L * 1024 * 1024;
     private static final long CHUNK_SIZE_ALIGNMENT = 320L * 1024; // Graph requires resumable upload byte ranges aligned to 320 KiB
-    private static final long MAX_CHUNK_SIZE = 60L * 1024 * 1024; // 60MiB, Microsoft's documented maximum resumable upload fragment size
+    private static final long MAX_CHUNK_SIZE = 60L * 1024 * 1024; // 60MiB, exclusive: Graph requires each request to be "less than 60 MiB"
 
     // Set once the upload session exists so kill() can free the remote resource; run() and kill() may execute on different threads.
     @Builder.Default
@@ -192,9 +194,9 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
             throw new IllegalArgumentException(
                 "Invalid chunkSize (%d bytes): the Microsoft Graph API requires a positive multiple of 320 KiB (327,680 bytes) for resumable uploads".formatted(rChunkSize));
         }
-        if (rChunkSize > MAX_CHUNK_SIZE) {
+        if (rChunkSize >= MAX_CHUNK_SIZE) {
             throw new IllegalArgumentException(
-                "Invalid chunkSize (%d bytes): must not exceed 60 MiB (62,914,560 bytes), Microsoft's documented maximum resumable upload fragment size".formatted(rChunkSize));
+                "Invalid chunkSize (%d bytes): the Microsoft Graph API requires each resumable upload request to be less than 60 MiB (62,914,560 bytes), so the largest valid value is 62,586,880 bytes".formatted(rChunkSize));
         }
 
         SharepointConnection connection = this.connection(runContext);
@@ -205,7 +207,7 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
         long fileSize = runContext.storage().getAttributes(fromUri).getSize();
 
         DriveItem uploadedItem;
-        if (fileSize <= SIMPLE_UPLOAD_SIZE_LIMIT) {
+        if (fileSize <= RESUMABLE_UPLOAD_THRESHOLD) {
             runContext.logger().debug("Uploading '{}' ({} bytes) with a Graph simple upload", rTo, fileSize);
 
             try (InputStream fileStream = runContext.storage().getFile(fromUri)) {

@@ -183,12 +183,12 @@ class UploadTest {
 
     @Test
     void shouldUseSimpleUploadAtExactSizeLimit() throws Exception {
-        // Given: a file exactly at the 4MB simple-upload boundary (<=, not <)
+        // Given: a file exactly at the 4MB resumable-upload threshold (<=, not <)
         RunContext runContext = runContextFactory.of();
         SharepointConnection mockConnection = mock(SharepointConnection.class);
         GraphServiceClient mockClient = mock(GraphServiceClient.class);
 
-        byte[] content = new byte[4 * 1024 * 1024]; // exactly 4,194,304 bytes
+        byte[] content = new byte[4 * 1024 * 1024]; // exactly 4,194,304 bytes, the resumable-upload threshold
         URI fileUri = runContext.storage().putFile(new ByteArrayInputStream(content), "boundary.bin");
 
         Upload uploadTask = Upload.builder()
@@ -236,12 +236,12 @@ class UploadTest {
 
     @Test
     void shouldUseResumableUploadForLargeFile() throws Exception {
-        // Given: a file above the 4MB simple-upload limit
+        // Given: a file above the 4MB resumable-upload threshold
         RunContext runContext = runContextFactory.of();
         SharepointConnection mockConnection = mock(SharepointConnection.class);
         GraphServiceClient mockClient = mock(GraphServiceClient.class);
 
-        byte[] largeContent = new byte[5 * 1024 * 1024]; // 5MB
+        byte[] largeContent = new byte[5 * 1024 * 1024]; // 5MB, above the 4MB resumable-upload threshold
         URI fileUri = runContext.storage().putFile(new ByteArrayInputStream(largeContent), "large-file.pdf");
 
         long chunkSize = 327_680L * 2; // 640 KiB, a valid multiple of 320 KiB
@@ -305,7 +305,7 @@ class UploadTest {
         assertThat(output.getName(), is("large-file.pdf"));
         assertThat(output.getSize(), is((long) largeContent.length));
 
-        // A file above the 4MB simple-upload limit must go through a resumable upload session, not a direct PUT
+        // A file above the 4MB threshold must go through a resumable upload session, not a direct PUT
         verify(mockCreateUploadSession).post(any());
         verify(mockContent, never()).put(any(InputStream.class));
         verify(testTask).uploadInChunks(eq(runContext), eq(uploadSession), any(InputStream.class), eq((long) largeContent.length), eq(chunkSize));
@@ -477,7 +477,7 @@ class UploadTest {
 
     @Test
     void shouldRejectChunkSizeAboveMaximum() throws Exception {
-        // Given: 193 * 320 KiB = 60.3 MiB, a valid multiple of 320 KiB but above the 60 MiB maximum
+        // Given: 192 * 320 KiB = exactly 60 MiB, a valid multiple of 320 KiB but the Graph limit is "less than 60 MiB"
         RunContext runContext = runContextFactory.of();
         URI fileUri = runContext.storage().putFile(new ByteArrayInputStream("small file content".getBytes()), "small.txt");
 
@@ -489,7 +489,7 @@ class UploadTest {
             .driveId(Property.ofValue("test-drive-id"))
             .from(Property.ofValue(fileUri.toString()))
             .to(Property.ofValue("small.txt"))
-            .chunkSize(Property.ofValue(327_680L * 193))
+            .chunkSize(Property.ofValue(327_680L * 192)) // exactly 60 MiB: valid alignment, but the Graph limit is exclusive
             .build();
 
         // When / Then
