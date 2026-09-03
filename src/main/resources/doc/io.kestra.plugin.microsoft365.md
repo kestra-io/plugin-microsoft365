@@ -6,7 +6,7 @@ Interact with Microsoft Teams, OneDrive, SharePoint, Outlook, and Dynamics 365 f
 
 **Teams** (`teams.TeamsIncomingWebhook`, `teams.TeamsExecution`): set `url` to a Teams incoming webhook URL. Create one in Teams under channel settings → Connectors. Store it in a [secret](https://kestra.io/docs/concepts/secret).
 
-**OneDrive, SharePoint, and Outlook** tasks authenticate via Microsoft Graph API using an Azure AD app registration. Set `tenantId`, `clientId`, and `clientSecret` on each task (or use `pemCertificate` instead of `clientSecret` for certificate-based auth). Apply these globally with [plugin defaults](https://kestra.io/docs/workflow-components/plugin-defaults) to avoid repeating them.
+**OneDrive, SharePoint, and Outlook** tasks authenticate via Microsoft Graph API using an Azure AD app registration. Set `tenantId`, `clientId`, and `clientSecret` on each task (or use `pemCertificate` instead of `clientSecret` for certificate-based auth).
 
 **Dynamics 365 Dataverse and Business Central** tasks use the same Azure AD app registration pattern — set `tenantId`, `clientId`, and `clientSecret` (or `pemCertificate`). Grant the service principal the `Dynamics CRM user` permission for Dataverse tasks, or the `Financials.ReadWrite.All` permission for Business Central tasks.
 
