@@ -255,7 +255,7 @@ class UploadTest {
             .to(Property.ofValue("large-file.pdf"))
             .parentId(Property.ofValue("documents"))
             .chunkSize(Property.ofValue(chunkSize))
-            .conflictBehavior(Upload.ConflictBehavior.RENAME)
+            .conflictBehavior(Property.ofValue(Upload.ConflictBehavior.RENAME))
             .build();
 
         // Mock the SharePoint connection
@@ -545,6 +545,42 @@ class UploadTest {
         wireMock.verify(putRequestedFor(urlPathEqualTo(uploadPath))
             .withHeader("Content-Range", equalTo("bytes 327680-655359/655360"))
             .withHeader("Content-Length", equalTo(String.valueOf(chunkSize))));
+    }
+
+    @Test
+    void shouldDeleteUploadSessionWhenKilledBeforeTheTransferStarts() throws Exception {
+        // Given: a kill() that lands before uploadInChunks runs, i.e. before the session is registered for teardown
+        long chunkSize = 327_680L;
+        long fileSize = chunkSize;
+        String uploadPath = "/upload-session/killed-before-start";
+
+        wireMock.stubFor(put(urlPathEqualTo(uploadPath))
+            .willReturn(aResponse().withStatus(201)
+                .withHeader("Content-Type", "application/json")
+                .withBody("{\"id\":\"file-id\",\"name\":\"file.bin\",\"size\":327680}")));
+        wireMock.stubFor(delete(urlPathEqualTo(uploadPath))
+            .willReturn(aResponse().withStatus(204)));
+
+        UploadSession uploadSession = new UploadSession();
+        uploadSession.setUploadUrl(wireMock.baseUrl() + uploadPath);
+        uploadSession.setNextExpectedRanges(List.of("0-" + (fileSize - 1)));
+        uploadSession.setExpirationDateTime(OffsetDateTime.now().plusMinutes(10));
+
+        RunContext runContext = runContextFactory.of();
+        Upload uploadTask = Upload.builder().build();
+        uploadTask.kill();
+
+        // When / Then: the transfer never starts, and the session is cancelled anyway
+        try (InputStream fileStream = new ByteArrayInputStream(new byte[(int) fileSize])) {
+            InterruptedException exception = assertThrows(
+                InterruptedException.class,
+                () -> uploadTask.uploadInChunks(runContext, uploadSession, fileStream, fileSize, chunkSize)
+            );
+            assertThat(exception.getMessage(), containsString("killed before it started"));
+        }
+
+        wireMock.verify(1, deleteRequestedFor(urlPathEqualTo(uploadPath)));
+        wireMock.verify(0, putRequestedFor(urlPathEqualTo(uploadPath)));
     }
 
     @Test
