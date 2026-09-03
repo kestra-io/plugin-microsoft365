@@ -1,11 +1,9 @@
 package io.kestra.plugin.microsoft365.oneshare;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.microsoft.graph.core.models.IProgressCallback;
 import com.microsoft.graph.core.models.UploadResult;
-import com.microsoft.graph.core.tasks.LargeFileUploadTask;
-import com.microsoft.graph.drives.item.items.item.createuploadsession.CreateUploadSessionPostRequestBody;
 import com.microsoft.graph.models.DriveItem;
-import com.microsoft.graph.models.DriveItemUploadableProperties;
 import com.microsoft.graph.models.UploadSession;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
@@ -16,9 +14,11 @@ import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.microsoft365.GraphResumableUpload;
 import io.kestra.plugin.microsoft365.oneshare.models.OneShareFile;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -182,6 +182,19 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
         RENAME
     }
 
+    // Runtime state, not a plugin property: holds the upload session this task instance created so kill() can free it.
+    @Builder.Default
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Getter(AccessLevel.NONE)
+    @JsonIgnore
+    private final GraphResumableUpload resumableUpload = new GraphResumableUpload();
+
+    @Override
+    public void kill() {
+        resumableUpload.kill();
+    }
+
     @Override
     public Output run(RunContext runContext) throws Exception {
         GraphServiceClient client = this.graphClient(runContext);
@@ -258,7 +271,7 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
             } else {
                 // Resumable upload for large files
                 logger.info("Using resumable upload for file of size {} bytes", fileSize);
-                result = resumableUpload(client, tempFile, fileSize, rDriveId, rParentId, rFileName,
+                result = uploadResumable(client, tempFile, fileSize, rDriveId, rParentId, rFileName,
                                        rMaxSliceSize, rMaxRetryAttempts, rConflictBehavior, runContext, logger);
             }
 
@@ -301,8 +314,8 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
                 String.format("Failed to upload file '%s' to drive '%s': %s", 
                     rFileName, rDriveId, e.getMessage()), e);
                     
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            // Re-throw our custom exceptions
+        } catch (IllegalArgumentException | IllegalStateException | InterruptedException e) {
+            // Re-throw our custom exceptions, and the interruption raised when the task is killed
             throw e;
         } catch (Exception e) {
             logger.error("Unexpected error during upload: {}", e.getMessage(), e);
@@ -373,37 +386,25 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
      * Resumable upload for large files.
      * Creates an upload session and uploads the file in chunks with progress tracking and retry logic.
      */
-    private DriveItem resumableUpload(GraphServiceClient client, File file, long fileSize,
+    private DriveItem uploadResumable(GraphServiceClient client, File file, long fileSize,
                                      String driveId, String parentId, String fileName,
                                      int maxSliceSize, int maxAttempts, ConflictBehavior conflictBehavior,
                                      RunContext runContext, Logger logger) throws Exception {
         // Build the item path
         String itemPath = buildItemPath(parentId, fileName);
 
-        // Create upload session request
-        CreateUploadSessionPostRequestBody uploadSessionRequest = new CreateUploadSessionPostRequestBody();
-        DriveItemUploadableProperties properties = new DriveItemUploadableProperties();
-
-        // Set conflict behavior
         String conflictBehaviorValue = switch (conflictBehavior) {
             case REPLACE -> "replace";
             case FAIL -> "fail";
             case RENAME -> "rename";
         };
-        properties.getAdditionalData().put("@microsoft.graph.conflictBehavior", conflictBehaviorValue);
-        uploadSessionRequest.setItem(properties);
 
         logger.debug("Creating upload session for item: {}", itemPath);
 
         // Create upload session
         UploadSession uploadSession;
         try {
-            uploadSession = client.drives()
-                    .byDriveId(driveId)
-                    .items()
-                    .byDriveItemId(itemPath)
-                    .createUploadSession()
-                    .post(uploadSessionRequest);
+            uploadSession = GraphResumableUpload.createSession(client, driveId, itemPath, conflictBehaviorValue);
         } catch (ApiException e) {
             logger.error("Failed to create upload session", e);
             
@@ -437,24 +438,7 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
 
         logger.info("Upload session created. Upload URL: {}", uploadSession.getUploadUrl());
 
-        // Create the large file upload task using SDK
         try (InputStream fileStream = new FileInputStream(file)) {
-            LargeFileUploadTask<DriveItem> largeFileUploadTask;
-            try {
-                largeFileUploadTask = new LargeFileUploadTask<>(
-                        client.getRequestAdapter(),
-                        uploadSession,
-                        fileStream,
-                        fileSize,
-                        maxSliceSize,
-                        DriveItem::createFromDiscriminatorValue
-                );
-            } catch (Exception e) {
-                logger.error("Failed to create large file upload task", e);
-                throw new RuntimeException(
-                    String.format("Failed to create large file upload task for file '%s': %s", fileName, e.getMessage()), e);
-            }
-
             // Create progress callback
             IProgressCallback callback = (current, max) -> {
                 double percentage = (current * 100.0) / max;
@@ -474,12 +458,15 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
             logger.info("Starting chunked upload with max slice size: {} bytes, max attempts: {}",
                        maxSliceSize, maxAttempts);
 
-            UploadResult<DriveItem> uploadResult;
+            DriveItem uploadedItem;
             try {
-                uploadResult = largeFileUploadTask.upload(maxAttempts, callback);
+                uploadedItem = resumableUpload.upload(
+                    runContext, uploadSession, fileStream, fileSize, maxSliceSize,
+                    uploadTask -> uploadTask.upload(maxAttempts, callback)
+                );
             } catch (ApiException e) {
                 logger.error("Upload failed with API exception", e);
-                
+
                 if (e.getResponseStatusCode() == 507) {
                     throw new IllegalStateException(
                         String.format("Insufficient storage during upload. Drive '%s' ran out of space", driveId), e);
@@ -490,36 +477,22 @@ public class Upload extends AbstractOneShareTask implements RunnableTask<Upload.
                     throw new IllegalStateException(
                         String.format("Upload session not found or expired for file '%s'. Please retry the upload", fileName), e);
                 }
-                
+
                 throw new RuntimeException(
-                    String.format("Upload failed for file '%s' after %d attempts: %s", 
+                    String.format("Upload failed for file '%s' after %d attempts: %s",
                         fileName, maxAttempts, e.getMessage()), e);
+            } catch (IllegalStateException | InterruptedException e) {
+                throw e;
             } catch (Exception e) {
                 logger.error("Error during upload", e);
                 throw new RuntimeException(
                     String.format("Error during upload of file '%s': %s", fileName, e.getMessage()), e);
             }
 
-            if (uploadResult == null) {
-                throw new IllegalStateException(
-                    String.format("Upload failed for file '%s': No upload result returned", fileName));
-            }
+            logger.info("Upload completed successfully");
+            runContext.metric(Counter.of("file.size", fileSize));
 
-            if (uploadResult.isUploadSuccessful()) {
-                logger.info("Upload completed successfully");
-                runContext.metric(Counter.of("file.size", fileSize));
-                
-                if (uploadResult.itemResponse == null) {
-                    throw new IllegalStateException(
-                        String.format("Upload succeeded but no item response returned for file '%s'", fileName));
-                }
-                
-                return uploadResult.itemResponse;
-            } else {
-                throw new RuntimeException(
-                    String.format("Upload failed for file '%s': Upload was not successful after %d attempts", 
-                        fileName, maxAttempts));
-            }
+            return uploadedItem;
         } catch (IOException e) {
             throw new RuntimeException(
                 String.format("Failed to read file '%s' during upload: %s", fileName, e.getMessage()), e);
