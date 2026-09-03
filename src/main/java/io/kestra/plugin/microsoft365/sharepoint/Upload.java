@@ -1,5 +1,6 @@
 package io.kestra.plugin.microsoft365.sharepoint;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.microsoft.graph.core.models.UploadResult;
 import com.microsoft.graph.core.tasks.LargeFileUploadTask;
 import com.microsoft.graph.drives.item.items.item.createuploadsession.CreateUploadSessionPostRequestBody;
@@ -169,11 +170,15 @@ public class Upload extends AbstractSharepointTask implements RunnableTask<Uploa
     @Builder.Default
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
+    @Getter(AccessLevel.NONE)
+    @JsonIgnore
     private final AtomicReference<Runnable> killable = new AtomicReference<>();
 
     @Builder.Default
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
+    @Getter(AccessLevel.NONE)
+    @JsonIgnore
     private final AtomicBoolean isKilled = new AtomicBoolean(false);
 
     @Override
