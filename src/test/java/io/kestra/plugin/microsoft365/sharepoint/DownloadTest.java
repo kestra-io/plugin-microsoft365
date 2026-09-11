@@ -35,6 +35,147 @@ class DownloadTest {
     @Inject
     private RunContextFactory runContextFactory;
 
+    /**
+     * Actually runs the task. The other tests in this class only assert on the builder and never call run(), so they
+     * pass regardless of what the download does.
+     */
+    @Test
+    void shouldStreamContentThroughTheSdk() throws Exception {
+        var mockConnection = mock(SharepointConnection.class);
+        var mockClient = mock(GraphServiceClient.class);
+
+        var task = Download.builder()
+            .tenantId(Property.ofValue("t")).clientId(Property.ofValue("c")).clientSecret(Property.ofValue("s"))
+            .siteId(Property.ofValue("site")).driveId(Property.ofValue("drive"))
+            .itemId(Property.ofValue("item-1"))
+            .build();
+
+        when(mockConnection.createClient(any())).thenReturn(mockClient);
+        when(mockConnection.getDriveId(any(), any())).thenReturn("drive");
+
+        var drives = mock(DrivesRequestBuilder.class);
+        var driveItems = mock(DriveItemRequestBuilder.class);
+        var items = mock(com.microsoft.graph.drives.item.items.ItemsRequestBuilder.class);
+        var item = mock(DriveItemItemRequestBuilder.class);
+        var content = mock(com.microsoft.graph.drives.item.items.item.content.ContentRequestBuilder.class);
+
+        when(mockClient.drives()).thenReturn(drives);
+        when(drives.byDriveId(anyString())).thenReturn(driveItems);
+        when(driveItems.items()).thenReturn(items);
+        when(items.byDriveItemId("item-1")).thenReturn(item);
+
+        var driveItem = new DriveItem();
+        driveItem.setId("item-1");
+        driveItem.setName("report.csv");
+        driveItem.setSize(11L);
+        driveItem.setWebUrl("https://contoso.sharepoint.com/report.csv");
+        when(item.get()).thenReturn(driveItem);
+
+        when(item.content()).thenReturn(content);
+        when(content.get()).thenReturn(new ByteArrayInputStream("hello,world".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+
+        var testTask = spy(task);
+        doReturn(mockConnection).when(testTask).connection(any(RunContext.class));
+
+        RunContext runContext = runContextFactory.of();
+        Download.Output output = testTask.run(runContext);
+
+        // the stream must come from content(), not from a downloadUrl in additionalData
+        verify(content).get();
+        assertThat(output.getItemId(), is("item-1"));
+        assertThat(output.getName(), is("report.csv"));
+        assertThat(output.getSize(), is(11L));
+        assertThat(output.getWebUrl(), is("https://contoso.sharepoint.com/report.csv"));
+        assertThat(output.getUri(), org.hamcrest.Matchers.startsWith("kestra://"));
+
+        try (var stored = runContext.storage().getFile(java.net.URI.create(output.getUri()))) {
+            assertThat(new String(stored.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8), is("hello,world"));
+        }
+    }
+
+    /** A wrong itemId fails on the metadata call, so that path must report like a missing item, not a raw ApiException. */
+    @Test
+    void shouldReportAMissingItemFromTheMetadataCall() throws Exception {
+        var mockConnection = mock(SharepointConnection.class);
+        var mockClient = mock(GraphServiceClient.class);
+
+        var task = Download.builder()
+            .tenantId(Property.ofValue("t")).clientId(Property.ofValue("c")).clientSecret(Property.ofValue("s"))
+            .siteId(Property.ofValue("site")).driveId(Property.ofValue("drive"))
+            .itemId(Property.ofValue("missing-item"))
+            .build();
+
+        when(mockConnection.createClient(any())).thenReturn(mockClient);
+        when(mockConnection.getDriveId(any(), any())).thenReturn("drive");
+
+        var drives = mock(DrivesRequestBuilder.class);
+        var driveItems = mock(DriveItemRequestBuilder.class);
+        var items = mock(com.microsoft.graph.drives.item.items.ItemsRequestBuilder.class);
+        var item = mock(DriveItemItemRequestBuilder.class);
+
+        when(mockClient.drives()).thenReturn(drives);
+        when(drives.byDriveId(anyString())).thenReturn(driveItems);
+        when(driveItems.items()).thenReturn(items);
+        when(items.byDriveItemId("missing-item")).thenReturn(item);
+
+        var notFound = mock(com.microsoft.kiota.ApiException.class);
+        when(notFound.getResponseStatusCode()).thenReturn(404);
+        when(item.get()).thenThrow(notFound);
+
+        var testTask = spy(task);
+        doReturn(mockConnection).when(testTask).connection(any(RunContext.class));
+
+        var exception = org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> testTask.run(runContextFactory.of())
+        );
+        assertThat(exception.getMessage(), containsString("missing-item"));
+        assertThat(exception.getMessage(), containsString("not found"));
+    }
+
+    /** Graph can answer with no body, which used to surface as a bare NPE out of putFile. */
+    @Test
+    void shouldFailClearlyWhenNoContentStream() throws Exception {
+        var mockConnection = mock(SharepointConnection.class);
+        var mockClient = mock(GraphServiceClient.class);
+
+        var task = Download.builder()
+            .tenantId(Property.ofValue("t")).clientId(Property.ofValue("c")).clientSecret(Property.ofValue("s"))
+            .siteId(Property.ofValue("site")).driveId(Property.ofValue("drive"))
+            .itemId(Property.ofValue("item-1"))
+            .build();
+
+        when(mockConnection.createClient(any())).thenReturn(mockClient);
+        when(mockConnection.getDriveId(any(), any())).thenReturn("drive");
+
+        var drives = mock(DrivesRequestBuilder.class);
+        var driveItems = mock(DriveItemRequestBuilder.class);
+        var items = mock(com.microsoft.graph.drives.item.items.ItemsRequestBuilder.class);
+        var item = mock(DriveItemItemRequestBuilder.class);
+        var content = mock(com.microsoft.graph.drives.item.items.item.content.ContentRequestBuilder.class);
+
+        when(mockClient.drives()).thenReturn(drives);
+        when(drives.byDriveId(anyString())).thenReturn(driveItems);
+        when(driveItems.items()).thenReturn(items);
+        when(items.byDriveItemId("item-1")).thenReturn(item);
+
+        var driveItem = new DriveItem();
+        driveItem.setName("empty.txt");
+        when(item.get()).thenReturn(driveItem);
+        when(item.content()).thenReturn(content);
+        when(content.get()).thenReturn(null);
+
+        var testTask = spy(task);
+        doReturn(mockConnection).when(testTask).connection(any(RunContext.class));
+
+        var exception = org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalStateException.class,
+            () -> testTask.run(runContextFactory.of())
+        );
+        assertThat(exception.getMessage(), containsString("no content stream"));
+        assertThat(exception.getMessage(), containsString("item-1"));
+    }
+
     @Test
     void shouldDownloadFileByItemId() throws Exception {
         // Given

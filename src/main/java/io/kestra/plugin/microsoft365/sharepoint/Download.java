@@ -1,9 +1,10 @@
 package io.kestra.plugin.microsoft365.sharepoint;
 
 import com.microsoft.graph.models.DriveItem;
+import com.microsoft.kiota.ApiException;
+
+import io.kestra.plugin.microsoft365.GraphDownloadErrors;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
-import io.kestra.core.http.HttpRequest;
-import io.kestra.core.http.client.HttpClient;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
@@ -24,7 +25,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 @NoArgsConstructor
 @Schema(
     title = "Download SharePoint file to storage",
-    description = "Downloads a file by ID or path from a document library and stores it in Kestra internal storage (`kestra:///`). Uses the Graph download URL and can fail if the link is unavailable for very large or locked files. Requires Microsoft Graph permissions Files.Read.All and Sites.Read.All."
+    description = "Downloads a file by ID or path from a document library and stores it in Kestra internal storage (`kestra:///`). Requires Microsoft Graph permissions Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {
@@ -88,54 +89,44 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
         GraphServiceClient client = connection.createClient(runContext);
         String driveId = connection.getDriveId(runContext, client);
 
-        // Get the file metadata with downloadUrl
-        DriveItem driveItem;
+        String itemRef;
         if (itemId != null) {
-            String rItemId = runContext.render(itemId).as(String.class).orElseThrow();
-            driveItem = client.drives().byDriveId(driveId)
-                .items().byDriveItemId(rItemId)
-                .get();
+            itemRef = runContext.render(itemId).as(String.class).orElseThrow();
         } else if (itemPath != null) {
-            String rItemPath = runContext.render(itemPath).as(String.class).orElseThrow();
-            driveItem = client.drives().byDriveId(driveId)
-                .items().byDriveItemId("root:" + rItemPath + ":")
-                .get();
+            itemRef = "root:%s:".formatted(runContext.render(itemPath).as(String.class).orElseThrow());
         } else {
             throw new IllegalArgumentException("Either itemId or itemPath must be provided");
         }
 
-        // Get the download URL from the drive item metadata
-        Object downloadUrlObj = driveItem.getAdditionalData().get("@microsoft.graph.downloadUrl");
-        if (downloadUrlObj == null) {
-            throw new RuntimeException("Download URL not available. The file might be too large or unavailable.");
+        var item = client.drives().byDriveId(driveId).items().byDriveItemId(itemRef);
+
+        DriveItem driveItem;
+        InputStream content;
+        try {
+            // metadata still drives the outputs, only the download itself moves to the SDK
+            driveItem = item.get();
+            content = item.content().get();
+        } catch (ApiException e) {
+            // a wrong itemId or itemPath fails on the metadata call, so both belong in the same handler
+            throw GraphDownloadErrors.of(e, itemRef, driveId);
         }
-        String downloadUrl = downloadUrlObj.toString();
 
-        // Download the file using Kestra's HttpClient
-        URI[] fileUriHolder = new URI[1];
+        // Graph answers some items with no body at all, which would otherwise surface as a bare NPE from putFile
+        if (content == null) {
+            throw new IllegalStateException(
+                "Failed to download item '%s': no content stream received from Microsoft Graph".formatted(itemRef)
+            );
+        }
 
-        try (HttpClient httpClient = HttpClient.builder()
-            .runContext(runContext)
-            .build()) {
-
-            HttpRequest request = HttpRequest.builder()
-                .uri(URI.create(downloadUrl))
-                .method("GET")
-                .build();
-
-            httpClient.request(request, httpResponse -> {
-                try (InputStream fileStream = httpResponse.getBody()) {
-                    fileUriHolder[0] = runContext.storage().putFile(fileStream, driveItem.getName());
-                } catch (Exception e) {
-                    throw new RuntimeException("Failed to store downloaded file", e);
-                }
-            });
+        URI fileUri;
+        try (InputStream fileStream = content) {
+            fileUri = runContext.storage().putFile(fileStream, driveItem.getName());
         }
 
         return Output.builder()
             .itemId(driveItem.getId())
             .name(driveItem.getName())
-            .uri(fileUriHolder[0].toString())
+            .uri(fileUri.toString())
             .size(driveItem.getSize())
             .webUrl(driveItem.getWebUrl())
             .build();
