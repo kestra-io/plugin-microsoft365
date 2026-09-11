@@ -1,6 +1,9 @@
 package io.kestra.plugin.microsoft365.sharepoint;
 
 import com.microsoft.graph.models.DriveItem;
+import com.microsoft.kiota.ApiException;
+
+import io.kestra.plugin.microsoft365.GraphDownloadErrors;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -90,7 +93,7 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
         if (itemId != null) {
             itemRef = runContext.render(itemId).as(String.class).orElseThrow();
         } else if (itemPath != null) {
-            itemRef = "root:" + runContext.render(itemPath).as(String.class).orElseThrow() + ":";
+            itemRef = "root:%s:".formatted(runContext.render(itemPath).as(String.class).orElseThrow());
         } else {
             throw new IllegalArgumentException("Either itemId or itemPath must be provided");
         }
@@ -100,8 +103,22 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
         // metadata still drives the outputs, only the download itself moves to the SDK
         var driveItem = item.get();
 
+        InputStream content;
+        try {
+            content = item.content().get();
+        } catch (ApiException e) {
+            throw GraphDownloadErrors.of(e, itemRef, driveId);
+        }
+
+        // Graph answers some items with no body at all, which would otherwise surface as a bare NPE from putFile
+        if (content == null) {
+            throw new IllegalStateException(
+                "Failed to download item '%s': no content stream received from Microsoft Graph".formatted(itemRef)
+            );
+        }
+
         URI fileUri;
-        try (InputStream fileStream = item.content().get()) {
+        try (InputStream fileStream = content) {
             fileUri = runContext.storage().putFile(fileStream, driveItem.getName());
         }
 

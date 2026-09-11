@@ -93,6 +93,49 @@ class DownloadTest {
         }
     }
 
+    /** Graph can answer with no body, which used to surface as a bare NPE out of putFile. */
+    @Test
+    void shouldFailClearlyWhenNoContentStream() throws Exception {
+        var mockConnection = mock(SharepointConnection.class);
+        var mockClient = mock(GraphServiceClient.class);
+
+        var task = Download.builder()
+            .tenantId(Property.ofValue("t")).clientId(Property.ofValue("c")).clientSecret(Property.ofValue("s"))
+            .siteId(Property.ofValue("site")).driveId(Property.ofValue("drive"))
+            .itemId(Property.ofValue("item-1"))
+            .build();
+
+        when(mockConnection.createClient(any())).thenReturn(mockClient);
+        when(mockConnection.getDriveId(any(), any())).thenReturn("drive");
+
+        var drives = mock(DrivesRequestBuilder.class);
+        var driveItems = mock(DriveItemRequestBuilder.class);
+        var items = mock(com.microsoft.graph.drives.item.items.ItemsRequestBuilder.class);
+        var item = mock(DriveItemItemRequestBuilder.class);
+        var content = mock(com.microsoft.graph.drives.item.items.item.content.ContentRequestBuilder.class);
+
+        when(mockClient.drives()).thenReturn(drives);
+        when(drives.byDriveId(anyString())).thenReturn(driveItems);
+        when(driveItems.items()).thenReturn(items);
+        when(items.byDriveItemId("item-1")).thenReturn(item);
+
+        var driveItem = new DriveItem();
+        driveItem.setName("empty.txt");
+        when(item.get()).thenReturn(driveItem);
+        when(item.content()).thenReturn(content);
+        when(content.get()).thenReturn(null);
+
+        var testTask = spy(task);
+        doReturn(mockConnection).when(testTask).connection(any(RunContext.class));
+
+        var exception = org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalStateException.class,
+            () -> testTask.run(runContextFactory.of())
+        );
+        assertThat(exception.getMessage(), containsString("no content stream"));
+        assertThat(exception.getMessage(), containsString("item-1"));
+    }
+
     @Test
     void shouldDownloadFileByItemId() throws Exception {
         // Given
