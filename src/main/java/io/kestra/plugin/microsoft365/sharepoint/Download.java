@@ -22,7 +22,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 @NoArgsConstructor
 @Schema(
     title = "Download SharePoint file to storage",
-    description = "Downloads a file by ID or path from a document library and stores it in Kestra internal storage (`kestra:///`). Uses the Graph download URL and can fail if the link is unavailable for very large or locked files. Requires Microsoft Graph permissions Files.Read.All and Sites.Read.All."
+    description = "Downloads a file by ID or path from a document library and stores it in Kestra internal storage (`kestra:///`). Requires Microsoft Graph permissions Files.Read.All and Sites.Read.All."
 )
 @Plugin(
     examples = {
@@ -98,7 +98,7 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
         var item = client.drives().byDriveId(driveId).items().byDriveItemId(itemRef);
 
         // metadata still drives the outputs, only the download itself moves to the SDK
-        DriveItem driveItem = item.get();
+        var driveItem = item.get();
 
         URI fileUri;
         try (InputStream fileStream = item.content().get()) {
