@@ -2,6 +2,8 @@ package io.kestra.plugin.microsoft365.oneshare;
 
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
+
+import io.kestra.plugin.microsoft365.GraphDownloadErrors;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
@@ -105,31 +107,7 @@ public class Download extends AbstractOneShareTask implements RunnableTask<Downl
             try {
                 inputStream = client.drives().byDriveId(rDriveId).items().byDriveItemId(rItemId).content().get();
             } catch (ApiException e) {
-                if (e.getResponseStatusCode() == 404) {
-                    throw new IllegalArgumentException(
-                        String.format("Item '%s' not found in drive '%s'. The file may not exist or the ID is incorrect", 
-                            rItemId, rDriveId), e);
-                } else if (e.getResponseStatusCode() == 403) {
-                    throw new IllegalStateException(
-                        String.format("Permission denied. Insufficient permissions to download item '%s' from drive '%s'", 
-                            rItemId, rDriveId), e);
-                } else if (e.getResponseStatusCode() == 401) {
-                    throw new IllegalStateException(
-                        "Authentication failed. Please verify your credentials (tenantId, clientId, clientSecret)", e);
-                } else if (e.getResponseStatusCode() == 429) {
-                    throw new IllegalStateException(
-                        "Rate limit exceeded. Too many requests to Microsoft Graph API. Please retry after some time", e);
-                } else if (e.getResponseStatusCode() == 503 || e.getResponseStatusCode() == 504) {
-                    throw new IllegalStateException(
-                        "Microsoft Graph API is temporarily unavailable. Please retry after some time", e);
-                } else if (e.getResponseStatusCode() == 416) {
-                    throw new IllegalStateException(
-                        String.format("Invalid range request for item '%s'. The requested byte range is not satisfiable", rItemId), e);
-                }
-
-                throw new RuntimeException(
-                    String.format("Failed to download item '%s' from drive '%s': %s", 
-                        rItemId, rDriveId, e.getMessage()), e);
+                throw GraphDownloadErrors.of(e, rItemId, rDriveId);
             }
 
             if (inputStream == null) {

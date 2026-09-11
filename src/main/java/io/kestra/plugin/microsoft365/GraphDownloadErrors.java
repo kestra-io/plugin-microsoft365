@@ -25,6 +25,9 @@ public final class GraphDownloadErrors {
             case 429 -> new IllegalStateException(
                 "Rate limit exceeded. Too many requests to Microsoft Graph API. Please retry after some time", e
             );
+            case 416 -> new IllegalStateException(
+                "Invalid range request for item '%s'. The requested byte range is not satisfiable".formatted(itemRef), e
+            );
             case 503, 504 -> new IllegalStateException(
                 "Microsoft Graph API is temporarily unavailable. Please retry after some time", e
             );
