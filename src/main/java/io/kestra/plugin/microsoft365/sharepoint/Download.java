@@ -100,13 +100,14 @@ public class Download extends AbstractSharepointTask implements RunnableTask<Dow
 
         var item = client.drives().byDriveId(driveId).items().byDriveItemId(itemRef);
 
-        // metadata still drives the outputs, only the download itself moves to the SDK
-        var driveItem = item.get();
-
+        DriveItem driveItem;
         InputStream content;
         try {
+            // metadata still drives the outputs, only the download itself moves to the SDK
+            driveItem = item.get();
             content = item.content().get();
         } catch (ApiException e) {
+            // a wrong itemId or itemPath fails on the metadata call, so both belong in the same handler
             throw GraphDownloadErrors.of(e, itemRef, driveId);
         }
 

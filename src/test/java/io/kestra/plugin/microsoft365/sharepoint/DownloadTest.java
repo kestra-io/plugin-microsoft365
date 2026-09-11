@@ -93,6 +93,46 @@ class DownloadTest {
         }
     }
 
+    /** A wrong itemId fails on the metadata call, so that path must report like a missing item, not a raw ApiException. */
+    @Test
+    void shouldReportAMissingItemFromTheMetadataCall() throws Exception {
+        var mockConnection = mock(SharepointConnection.class);
+        var mockClient = mock(GraphServiceClient.class);
+
+        var task = Download.builder()
+            .tenantId(Property.ofValue("t")).clientId(Property.ofValue("c")).clientSecret(Property.ofValue("s"))
+            .siteId(Property.ofValue("site")).driveId(Property.ofValue("drive"))
+            .itemId(Property.ofValue("missing-item"))
+            .build();
+
+        when(mockConnection.createClient(any())).thenReturn(mockClient);
+        when(mockConnection.getDriveId(any(), any())).thenReturn("drive");
+
+        var drives = mock(DrivesRequestBuilder.class);
+        var driveItems = mock(DriveItemRequestBuilder.class);
+        var items = mock(com.microsoft.graph.drives.item.items.ItemsRequestBuilder.class);
+        var item = mock(DriveItemItemRequestBuilder.class);
+
+        when(mockClient.drives()).thenReturn(drives);
+        when(drives.byDriveId(anyString())).thenReturn(driveItems);
+        when(driveItems.items()).thenReturn(items);
+        when(items.byDriveItemId("missing-item")).thenReturn(item);
+
+        var notFound = mock(com.microsoft.kiota.ApiException.class);
+        when(notFound.getResponseStatusCode()).thenReturn(404);
+        when(item.get()).thenThrow(notFound);
+
+        var testTask = spy(task);
+        doReturn(mockConnection).when(testTask).connection(any(RunContext.class));
+
+        var exception = org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> testTask.run(runContextFactory.of())
+        );
+        assertThat(exception.getMessage(), containsString("missing-item"));
+        assertThat(exception.getMessage(), containsString("not found"));
+    }
+
     /** Graph can answer with no body, which used to surface as a bare NPE out of putFile. */
     @Test
     void shouldFailClearlyWhenNoContentStream() throws Exception {
