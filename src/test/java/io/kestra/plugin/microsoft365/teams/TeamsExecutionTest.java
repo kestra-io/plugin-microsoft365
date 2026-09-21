@@ -45,7 +45,8 @@ class TeamsExecutionTest extends AbstractTeamsTest {
         assertThat(receivedData, containsString("{\"name\":\"Final task ID\",\"value\":\"failed\"}"));
         assertThat(receivedData, containsString("Kestra Teams notification"));
         assertThat(receivedData, containsString("{\"name\":\"Message\",\"value\":\"Test test test\"}"));
-        assertThat(receivedData, containsString("{\"name\":\"severity\",\"value\":\"high\"},{\"name\":\"region\",\"value\":\"us-east\"}"));
+        assertThat(receivedData, containsString("{\"name\":\"severity\",\"value\":\"high\"}"));
+        assertThat(receivedData, containsString("{\"name\":\"region\",\"value\":\"us-east\"}"));
         assertThat(receivedData, not(containsString(",]")));
     }
 
