@@ -25,7 +25,13 @@
         }, {
             "name": "Final task ID",
             "value": "{{lastTask.taskId}}"
-        }],
+        }{% if customMessage is defined %}, {
+            "name": "Message",
+            "value": {{ customMessage | toJson }}
+        }{% endif %}{% if customFields is defined %}, {% for entry in customFields %}{
+            "name": "{{ entry.key }}",
+            "value": {{ entry.value | toJson }}
+        }{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}],
         "markdown": true
     }]
 }

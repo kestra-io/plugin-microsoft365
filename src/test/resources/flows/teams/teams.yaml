@@ -12,6 +12,9 @@ tasks:
     url: "{{ inputs.url }}/webhook-unit-test"
     activityTitle: "Kestra Teams notification"
     executionId: "{{trigger.executionId}}"
+    customMessage: "Test test test"
+    customFields:
+      severity: high
 
 triggers:
   - id: on_failure
