@@ -1,4 +1,4 @@
-id: teams
+id: teams-default
 namespace: io.kestra.tests
 
 inputs:
@@ -12,17 +12,13 @@ tasks:
     url: "{{ inputs.url }}/webhook-unit-test"
     activityTitle: "Kestra Teams notification"
     executionId: "{{trigger.executionId}}"
-    customMessage: "Test test test"
-    customFields:
-      severity: high
-      region: us-east
 
 triggers:
-  - id: on_failure
+  - id: on_success
     type: io.kestra.plugin.core.trigger.Flow
     preconditions:
       id: flow_trigger
       flows:
         - namespace: io.kestra.tests
-          flowId: main-flow-that-fails
-          states: [ FAILED ]
+          flowId: main-flow-that-succeeds
+          states: [ SUCCESS ]
