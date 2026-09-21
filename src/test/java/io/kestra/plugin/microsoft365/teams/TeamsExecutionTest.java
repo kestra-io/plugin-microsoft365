@@ -13,6 +13,7 @@ import java.util.Objects;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 
 @KestraTest
 class TeamsExecutionTest extends AbstractTeamsTest {
@@ -43,5 +44,26 @@ class TeamsExecutionTest extends AbstractTeamsTest {
         assertThat(receivedData, containsString("Failed on task `failed`"));
         assertThat(receivedData, containsString("{\"name\":\"Final task ID\",\"value\":\"failed\"}"));
         assertThat(receivedData, containsString("Kestra Teams notification"));
+        assertThat(receivedData, containsString("{\"name\":\"Message\",\"value\":\"Test test test\"}"));
+        assertThat(receivedData, containsString("{\"name\":\"severity\",\"value\":\"high\"}"));
+        assertThat(receivedData, containsString("{\"name\":\"region\",\"value\":\"us-east\"}"));
+        assertThat(receivedData, not(containsString(",]")));
+    }
+
+    @Test
+    void flowWithoutCustomFields() throws Exception {
+        var succeededExecution = runAndCaptureExecution(
+            "main-flow-that-succeeds",
+            "teams-default"
+        );
+
+        String receivedData = waitForWebhookData(() -> FakeWebhookController.data, 5000);
+
+        assertThat(receivedData, containsString(succeededExecution.getId()));
+        assertThat(receivedData, containsString("Succeeded"));
+        assertThat(receivedData, containsString("{\"name\":\"Final task ID\",\"value\":\"success\"}"));
+        assertThat(receivedData, not(containsString("\"name\":\"Message\"")));
+        assertThat(receivedData, not(containsString("\"name\":\"severity\"")));
+        assertThat(receivedData, not(containsString(",]")));
     }
 }
