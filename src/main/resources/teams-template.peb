@@ -1,30 +1,33 @@
+{% set statusText = firstFailed == false ? "Succeeded" : ("Failed on task `" ~ firstFailed.taskId ~ "`") %}
+{% set summaryText = "*<" ~ link ~ "|[" ~ execution.namespace ~ "] " ~ execution.flowId ~ " ➛ " ~ execution.state.current ~ ">*
+> " ~ statusText ~ " after " ~ duration %}
 {
     "@type": "MessageCard",
     "@context": "http://schema.org/extensions",
-    "themeColor": "{{themeColor}}",
-    "summary": "*<{{link}}|[{{execution.namespace}}] {{execution.flowId}} ➛ {{execution.state.current}}>*\n> {% if firstFailed == false %}Succeeded{% else %}Failed on task `{{firstFailed.taskId}}`{% endif %} after {{duration}}",
+    "themeColor": {{ themeColor | toJson }},
+    "summary": {{ summaryText | toJson }},
     "sections": [{
         {% if activityTitle is defined %}
-        "activityTitle": "{{activityTitle}}",
+        "activityTitle": {{ activityTitle | toJson }},
         {% endif %}
         {% if activitySubtitle is defined %}
-        "activitySubtitle": "{{activitySubtitle}}",
+        "activitySubtitle": {{ activitySubtitle | toJson }},
         {% endif %}
         "facts": [{
             "name": "Namespace",
-            "value": "{{execution.namespace}}"
+            "value": {{ execution.namespace | toJson }}
         }, {
             "name": "Flow ID",
-            "value": "{{execution.flowId}}"
+            "value": {{ execution.flowId | toJson }}
         }, {
             "name": "Execution ID",
-            "value": "{{execution.id}}"
+            "value": {{ execution.id | toJson }}
         }, {
             "name": "Execution Status",
-            "value": "{{execution.state.current}}"
+            "value": {{ execution.state.current | toJson }}
         }, {
             "name": "Final task ID",
-            "value": "{{lastTask.taskId}}"
+            "value": {{ lastTask.taskId | toJson }}
         }{% if customMessage is defined %}, {
             "name": "Message",
             "value": {{ customMessage | toJson }}
