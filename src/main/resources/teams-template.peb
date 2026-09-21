@@ -27,13 +27,13 @@
             "value": {{ execution.state.current | toJson }}
         }, {
             "name": "Final task ID",
-            "value": {{ lastTask.taskId | toJson }}
+            "value": {{ lastTask.taskId | default("") | toJson }}
         }{% if customMessage is defined %}, {
             "name": "Message",
             "value": {{ customMessage | toJson }}
         }{% endif %}{% if customFields is defined and customFields is not empty %}, {% for entry in customFields %}{
             "name": {{ entry.key | toJson }},
-            "value": {{ entry.value | toJson }}
+            "value": {{ entry.value | string | default("") | toJson }}
         }{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}],
         "markdown": true
     }]
