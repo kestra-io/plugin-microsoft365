@@ -1,0 +1,28 @@
+id: teams-hostile
+namespace: io.kestra.tests
+
+inputs:
+  - id: url
+    type: STRING
+    defaults: "http://localhost:59443"
+
+tasks:
+  - id: teams
+    type: io.kestra.plugin.microsoft365.teams.TeamsExecution
+    url: "{{ inputs.url }}/webhook-unit-test"
+    activityTitle: 'Alert for "prod" pipeline \ escalation'
+    activitySubtitle: "Line one\nLine two with \"quotes\""
+    executionId: "{{trigger.executionId}}"
+    customFields:
+      retries: 3
+      urgent: true
+
+triggers:
+  - id: on_failure
+    type: io.kestra.plugin.core.trigger.Flow
+    preconditions:
+      id: flow_trigger
+      flows:
+        - namespace: io.kestra.tests
+          flowId: main-flow-that-fails-hostile
+          states: [ FAILED ]
