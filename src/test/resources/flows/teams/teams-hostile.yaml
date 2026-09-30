@@ -16,6 +16,9 @@ tasks:
     customFields:
       retries: 3
       urgent: true
+      details:
+        host: db1
+        codes: [500, 502]
 
 triggers:
   - id: on_failure

@@ -1,5 +1,6 @@
 package io.kestra.plugin.microsoft365.teams;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.VoidOutput;
 import io.kestra.core.runners.RunContext;
@@ -71,7 +72,12 @@ public abstract class TeamsTemplate extends TeamsIncomingWebhook {
             runContext.render(this.activitySubtitle).as(String.class).ifPresent(c -> copy.put("activitySubtitle", c));
 
             String render = runContext.render(template, copy);
-            map = (Map<String, Object>) JacksonMapper.ofJson().readValue(render, Object.class);
+            try {
+                map = (Map<String, Object>) JacksonMapper.ofJson().readValue(render, Object.class);
+            } catch (JsonProcessingException e) {
+                runContext.logger().debug("Rendered Teams template '{}':\n{}", renderedTemplateUri.get(), render);
+                throw new IllegalStateException("Teams template '" + renderedTemplateUri.get() + "' rendered invalid JSON: " + e.getOriginalMessage(), e);
+            }
         }
 
         this.payload = Property.ofValue(JacksonMapper.ofJson().writeValueAsString(map));

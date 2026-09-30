@@ -98,7 +98,7 @@ class TeamsExecutionTest extends AbstractTeamsTest {
         assertThat(section.get("activitySubtitle"), is("Line one\nLine two with \"quotes\""));
 
         var facts = (List<Map<String, Object>>) section.get("facts");
-        assertThat(facts, hasSize(7));
+        assertThat(facts, hasSize(8));
         assertThat(facts.get(0).get("value"), is("io.kestra.tests"));
         assertThat(facts.get(1).get("value"), is("main-flow-that-fails-hostile"));
         assertThat(facts.get(2).get("value"), is(failedExecution.getId()));
@@ -109,10 +109,6 @@ class TeamsExecutionTest extends AbstractTeamsTest {
         assertThat(summary, containsString("[io.kestra.tests] main-flow-that-fails-hostile"));
         assertThat(summary, containsString("\n> Failed on task `failed` after"));
 
-        // "value":3 or "value":true (unquoted) would mean the MessageCard schema's string type was violated
-        assertThat(receivedData, not(containsString("\"value\":3")));
-        assertThat(receivedData, not(containsString("\"value\":true")));
-
         var retriesFact = facts.stream().filter(f -> "retries".equals(f.get("name"))).findFirst()
             .orElseThrow(() -> new AssertionError("no 'retries' fact in payload: " + payload));
         assertThat(retriesFact.get("value"), is("3"));
@@ -120,43 +116,57 @@ class TeamsExecutionTest extends AbstractTeamsTest {
         var urgentFact = facts.stream().filter(f -> "urgent".equals(f.get("name"))).findFirst()
             .orElseThrow(() -> new AssertionError("no 'urgent' fact in payload: " + payload));
         assertThat(urgentFact.get("value"), is("true"));
+
+        // structured values are sent as their JSON text, not Java toString()
+        var detailsFact = facts.stream().filter(f -> "details".equals(f.get("name"))).findFirst()
+            .orElseThrow(() -> new AssertionError("no 'details' fact in payload: " + payload));
+        assertThat(detailsFact.get("value"), is("{\"host\":\"db1\",\"codes\":[500,502]}"));
     }
 
-    // lastTask is only ever null when no task has run yet. Both real code paths that populate it
-    // (a Flow trigger's lastTaskId, and the current execution's own `tasks` context variable, which
-    // already includes the currently-running task itself even when it is the flow's first task)
-    // always resolve to a non-null value in practice, so this exercises the template directly with
-    // the same render map shape ExecutionService.executionMap() produces, rather than forcing a
-    // live execution into a state the runner doesn't actually produce.
-    @SuppressWarnings("unchecked")
+    // core 1.3.x omits firstFailed and lastTask when no task run matches the state filter (e.g. a WARNING or KILLED execution)
     @Test
-    void templateRendersEmptyFinalTaskIdWhenLastTaskIsNull() throws Exception {
-        var template = IOUtils.toString(
-            Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("teams-template.peb")),
-            StandardCharsets.UTF_8
-        );
-        var runContext = runContextFactory.of(Map.of());
+    void templateRendersWhenFirstFailedAndLastTaskAreAbsent() throws Exception {
+        assertThat(renderFinalTaskId(baseRenderMap()), is(""));
+    }
 
+    // newer cores always set firstFailed and set lastTask to null when there is no task run
+    @Test
+    void templateRendersWhenLastTaskIsNull() throws Exception {
+        var renderMap = baseRenderMap();
+        renderMap.put("firstFailed", false);
+        renderMap.put("lastTask", null);
+        assertThat(renderFinalTaskId(renderMap), is(""));
+    }
+
+    private static HashMap<String, Object> baseRenderMap() {
         var renderMap = new HashMap<String, Object>();
         renderMap.put("themeColor", "0076D7");
         renderMap.put("link", "https://mysuperhost.com/kestra/ui");
         renderMap.put("duration", "00:00:01.000");
-        renderMap.put("firstFailed", false);
-        renderMap.put("lastTask", null);
         renderMap.put("execution", Map.of(
             "namespace", "io.kestra.tests",
             "flowId", "no-task-yet",
             "id", "no-task-yet-id",
-            "state", Map.of("current", "RUNNING")
+            "state", Map.of("current", "WARNING")
         ));
+        return renderMap;
+    }
 
-        var rendered = runContext.render(template, renderMap);
+    @SuppressWarnings("unchecked")
+    private Object renderFinalTaskId(Map<String, Object> renderMap) throws Exception {
+        var template = IOUtils.toString(
+            Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("teams-template.peb")),
+            StandardCharsets.UTF_8
+        );
+        var rendered = runContextFactory.of(Map.of()).render(template, renderMap);
         Map<String, Object> payload = (Map<String, Object>) JacksonMapper.ofJson().readValue(rendered, Object.class);
+
+        assertThat((String) payload.get("summary"), containsString("\n> Succeeded after"));
 
         var section = ((List<Map<String, Object>>) payload.get("sections")).get(0);
         var facts = (List<Map<String, Object>>) section.get("facts");
-        var finalTaskIdFact = facts.stream().filter(f -> "Final task ID".equals(f.get("name"))).findFirst()
-            .orElseThrow(() -> new AssertionError("no 'Final task ID' fact in payload: " + payload));
-        assertThat(finalTaskIdFact.get("value"), is(""));
+        return facts.stream().filter(f -> "Final task ID".equals(f.get("name"))).findFirst()
+            .orElseThrow(() -> new AssertionError("no 'Final task ID' fact in payload: " + payload))
+            .get("value");
     }
 }
