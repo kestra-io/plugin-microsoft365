@@ -3,7 +3,7 @@
 ## What
 
 - Provides plugin components under `io.kestra.plugin.microsoft365`.
-- Covers Microsoft Graph-based integrations for Outlook, OneShare and SharePoint file operations, and Teams notifications.
+- Covers Microsoft Graph-based integrations for Outlook, OneShare and SharePoint file operations, Teams notifications, and Microsoft Defender XDR alerts, incidents and advanced hunting.
 - Includes classes such as `Send`, `MailReceivedTrigger`, `Upload`, `Trigger`, and `TeamsIncomingWebhook`.
 
 ## Why
@@ -26,6 +26,14 @@ Infrastructure dependencies (Docker Compose services):
 
 ### Key Plugin Classes
 
+- `io.kestra.plugin.microsoft365.defender.GetAlert`
+- `io.kestra.plugin.microsoft365.defender.GetIncident`
+- `io.kestra.plugin.microsoft365.defender.HuntingQuery`
+- `io.kestra.plugin.microsoft365.defender.ListAlerts`
+- `io.kestra.plugin.microsoft365.defender.ListIncidents`
+- `io.kestra.plugin.microsoft365.defender.Trigger`
+- `io.kestra.plugin.microsoft365.defender.UpdateAlert`
+- `io.kestra.plugin.microsoft365.defender.UpdateIncident`
 - `io.kestra.plugin.microsoft365.oneshare.Create`
 - `io.kestra.plugin.microsoft365.oneshare.Delete`
 - `io.kestra.plugin.microsoft365.oneshare.Download`
