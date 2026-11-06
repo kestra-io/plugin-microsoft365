@@ -61,6 +61,11 @@ dependencies {
     }
 }
 
+// javax.xml.stream is part of the JDK (java.xml module) since Java 6, and stax-api 1.0-2 declares a GPL license
+configurations.all {
+    exclude group: 'javax.xml.stream', module: 'stax-api'
+}
+
 /**********************************************************************************************************************\
  * Test
  **********************************************************************************************************************/
