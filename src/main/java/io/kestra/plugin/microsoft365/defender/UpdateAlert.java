@@ -1,9 +1,6 @@
 package io.kestra.plugin.microsoft365.defender;
 
 import com.microsoft.graph.models.security.Alert;
-import com.microsoft.graph.models.security.AlertClassification;
-import com.microsoft.graph.models.security.AlertDetermination;
-import com.microsoft.graph.models.security.AlertStatus;
 import com.microsoft.kiota.ApiException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -37,26 +34,24 @@ import java.util.Map;
         @Example(
             title = "Resolve an alert as a false positive",
             full = true,
-            code = """
-                id: defender_resolve_alert
-                namespace: company.security
-
-                inputs:
-                  - id: alertId
-                    type: STRING
-
-                tasks:
-                  - id: resolve
-                    type: io.kestra.plugin.microsoft365.defender.UpdateAlert
-                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    alertId: "{{ inputs.alertId }}"
-                    status: resolved
-                    classification: falsePositive
-                    determination: other
-                    assignedTo: soc-tier1@company.com
-                """
+            code = "id: defender_resolve_alert\n"
+                + "namespace: company.security\n"
+                + "\n"
+                + "inputs:\n"
+                + "  - id: alertId\n"
+                + "    type: STRING\n"
+                + "\n"
+                + "tasks:\n"
+                + "  - id: resolve\n"
+                + "    type: io.kestra.plugin.microsoft365.defender.UpdateAlert\n"
+                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
+                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
+                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
+                + "    alertId: \"{{ inputs.alertId }}\"\n"
+                + "    status: RESOLVED\n"
+                + "    classification: FALSE_POSITIVE\n"
+                + "    determination: OTHER\n"
+                + "    assignedTo: soc-tier1@company.com\n"
         )
     }
 )
@@ -67,23 +62,23 @@ public class UpdateAlert extends AbstractDefender implements RunnableTask<Update
     @PluginProperty(group = "main")
     private Property<String> alertId;
 
-    @Schema(title = "Status", description = "`new`, `inProgress` or `resolved`.")
+    @Schema(title = "Status")
     @PluginProperty(group = "main")
-    private Property<String> status;
+    private Property<AlertStatus> status;
 
     @Schema(
         title = "Classification",
-        description = "`falsePositive`, `truePositive`, `informationalExpectedActivity` or `unknown`."
+        description = "How the item was classified after investigation."
     )
     @PluginProperty(group = "main")
-    private Property<String> classification;
+    private Property<Classification> classification;
 
     @Schema(
         title = "Determination",
-        description = "For example `malware`, `phishing`, `securityTesting`, `confirmedActivity` or `other`; see the Microsoft Graph `alertDetermination` values."
+        description = "What the investigation determined, for example `MALWARE`, `PHISHING` or `SECURITY_TESTING`."
     )
     @PluginProperty(group = "main")
-    private Property<String> determination;
+    private Property<Determination> determination;
 
     @Schema(title = "Assigned to", description = "Owner of the alert, usually a user principal name.")
     @PluginProperty(group = "main")
@@ -91,26 +86,24 @@ public class UpdateAlert extends AbstractDefender implements RunnableTask<Update
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        String rAlertId = runContext.render(alertId).as(String.class).orElseThrow();
+        String rAlertId = runContext.render(alertId).as(String.class)
+            .orElseThrow(() -> new IllegalArgumentException("alertId is required"));
 
         Alert patch = new Alert();
         boolean changed = false;
-        AlertStatus rStatus = DefenderUtils.parseEnum(
-            AlertStatus.class, runContext.render(status).as(String.class).orElse(null), "status");
+        AlertStatus rStatus = runContext.render(status).as(AlertStatus.class).orElse(null);
         if (rStatus != null) {
-            patch.setStatus(rStatus);
+            patch.setStatus(rStatus.toGraph());
             changed = true;
         }
-        AlertClassification rClassification = DefenderUtils.parseEnum(
-            AlertClassification.class, runContext.render(classification).as(String.class).orElse(null), "classification");
+        Classification rClassification = runContext.render(classification).as(Classification.class).orElse(null);
         if (rClassification != null) {
-            patch.setClassification(rClassification);
+            patch.setClassification(rClassification.toGraph());
             changed = true;
         }
-        AlertDetermination rDetermination = DefenderUtils.parseEnum(
-            AlertDetermination.class, runContext.render(determination).as(String.class).orElse(null), "determination");
+        Determination rDetermination = runContext.render(determination).as(Determination.class).orElse(null);
         if (rDetermination != null) {
-            patch.setDetermination(rDetermination);
+            patch.setDetermination(rDetermination.toGraph());
             changed = true;
         }
         String rAssignedTo = runContext.render(assignedTo).as(String.class).orElse(null);

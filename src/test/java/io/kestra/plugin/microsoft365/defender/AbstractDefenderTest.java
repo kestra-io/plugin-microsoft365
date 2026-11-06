@@ -47,16 +47,14 @@ abstract class AbstractDefenderTest {
     }
 
     static String alertJson(String id, String severity, String status, String lastUpdate) {
-        return """
-            {"@odata.type":"#microsoft.graph.security.alert","id":"%s","title":"Suspicious PowerShell","severity":"%s","status":"%s",
-             "serviceSource":"microsoftDefenderForEndpoint","lastUpdateDateTime":"%s",
-             "evidence":[{"@odata.type":"#microsoft.graph.security.deviceEvidence","deviceDnsName":"host-1"}]}"""
-            .formatted(id, severity, status, lastUpdate);
+        return "{\"@odata.type\":\"#microsoft.graph.security.alert\",\"id\":\"" + id + "\",\"title\":\"Suspicious PowerShell\","
+            + "\"severity\":\"" + severity + "\",\"status\":\"" + status + "\","
+            + "\"serviceSource\":\"microsoftDefenderForEndpoint\",\"lastUpdateDateTime\":\"" + lastUpdate + "\","
+            + "\"evidence\":[{\"@odata.type\":\"#microsoft.graph.security.deviceEvidence\",\"deviceDnsName\":\"host-1\"}]}";
     }
 
     static String incidentJson(String id, String status, String lastUpdate) {
-        return """
-            {"id":"%s","displayName":"Multi-stage incident","severity":"high","status":"%s","lastUpdateDateTime":"%s","customTags":["existing"]}"""
-            .formatted(id, status, lastUpdate);
+        return "{\"id\":\"" + id + "\",\"displayName\":\"Multi-stage incident\",\"severity\":\"high\",\"status\":\"" + status + "\","
+            + "\"lastUpdateDateTime\":\"" + lastUpdate + "\",\"customTags\":[\"existing\"]}";
     }
 }

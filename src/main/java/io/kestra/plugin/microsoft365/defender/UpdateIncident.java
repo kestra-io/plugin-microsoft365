@@ -1,10 +1,8 @@
 package io.kestra.plugin.microsoft365.defender;
 
-import com.microsoft.graph.models.security.AlertClassification;
 import com.microsoft.graph.models.security.AlertComment;
-import com.microsoft.graph.models.security.AlertDetermination;
 import com.microsoft.graph.models.security.Incident;
-import com.microsoft.graph.models.security.IncidentStatus;
+import com.microsoft.graph.security.incidents.item.IncidentItemRequestBuilder;
 import com.microsoft.graph.models.odataerrors.ODataError;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
@@ -50,42 +48,42 @@ import java.util.Map;
         @Example(
             title = "Enrich an incident with an advanced hunting query, then assign it",
             full = true,
-            code = """
-                id: defender_enrich_incident
-                namespace: company.security
-
-                inputs:
-                  - id: incidentId
-                    type: STRING
-                  - id: deviceName
-                    type: STRING
-
-                tasks:
-                  - id: hunt
-                    type: io.kestra.plugin.microsoft365.defender.HuntingQuery
-                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    timespan: P1D
-                    fetchType: FETCH
-                    query: |
-                      DeviceProcessEvents
-                      | where DeviceName == "{{ inputs.deviceName }}"
-                      | where FileName in~ ("powershell.exe", "cmd.exe")
-                      | summarize count() by AccountName, FileName
-
-                  - id: assign
-                    type: io.kestra.plugin.microsoft365.defender.UpdateIncident
-                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    incidentId: "{{ inputs.incidentId }}"
-                    status: inProgress
-                    assignedTo: soc-tier2@company.com
-                    customTags:
-                      - kestra
-                    comment: "Hunting query returned {{ outputs.hunt.count }} suspicious process rows"
-                """
+            code = "id: defender_enrich_incident\n"
+                + "namespace: company.security\n"
+                + "\n"
+                + "inputs:\n"
+                + "  - id: incidentId\n"
+                + "    type: STRING\n"
+                + "  - id: deviceName\n"
+                + "    type: STRING\n"
+                + "    # Device names only, so the input cannot change the KQL query below\n"
+                + "    validator: \"^[A-Za-z0-9._-]+$\"\n"
+                + "\n"
+                + "tasks:\n"
+                + "  - id: hunt\n"
+                + "    type: io.kestra.plugin.microsoft365.defender.HuntingQuery\n"
+                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
+                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
+                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
+                + "    timespan: P1D\n"
+                + "    fetchType: FETCH\n"
+                + "    query: |\n"
+                + "      DeviceProcessEvents\n"
+                + "      | where DeviceName == \"{{ inputs.deviceName }}\"\n"
+                + "      | where FileName in~ (\"powershell.exe\", \"cmd.exe\")\n"
+                + "      | summarize count() by AccountName, FileName\n"
+                + "\n"
+                + "  - id: assign\n"
+                + "    type: io.kestra.plugin.microsoft365.defender.UpdateIncident\n"
+                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
+                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
+                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
+                + "    incidentId: \"{{ inputs.incidentId }}\"\n"
+                + "    status: IN_PROGRESS\n"
+                + "    assignedTo: soc-tier2@company.com\n"
+                + "    customTags:\n"
+                + "      - kestra\n"
+                + "    comment: \"Hunting query returned {{ outputs.hunt.count }} suspicious process rows\"\n"
         )
     }
 )
@@ -96,23 +94,23 @@ public class UpdateIncident extends AbstractDefender implements RunnableTask<Upd
     @PluginProperty(group = "main")
     private Property<String> incidentId;
 
-    @Schema(title = "Status", description = "`active`, `resolved`, `inProgress`, `redirected` or `awaitingAction`.")
+    @Schema(title = "Status")
     @PluginProperty(group = "main")
-    private Property<String> status;
+    private Property<IncidentStatus> status;
 
     @Schema(
         title = "Classification",
-        description = "`falsePositive`, `truePositive`, `informationalExpectedActivity` or `unknown`."
+        description = "How the item was classified after investigation."
     )
     @PluginProperty(group = "main")
-    private Property<String> classification;
+    private Property<Classification> classification;
 
     @Schema(
         title = "Determination",
-        description = "For example `malware`, `phishing`, `securityTesting`, `confirmedActivity` or `other`; see the Microsoft Graph `alertDetermination` values."
+        description = "What the investigation determined, for example `MALWARE`, `PHISHING` or `SECURITY_TESTING`."
     )
     @PluginProperty(group = "main")
-    private Property<String> determination;
+    private Property<Determination> determination;
 
     @Schema(title = "Assigned to", description = "Owner of the incident, usually a user principal name.")
     @PluginProperty(group = "main")
@@ -134,26 +132,24 @@ public class UpdateIncident extends AbstractDefender implements RunnableTask<Upd
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        String rIncidentId = runContext.render(incidentId).as(String.class).orElseThrow();
+        String rIncidentId = runContext.render(incidentId).as(String.class)
+            .orElseThrow(() -> new IllegalArgumentException("incidentId is required"));
 
         Incident patch = new Incident();
         boolean changed = false;
-        IncidentStatus rStatus = DefenderUtils.parseEnum(
-            IncidentStatus.class, runContext.render(status).as(String.class).orElse(null), "status");
+        IncidentStatus rStatus = runContext.render(status).as(IncidentStatus.class).orElse(null);
         if (rStatus != null) {
-            patch.setStatus(rStatus);
+            patch.setStatus(rStatus.toGraph());
             changed = true;
         }
-        AlertClassification rClassification = DefenderUtils.parseEnum(
-            AlertClassification.class, runContext.render(classification).as(String.class).orElse(null), "classification");
+        Classification rClassification = runContext.render(classification).as(Classification.class).orElse(null);
         if (rClassification != null) {
-            patch.setClassification(rClassification);
+            patch.setClassification(rClassification.toGraph());
             changed = true;
         }
-        AlertDetermination rDetermination = DefenderUtils.parseEnum(
-            AlertDetermination.class, runContext.render(determination).as(String.class).orElse(null), "determination");
+        Determination rDetermination = runContext.render(determination).as(Determination.class).orElse(null);
         if (rDetermination != null) {
-            patch.setDetermination(rDetermination);
+            patch.setDetermination(rDetermination.toGraph());
             changed = true;
         }
         String rAssignedTo = runContext.render(assignedTo).as(String.class).orElse(null);
@@ -172,7 +168,7 @@ public class UpdateIncident extends AbstractDefender implements RunnableTask<Upd
         }
 
         GraphServiceClient client = graphClient(runContext);
-        var incidentRequest = client.security().incidents().byIncidentId(rIncidentId);
+        IncidentItemRequestBuilder incidentRequest = client.security().incidents().byIncidentId(rIncidentId);
         Incident updated = null;
         try {
             if (changed) {

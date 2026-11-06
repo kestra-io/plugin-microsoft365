@@ -5,7 +5,6 @@ import com.microsoft.graph.models.odataerrors.ODataError;
 import com.microsoft.kiota.ApiException;
 import com.microsoft.kiota.serialization.KiotaJsonSerialization;
 import com.microsoft.kiota.serialization.Parsable;
-import com.microsoft.kiota.serialization.ValuedEnum;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.serializers.JacksonMapper;
@@ -30,7 +29,6 @@ import java.util.stream.Collectors;
  */
 final class DefenderUtils {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
-    private static final String UNKNOWN_FUTURE_VALUE = "unknownFutureValue";
 
     private DefenderUtils() {
     }
@@ -61,26 +59,6 @@ final class DefenderUtils {
     }
 
     /**
-     * Resolves a Graph enum from its wire value (e.g. {@code inProgress}), failing with the list of allowed values.
-     */
-    static <E extends Enum<E> & ValuedEnum> E parseEnum(Class<E> type, String value, String property) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        for (E constant : type.getEnumConstants()) {
-            if (constant.getValue().equalsIgnoreCase(trimmed) && !UNKNOWN_FUTURE_VALUE.equals(constant.getValue())) {
-                return constant;
-            }
-        }
-        String allowed = Arrays.stream(type.getEnumConstants())
-            .map(ValuedEnum::getValue)
-            .filter(v -> !UNKNOWN_FUTURE_VALUE.equals(v))
-            .collect(Collectors.joining(", "));
-        throw new IllegalArgumentException("Invalid " + property + " '" + value + "'. Allowed values: " + allowed);
-    }
-
-    /**
      * Joins the user's raw OData filter with the convenience filters, all combined with {@code and}.
      */
     static String combineFilters(String... clauses) {
@@ -96,8 +74,8 @@ final class DefenderUtils {
         return parts.stream().map(p -> "(" + p + ")").collect(Collectors.joining(" and "));
     }
 
-    static String eqClause(String field, ValuedEnum value) {
-        return value == null ? null : field + " eq '" + value.getValue() + "'";
+    static String eqClause(String field, GraphEnum value) {
+        return value == null ? null : field + " eq '" + value.toGraph().getValue() + "'";
     }
 
     /**

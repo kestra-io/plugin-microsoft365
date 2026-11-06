@@ -2,7 +2,6 @@ package io.kestra.plugin.microsoft365.defender;
 
 import com.microsoft.graph.models.security.Alert;
 import com.microsoft.graph.models.security.AlertCollectionResponse;
-import com.microsoft.graph.models.security.AlertStatus;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 import io.kestra.core.models.annotations.Example;
@@ -40,48 +39,45 @@ import java.util.Map;
         @Example(
             title = "Store all new high-severity alerts in internal storage",
             full = true,
-            code = """
-                id: defender_list_high_alerts
-                namespace: company.security
-
-                inputs:
-                  - id: severity
-                    type: STRING
-                    defaults: high
-
-                tasks:
-                  - id: list_alerts
-                    type: io.kestra.plugin.microsoft365.defender.ListAlerts
-                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    severity: "{{ inputs.severity }}"
-                    status: new
-                    top: 200
-                    fetchType: STORE
-
-                  - id: log
-                    type: io.kestra.plugin.core.log.Log
-                    message: "{{ outputs.list_alerts.count }} open {{ inputs.severity }} alerts written to {{ outputs.list_alerts.uri }}"
-                """
+            code = "id: defender_list_high_alerts\n"
+                + "namespace: company.security\n"
+                + "\n"
+                + "inputs:\n"
+                + "  - id: severity\n"
+                + "    type: SELECT\n"
+                + "    values: [INFORMATIONAL, LOW, MEDIUM, HIGH]\n"
+                + "    defaults: HIGH\n"
+                + "\n"
+                + "tasks:\n"
+                + "  - id: list_alerts\n"
+                + "    type: io.kestra.plugin.microsoft365.defender.ListAlerts\n"
+                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
+                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
+                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
+                + "    severity: \"{{ inputs.severity }}\"\n"
+                + "    status: NEW\n"
+                + "    top: 200\n"
+                + "    fetchType: STORE\n"
+                + "\n"
+                + "  - id: log\n"
+                + "    type: io.kestra.plugin.core.log.Log\n"
+                + "    message: \"{{ outputs.list_alerts.count }} open {{ inputs.severity }} alerts written to {{ outputs.list_alerts.uri }}\"\n"
         ),
         @Example(
             title = "List Defender for Endpoint alerts with a raw OData filter",
             full = true,
-            code = """
-                id: defender_list_endpoint_alerts
-                namespace: company.security
-
-                tasks:
-                  - id: list_alerts
-                    type: io.kestra.plugin.microsoft365.defender.ListAlerts
-                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    filter: "serviceSource eq 'microsoftDefenderForEndpoint'"
-                    top: 50
-                    fetchType: FETCH
-                """
+            code = "id: defender_list_endpoint_alerts\n"
+                + "namespace: company.security\n"
+                + "\n"
+                + "tasks:\n"
+                + "  - id: list_alerts\n"
+                + "    type: io.kestra.plugin.microsoft365.defender.ListAlerts\n"
+                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
+                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
+                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
+                + "    filter: \"serviceSource eq 'microsoftDefenderForEndpoint'\"\n"
+                + "    top: 50\n"
+                + "    fetchType: FETCH\n"
         )
     }
 )
@@ -96,17 +92,17 @@ public class ListAlerts extends AbstractDefender implements RunnableTask<ListAle
 
     @Schema(
         title = "Severity",
-        description = "Only return alerts with this severity: `informational`, `low`, `medium` or `high`."
+        description = "Only return alerts with this severity."
     )
     @PluginProperty(group = "processing")
-    private Property<String> severity;
+    private Property<Severity> severity;
 
     @Schema(
         title = "Status",
-        description = "Only return alerts with this status: `new`, `inProgress` or `resolved`."
+        description = "Only return alerts with this status."
     )
     @PluginProperty(group = "processing")
-    private Property<String> status;
+    private Property<AlertStatus> status;
 
     @Schema(
         title = "Maximum number of alerts",
@@ -118,11 +114,10 @@ public class ListAlerts extends AbstractDefender implements RunnableTask<ListAle
 
     @Schema(
         title = "How to output the alerts",
-        description = """
-            FETCH - outputs the alerts as `alerts`
-            FETCH_ONE - outputs the first alert as `alert`
-            STORE - stores the alerts in an ION file and outputs its `uri`
-            NONE - only outputs `count`"""
+        description = "FETCH - outputs the alerts as `alerts`\n" +
+            "FETCH_ONE - outputs the first alert as `alert`\n" +
+            "STORE - stores the alerts in an ION file and outputs its `uri`\n" +
+            "NONE - only outputs `count`"
     )
     @NotNull
     @Builder.Default
@@ -132,8 +127,7 @@ public class ListAlerts extends AbstractDefender implements RunnableTask<ListAle
     @Override
     public Output run(RunContext runContext) throws Exception {
         int rTop = renderTop(runContext, top);
-        AlertStatus rStatus = DefenderUtils.parseEnum(
-            AlertStatus.class, runContext.render(status).as(String.class).orElse(null), "status");
+        AlertStatus rStatus = runContext.render(status).as(AlertStatus.class).orElse(null);
         String rFilter = renderFilter(runContext, filter, severity, DefenderUtils.eqClause("status", rStatus));
         FetchType rFetchType = runContext.render(fetchType).as(FetchType.class).orElse(FetchType.FETCH);
 

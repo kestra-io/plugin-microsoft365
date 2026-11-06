@@ -1,5 +1,6 @@
 package io.kestra.plugin.microsoft365.defender;
 
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
@@ -36,8 +37,8 @@ class AlertsTest extends AbstractDefenderTest {
 
         ListAlerts task = withWireMock(ListAlerts.builder()
             .filter(Property.ofValue("serviceSource eq 'microsoftDefenderForEndpoint'"))
-            .severity(Property.ofValue("high"))
-            .status(Property.ofValue("new"))
+            .severity(Property.ofValue(Severity.HIGH))
+            .status(Property.ofValue(AlertStatus.NEW))
             .top(Property.ofValue(3))
             .build());
 
@@ -87,11 +88,11 @@ class AlertsTest extends AbstractDefenderTest {
 
     @Test
     void listAlertsRejectsInvalidValues() throws Exception {
-        var badSeverity = withWireMock(ListAlerts.builder().severity(Property.ofValue("critical")).build());
-        var e = assertThrows(IllegalArgumentException.class, () -> badSeverity.run(runContext()));
-        assertThat(e.getMessage(), containsString("informational, low, medium, high"));
+        // A rendered value outside the enum fails before any call to Graph
+        ListAlerts badSeverity = withWireMock(ListAlerts.builder().severity(Property.ofExpression("{{ 'CRITICAL' }}")).build());
+        assertThrows(IllegalVariableEvaluationException.class, () -> badSeverity.run(runContext()));
 
-        var badTop = withWireMock(ListAlerts.builder().top(Property.ofValue(2001)).build());
+        ListAlerts badTop = withWireMock(ListAlerts.builder().top(Property.ofValue(2001)).build());
         assertThrows(IllegalArgumentException.class, () -> badTop.run(runContext()));
         wm.verify(0, getRequestedFor(anyUrl()));
     }
@@ -103,8 +104,8 @@ class AlertsTest extends AbstractDefenderTest {
                 .withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":{\"code\":\"TooManyRequests\",\"message\":\"Too many requests\"}}")));
 
-        var task = withWireMock(ListAlerts.builder().build());
-        var e = assertThrows(IllegalStateException.class, () -> task.run(runContext()));
+        ListAlerts task = withWireMock(ListAlerts.builder().build());
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> task.run(runContext()));
 
         assertThat(e.getMessage(), containsString("HTTP 429"));
         assertThat(e.getMessage(), containsString("Retry-After: 1s"));
@@ -130,8 +131,8 @@ class AlertsTest extends AbstractDefenderTest {
 
         UpdateAlert task = withWireMock(UpdateAlert.builder()
             .alertId(Property.ofValue("da123"))
-            .status(Property.ofValue("resolved"))
-            .classification(Property.ofValue("falsePositive"))
+            .status(Property.ofValue(AlertStatus.RESOLVED))
+            .classification(Property.ofValue(Classification.FALSE_POSITIVE))
             .build());
 
         UpdateAlert.Output output = task.run(runContext());
@@ -146,12 +147,11 @@ class AlertsTest extends AbstractDefenderTest {
 
     @Test
     void updateAlertRequiresAProperty() throws Exception {
-        var task = withWireMock(UpdateAlert.builder().alertId(Property.ofValue("da123")).build());
+        UpdateAlert task = withWireMock(UpdateAlert.builder().alertId(Property.ofValue("da123")).build());
         assertThrows(IllegalArgumentException.class, () -> task.run(runContext()));
 
-        var badStatus = withWireMock(UpdateAlert.builder().alertId(Property.ofValue("da123")).status(Property.ofValue("closed")).build());
-        var e = assertThrows(IllegalArgumentException.class, () -> badStatus.run(runContext()));
-        assertThat(e.getMessage(), containsString("new, inProgress, resolved"));
+        UpdateAlert badStatus = withWireMock(UpdateAlert.builder().alertId(Property.ofValue("da123")).status(Property.ofExpression("{{ 'CLOSED' }}")).build());
+        assertThrows(IllegalVariableEvaluationException.class, () -> badStatus.run(runContext()));
         wm.verify(0, anyRequestedFor(anyUrl()));
     }
 }

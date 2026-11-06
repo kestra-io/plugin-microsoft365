@@ -23,8 +23,8 @@ class IncidentsTest extends AbstractDefenderTest {
             .willReturn(okJson("{\"value\":[" + incidentJson("101", "inProgress", "2026-10-24T10:00:00Z") + "]}")));
 
         ListIncidents.Output output = withWireMock(ListIncidents.builder()
-            .severity(Property.ofValue("high"))
-            .status(Property.ofValue("inProgress"))
+            .severity(Property.ofValue(Severity.HIGH))
+            .status(Property.ofValue(IncidentStatus.IN_PROGRESS))
             .expandAlerts(Property.ofValue(true))
             .top(Property.ofValue(500))
             .build()).run(runContext());
@@ -57,7 +57,7 @@ class IncidentsTest extends AbstractDefenderTest {
 
         UpdateIncident.Output output = withWireMock(UpdateIncident.builder()
             .incidentId(Property.ofValue("101"))
-            .status(Property.ofValue("inProgress"))
+            .status(Property.ofValue(IncidentStatus.IN_PROGRESS))
             .assignedTo(Property.ofValue("soc-tier2@company.com"))
             .customTags(Property.ofValue(List.of("kestra")))
             .comment(Property.ofValue("Hunting returned 3 rows"))
@@ -92,7 +92,7 @@ class IncidentsTest extends AbstractDefenderTest {
 
     @Test
     void updateIncidentRequiresAProperty() throws Exception {
-        var task = withWireMock(UpdateIncident.builder().incidentId(Property.ofValue("101")).build());
+        UpdateIncident task = withWireMock(UpdateIncident.builder().incidentId(Property.ofValue("101")).build());
         assertThrows(IllegalArgumentException.class, () -> task.run(runContext()));
         wm.verify(0, anyRequestedFor(anyUrl()));
     }
@@ -103,8 +103,8 @@ class IncidentsTest extends AbstractDefenderTest {
             .willReturn(aResponse().withStatus(404).withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":{\"code\":\"NotFound\",\"message\":\"Incident not found\"}}")));
 
-        var task = withWireMock(GetIncident.builder().incidentId(Property.ofValue("999")).build());
-        var e = assertThrows(IllegalStateException.class, () -> task.run(runContext()));
+        GetIncident task = withWireMock(GetIncident.builder().incidentId(Property.ofValue("999")).build());
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> task.run(runContext()));
         assertThat(e.getMessage(), allOf(containsString("HTTP 404"), containsString("Incident not found")));
     }
 }

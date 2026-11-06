@@ -34,26 +34,24 @@ import java.util.Map;
         @Example(
             title = "Get an alert and log its title",
             full = true,
-            code = """
-                id: defender_get_alert
-                namespace: company.security
-
-                inputs:
-                  - id: alertId
-                    type: STRING
-
-                tasks:
-                  - id: get_alert
-                    type: io.kestra.plugin.microsoft365.defender.GetAlert
-                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    alertId: "{{ inputs.alertId }}"
-
-                  - id: log
-                    type: io.kestra.plugin.core.log.Log
-                    message: "{{ outputs.get_alert.alert.title }} ({{ outputs.get_alert.alert.severity }})"
-                """
+            code = "id: defender_get_alert\n"
+                + "namespace: company.security\n"
+                + "\n"
+                + "inputs:\n"
+                + "  - id: alertId\n"
+                + "    type: STRING\n"
+                + "\n"
+                + "tasks:\n"
+                + "  - id: get_alert\n"
+                + "    type: io.kestra.plugin.microsoft365.defender.GetAlert\n"
+                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
+                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
+                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
+                + "    alertId: \"{{ inputs.alertId }}\"\n"
+                + "\n"
+                + "  - id: log\n"
+                + "    type: io.kestra.plugin.core.log.Log\n"
+                + "    message: \"{{ outputs.get_alert.alert.title }} ({{ outputs.get_alert.alert.severity }})\"\n"
         )
     }
 )
@@ -66,7 +64,8 @@ public class GetAlert extends AbstractDefender implements RunnableTask<GetAlert.
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        String rAlertId = runContext.render(alertId).as(String.class).orElseThrow();
+        String rAlertId = runContext.render(alertId).as(String.class)
+            .orElseThrow(() -> new IllegalArgumentException("alertId is required"));
 
         Alert alert;
         try {

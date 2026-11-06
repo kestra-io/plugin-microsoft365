@@ -1,6 +1,5 @@
 package io.kestra.plugin.microsoft365.defender;
 
-import com.microsoft.graph.models.security.AlertSeverity;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
@@ -38,11 +37,10 @@ public abstract class AbstractDefender extends AbstractGraphConnection {
         return rTop;
     }
 
-    protected String renderFilter(RunContext runContext, Property<String> filter, Property<String> severity, String statusClause)
+    protected String renderFilter(RunContext runContext, Property<String> filter, Property<Severity> severity, String statusClause)
         throws IllegalVariableEvaluationException {
         String rFilter = runContext.render(filter).as(String.class).orElse(null);
-        AlertSeverity rSeverity = DefenderUtils.parseEnum(
-            AlertSeverity.class, runContext.render(severity).as(String.class).orElse(null), "severity");
+        Severity rSeverity = runContext.render(severity).as(Severity.class).orElse(null);
         return DefenderUtils.combineFilters(rFilter, DefenderUtils.eqClause("severity", rSeverity), statusClause);
     }
 

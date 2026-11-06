@@ -16,22 +16,21 @@ import static org.hamcrest.Matchers.*;
 @KestraTest
 class HuntingQueryTest extends AbstractDefenderTest {
     // Example 2 of the Graph docs: result keys are camelCased while the schema uses the KQL column names
-    private static final String RESPONSE = """
-        {
-          "schema": [
-            {"name": "Timestamp", "type": "DateTime"},
-            {"name": "FileName", "type": "String"},
-            {"name": "Count", "type": "Int64"},
-            {"name": "Score", "type": "Double"},
-            {"name": "IsSigned", "type": "Boolean"},
-            {"name": "Details", "type": "Object"}
-          ],
-          "results": [
-            {"timestamp": "2026-10-24T09:40:12.1234567Z", "fileName": "powershell.exe", "count": 3, "score": 0.5, "isSigned": true,
-             "details": {"parent": "cmd.exe", "args": ["-enc", "AAA"]}},
-            {"timestamp": "2026-10-24T09:41:00Z", "fileName": "cmd.exe", "count": 12345678901, "score": 1, "isSigned": false, "details": null}
-          ]
-        }""";
+    private static final String RESPONSE = "{"
+        + "\"schema\": ["
+        + "{\"name\": \"Timestamp\", \"type\": \"DateTime\"},"
+        + "{\"name\": \"FileName\", \"type\": \"String\"},"
+        + "{\"name\": \"Count\", \"type\": \"Int64\"},"
+        + "{\"name\": \"Score\", \"type\": \"Double\"},"
+        + "{\"name\": \"IsSigned\", \"type\": \"Boolean\"},"
+        + "{\"name\": \"Details\", \"type\": \"Object\"}"
+        + "],"
+        + "\"results\": ["
+        + "{\"timestamp\": \"2026-10-24T09:40:12.1234567Z\", \"fileName\": \"powershell.exe\", \"count\": 3, \"score\": 0.5, \"isSigned\": true,"
+        + " \"details\": {\"parent\": \"cmd.exe\", \"args\": [\"-enc\", \"AAA\"]}},"
+        + "{\"timestamp\": \"2026-10-24T09:41:00Z\", \"fileName\": \"cmd.exe\", \"count\": 12345678901, \"score\": 1, \"isSigned\": false, \"details\": null}"
+        + "]"
+        + "}";
 
     @Test
     void fetchConvertsValuesFromSchema() throws Exception {

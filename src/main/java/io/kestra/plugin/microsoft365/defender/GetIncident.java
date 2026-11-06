@@ -34,27 +34,25 @@ import java.util.Map;
         @Example(
             title = "Get an incident with its alerts",
             full = true,
-            code = """
-                id: defender_get_incident
-                namespace: company.security
-
-                inputs:
-                  - id: incidentId
-                    type: STRING
-
-                tasks:
-                  - id: get_incident
-                    type: io.kestra.plugin.microsoft365.defender.GetIncident
-                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    incidentId: "{{ inputs.incidentId }}"
-                    expandAlerts: true
-
-                  - id: log
-                    type: io.kestra.plugin.core.log.Log
-                    message: "{{ outputs.get_incident.incident.displayName }} has {{ outputs.get_incident.incident.alerts | length }} alerts"
-                """
+            code = "id: defender_get_incident\n"
+                + "namespace: company.security\n"
+                + "\n"
+                + "inputs:\n"
+                + "  - id: incidentId\n"
+                + "    type: STRING\n"
+                + "\n"
+                + "tasks:\n"
+                + "  - id: get_incident\n"
+                + "    type: io.kestra.plugin.microsoft365.defender.GetIncident\n"
+                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
+                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
+                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
+                + "    incidentId: \"{{ inputs.incidentId }}\"\n"
+                + "    expandAlerts: true\n"
+                + "\n"
+                + "  - id: log\n"
+                + "    type: io.kestra.plugin.core.log.Log\n"
+                + "    message: \"{{ outputs.get_incident.incident.displayName }} has {{ outputs.get_incident.incident.alerts | length }} alerts\"\n"
         )
     }
 )
@@ -75,7 +73,8 @@ public class GetIncident extends AbstractDefender implements RunnableTask<GetInc
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        String rIncidentId = runContext.render(incidentId).as(String.class).orElseThrow();
+        String rIncidentId = runContext.render(incidentId).as(String.class)
+            .orElseThrow(() -> new IllegalArgumentException("incidentId is required"));
         boolean rExpandAlerts = runContext.render(expandAlerts).as(Boolean.class).orElse(false);
 
         Incident incident;

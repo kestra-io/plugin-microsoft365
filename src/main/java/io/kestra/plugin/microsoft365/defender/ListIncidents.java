@@ -2,7 +2,6 @@ package io.kestra.plugin.microsoft365.defender;
 
 import com.microsoft.graph.models.security.Incident;
 import com.microsoft.graph.models.security.IncidentCollectionResponse;
-import com.microsoft.graph.models.security.IncidentStatus;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 import io.kestra.core.models.annotations.Example;
@@ -40,25 +39,23 @@ import java.util.Map;
         @Example(
             title = "List active high-severity incidents with their alerts",
             full = true,
-            code = """
-                id: defender_list_incidents
-                namespace: company.security
-
-                tasks:
-                  - id: list_incidents
-                    type: io.kestra.plugin.microsoft365.defender.ListIncidents
-                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
-                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
-                    severity: high
-                    status: active
-                    expandAlerts: true
-                    top: 20
-
-                  - id: log
-                    type: io.kestra.plugin.core.log.Log
-                    message: "{{ outputs.list_incidents.incidents | jq('[.[].displayName]') | first }}"
-                """
+            code = "id: defender_list_incidents\n"
+                + "namespace: company.security\n"
+                + "\n"
+                + "tasks:\n"
+                + "  - id: list_incidents\n"
+                + "    type: io.kestra.plugin.microsoft365.defender.ListIncidents\n"
+                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
+                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
+                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
+                + "    severity: HIGH\n"
+                + "    status: ACTIVE\n"
+                + "    expandAlerts: true\n"
+                + "    top: 20\n"
+                + "\n"
+                + "  - id: log\n"
+                + "    type: io.kestra.plugin.core.log.Log\n"
+                + "    message: \"{{ outputs.list_incidents.incidents | jq('[.[].displayName]') | first }}\"\n"
         )
     }
 )
@@ -75,17 +72,17 @@ public class ListIncidents extends AbstractDefender implements RunnableTask<List
 
     @Schema(
         title = "Severity",
-        description = "Only return incidents with this severity: `informational`, `low`, `medium` or `high`."
+        description = "Only return incidents with this severity."
     )
     @PluginProperty(group = "processing")
-    private Property<String> severity;
+    private Property<Severity> severity;
 
     @Schema(
         title = "Status",
-        description = "Only return incidents with this status: `active`, `resolved`, `inProgress`, `redirected` or `awaitingAction`."
+        description = "Only return incidents with this status."
     )
     @PluginProperty(group = "processing")
-    private Property<String> status;
+    private Property<IncidentStatus> status;
 
     @Schema(
         title = "Include alerts",
@@ -105,11 +102,10 @@ public class ListIncidents extends AbstractDefender implements RunnableTask<List
 
     @Schema(
         title = "How to output the incidents",
-        description = """
-            FETCH - outputs the incidents as `incidents`
-            FETCH_ONE - outputs the first incident as `incident`
-            STORE - stores the incidents in an ION file and outputs its `uri`
-            NONE - only outputs `count`"""
+        description = "FETCH - outputs the incidents as `incidents`\n" +
+            "FETCH_ONE - outputs the first incident as `incident`\n" +
+            "STORE - stores the incidents in an ION file and outputs its `uri`\n" +
+            "NONE - only outputs `count`"
     )
     @NotNull
     @Builder.Default
@@ -119,8 +115,7 @@ public class ListIncidents extends AbstractDefender implements RunnableTask<List
     @Override
     public Output run(RunContext runContext) throws Exception {
         int rTop = renderTop(runContext, top);
-        IncidentStatus rStatus = DefenderUtils.parseEnum(
-            IncidentStatus.class, runContext.render(status).as(String.class).orElse(null), "status");
+        IncidentStatus rStatus = runContext.render(status).as(IncidentStatus.class).orElse(null);
         String rFilter = renderFilter(runContext, filter, severity, DefenderUtils.eqClause("status", rStatus));
         boolean rExpandAlerts = runContext.render(expandAlerts).as(Boolean.class).orElse(false);
         FetchType rFetchType = runContext.render(fetchType).as(FetchType.class).orElse(FetchType.FETCH);
