@@ -1,0 +1,15 @@
+id: defender-trigger
+namespace: io.kestra.tests.defender
+
+tasks:
+  - id: consume
+    type: io.kestra.plugin.core.debug.Return
+    format: "{{ trigger.count }}"
+
+triggers:
+  - id: watch
+    type: io.kestra.plugin.microsoft365.defender.TestableTrigger
+    interval: PT1S
+    tenantId: test-tenant
+    clientId: test-client
+    clientSecret: test-secret

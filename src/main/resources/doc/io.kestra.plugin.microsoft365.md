@@ -8,6 +8,8 @@ Interact with Microsoft Teams, OneDrive, SharePoint, Outlook, and Dynamics 365 f
 
 **OneDrive, SharePoint, and Outlook** tasks authenticate via Microsoft Graph API using an Azure AD app registration. Set `tenantId`, `clientId`, and `clientSecret` on each task (or use `pemCertificate` instead of `clientSecret` for certificate-based auth).
 
+**Defender** tasks (`defender.*`) use the same Microsoft Graph app registration with application permissions: `SecurityAlert.Read.All` or `SecurityAlert.ReadWrite.All` for alerts, `SecurityIncident.Read.All` or `SecurityIncident.ReadWrite.All` for incidents, and `ThreatHunting.Read.All` for advanced hunting. Grant admin consent after adding them.
+
 **Dynamics 365 Dataverse and Business Central** tasks use the same Azure AD app registration pattern — set `tenantId`, `clientId`, and `clientSecret` (or `pemCertificate`). Grant the service principal the `Dynamics CRM user` permission for Dataverse tasks, or the `Financials.ReadWrite.All` permission for Business Central tasks.
 
 ## Tasks
@@ -23,6 +25,14 @@ Both `adaptivecards` tasks need DELEGATED (acting-as-user) authentication: set `
 `sharepoint` tasks manage files in SharePoint document libraries: `Upload`, `Download`, `Create`, `Delete`, `List`, `Export`, and `Move`. Set `siteId` and `driveId` on SharePoint tasks to target the correct site and library.
 
 `outlook` tasks interact with email: `Send` sends a message, `Get` reads a message by ID, `List` queries the mailbox. `outlook.MailReceivedTrigger` polls for new messages and starts one execution per batch.
+
+`defender` tasks work with Microsoft Defender XDR through the Microsoft Graph security API. `defender.ListAlerts` and `defender.ListIncidents` list alerts and incidents with an optional raw OData `filter` plus `severity` and `status` shortcuts, `top` (1 to 2000, default `100`) and `fetchType` (`FETCH`, `FETCH_ONE` or `STORE`, default `FETCH`); `ListIncidents` can also `expandAlerts`. `defender.GetAlert` and `defender.GetIncident` read one item by ID. `defender.UpdateAlert` sets `status`, `classification`, `determination` or `assignedTo`; `defender.UpdateIncident` also takes `customTags` and a `comment`, which is added with a separate call. Closed-set properties use enums such as `HIGH`, `IN_PROGRESS` and `FALSE_POSITIVE`, mapped to the Microsoft Graph wire values automatically. Only the properties you set are sent.
+
+`defender.HuntingQuery` runs a KQL advanced hunting `query` over `timespan` (default `P7D`) and returns typed rows plus the query `schema`, stored in internal storage by default (`fetchType: STORE`). Validate inputs interpolated into KQL; the device-name example uses an input `validator` that rejects quotes and other query syntax.
+
+`defender.Trigger` polls alerts (`resource: ALERTS`, default) or incidents (`resource: INCIDENTS`) using `StatefulTriggerInterface`. The first poll initializes its watermark without starting an execution. Later polls use an inclusive `lastUpdateDateTime ge` filter with a configurable `lookback` (default `PT5M`) and track each item's ID and update timestamp to deduplicate repeated results. Changes indexed within that lookback window are included. Every page is processed into an ION file in internal storage; executions expose `trigger.uri` and `trigger.count`. Use `ForEachItem` to process the stored records. State is saved after the file and execution have been generated, so a failure during either step leaves the previous state available for retry. `on` accepts `CREATE`, `UPDATE` or `CREATE_OR_UPDATE` (default); `stateKey` overrides the namespace KV key, and `stateTtl` controls how long seen items are remembered (default `P7D`).
+
+The Defender subgroup icon is original generic shield artwork licensed under the repository's Apache License 2.0. It uses SVG paths with `currentColor`.
 
 `dynamics365.dataverse` tasks interact with the Dataverse Web API (OData v9.2) — all require `orgUrl` (your Dataverse organization URL, e.g. `https://myorg.api.crm.dynamics.com`). `dataverse.Query` fetches entity records — set `entitySetName` (required); optionally set `filter` (OData `$filter` expression), `select` (comma-separated fields), `top` (default `100`), and `fetchType` (`FETCH`, `FETCH_ONE`, or `STORE`, default `FETCH`). `dataverse.Upsert` creates or updates a record by GUID — set `entitySetName`, `recordId`, and `record` (a map of field values, all required). `dataverse.Delete` permanently removes a record — set `entitySetName` and `recordId` (both required).
 

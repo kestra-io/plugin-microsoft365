@@ -1,0 +1,8 @@
+group: io.kestra.plugin.microsoft365.defender
+name: "defender"
+title: "Microsoft Defender XDR"
+description: "Tasks that read and update Microsoft Defender XDR alerts and incidents, run advanced hunting queries, and trigger workflows on new detections."
+body: "Use the same Microsoft Graph app registration as the other Microsoft 365 tasks (tenant, client ID, client secret or certificate) with the SecurityAlert, SecurityIncident and ThreatHunting application permissions to list, get and update alerts and incidents, enrich them with KQL advanced hunting queries, and poll for new or updated alerts or incidents with a watermark kept in the namespace KV store."
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"
