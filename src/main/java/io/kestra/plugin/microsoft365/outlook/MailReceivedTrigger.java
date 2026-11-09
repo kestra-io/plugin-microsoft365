@@ -54,9 +54,9 @@ import io.kestra.core.models.annotations.PluginProperty;
                     type: io.kestra.plugin.core.flow.EachSequential
                     value: "{{ trigger.messages }}"
                     tasks:
-                      - id: log
-                        type: io.kestra.plugin.core.debug.Return
-                        format: "New email: {{ taskrun.value.subject }}"
+                      - id: log_email
+                        type: io.kestra.plugin.core.log.Log
+                        message: "New email: {{ fromJson(taskrun.value).subject }}"
 
                 triggers:
                   - id: watch
@@ -81,16 +81,16 @@ import io.kestra.core.models.annotations.PluginProperty;
                     type: io.kestra.plugin.core.flow.EachSequential
                     value: "{{ trigger.messages }}"
                     tasks:
-                      - id: process
-                        type: io.kestra.plugin.core.debug.Return
-                        format: "Processing {{ taskrun.value.subject }} with {{ taskrun.value.attachments | length }} attachments"
+                      - id: log_email
+                        type: io.kestra.plugin.core.log.Log
+                        message: "Processing {{ fromJson(taskrun.value).subject }} with {{ fromJson(taskrun.value).attachments | length }} attachments"
                       - id: each_attachment
                         type: io.kestra.plugin.core.flow.EachSequential
-                        values: "{{ taskrun.value.attachments }}"
+                        value: "{{ fromJson(taskrun.value).attachments }}"
                         tasks:
                           - id: log_attachment
                             type: io.kestra.plugin.core.log.Log
-                            message: "Attachment: {{ taskrun.value.name }} stored at {{ taskrun.value.uri }}"
+                            message: "Attachment: {{ fromJson(taskrun.value).name }} stored at {{ fromJson(taskrun.value).uri }}"
 
                 triggers:
                   - id: watch
