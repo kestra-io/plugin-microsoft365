@@ -118,6 +118,7 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
     private static final DateTimeFormatter ODATA_DATETIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS'Z'").withZone(ZoneOffset.UTC);
     // State entry holding the latest lastUpdateDateTime seen, next to the entries of the seen items
     static final String WATERMARK_KEY = "__lastUpdateDateTime";
+    private static final String START_TIME_KEY = "__pollStartDateTime";
     private static final Duration DEFAULT_LOOKBACK = Duration.ofMinutes(5);
     private static final Duration DEFAULT_STATE_TTL = Duration.ofDays(7);
 
@@ -195,14 +196,21 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
 
         if (watermarkEntry == null) {
             Instant now = Instant.now();
+            state.put(START_TIME_KEY, new StatefulTriggerService.Entry(START_TIME_KEY, now.toString(), now, now));
             writeState(runContext, rStateKey, state, now, rStateTtl);
             runContext.logger().info("First poll: Defender {} are read from {} on, existing items are not replayed", rResource, now);
             return Optional.empty();
         }
 
         Instant watermark = Instant.parse(watermarkEntry.version());
+        Instant since = watermark.minus(rLookback);
+        StatefulTriggerService.Entry startTime = state.get(START_TIME_KEY);
+        if (startTime != null && since.isBefore(startTime.modifiedAt())) {
+            // Look back across subsequent polls without replaying items from before the trigger was first enabled.
+            since = startTime.modifiedAt();
+        }
         String query = DefenderUtils.combineFilters(
-            "lastUpdateDateTime ge " + ODATA_DATETIME.format(watermark.minus(rLookback)),
+            "lastUpdateDateTime ge " + ODATA_DATETIME.format(since),
             rFilter,
             DefenderUtils.eqClause("severity", rSeverity)
         );
@@ -286,6 +294,10 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
     }
 
     private static void writeState(RunContext runContext, String key, Map<String, StatefulTriggerService.Entry> state, Instant watermark, Duration ttl) {
+        StatefulTriggerService.Entry startTime = state.get(START_TIME_KEY);
+        if (startTime != null) {
+            state.put(START_TIME_KEY, new StatefulTriggerService.Entry(START_TIME_KEY, startTime.version(), startTime.modifiedAt(), Instant.now()));
+        }
         state.put(WATERMARK_KEY, new StatefulTriggerService.Entry(WATERMARK_KEY, watermark.toString(), watermark, Instant.now()));
         StatefulTriggerService.writeState(runContext, key, state, Optional.of(ttl));
     }

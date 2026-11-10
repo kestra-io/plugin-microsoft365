@@ -16,6 +16,8 @@ import org.mockito.MockedStatic;
 import java.io.InputStream;
 import java.net.URI;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -234,5 +236,40 @@ class TriggerTest extends AbstractDefenderTest {
         Optional<Execution> retry = trigger.evaluate(context.getKey(), context.getValue());
         assertThat(retry.isPresent(), is(true));
         assertThat(storedItems(context, retry.get()).stream().map(item -> ((Map<?, ?>) item).get("id")).toList(), contains("a1"));
+    }
+
+    @Test
+    void lookbackDoesNotReplayItemsFromBeforeTheFirstPoll() throws Exception {
+        Trigger trigger = TestableTrigger.builder().id("initial_lookback").type(Trigger.class.getName()).build();
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
+        Instant start = Instant.parse(watermark(context));
+        String filter = "lastUpdateDateTime ge " + DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS'Z'")
+            .withZone(ZoneOffset.UTC).format(start);
+        stubAlerts(filter);
+
+        assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
+
+        wm.verify(1, getRequestedFor(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+            .withQueryParam("$filter", equalTo(filter)));
+    }
+
+    @Test
+    void largeBacklogIsStoredWithoutEmbeddingItemsInTheExecution() throws Exception {
+        Trigger trigger = TestableTrigger.builder().id("large_backlog").type(Trigger.class.getName()).build();
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        seedWatermark(context, "2026-10-24T08:00:00Z");
+        String[] alerts = new String[2000];
+        for (int i = 0; i < alerts.length; i++) {
+            alerts[i] = alertJson("alert_" + i, "high", "new", "2026-10-24T09:00:00Z");
+        }
+        stubAlerts("lastUpdateDateTime ge 2026-10-24T07:55:00.0000000Z", alerts);
+
+        Execution execution = trigger.evaluate(context.getKey(), context.getValue())
+            .orElseThrow(() -> new AssertionError("Expected a backlog execution"));
+
+        assertThat(execution.getTrigger().getVariables().get("count"), is(alerts.length));
+        assertThat(execution.getTrigger().getVariables(), not(hasKey("items")));
+        assertThat(storedItems(context, execution), hasSize(alerts.length));
     }
 }

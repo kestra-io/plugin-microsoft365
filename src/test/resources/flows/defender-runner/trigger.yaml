@@ -1,0 +1,14 @@
+id: defender-trigger-runner
+namespace: io.kestra.tests.defender
+
+triggers:
+  - id: on_alert
+    type: io.kestra.plugin.microsoft365.defender.TestableTrigger
+    interval: PT1S
+    stateKey: defender_runner_state
+    severity: HIGH
+
+tasks:
+  - id: consume
+    type: io.kestra.plugin.core.debug.Return
+    format: "{{ trigger.count }}|{{ trigger.uri }}"
