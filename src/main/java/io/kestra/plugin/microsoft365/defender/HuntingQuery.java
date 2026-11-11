@@ -39,39 +39,44 @@ import java.util.Map;
 @NoArgsConstructor
 @Schema(
     title = "Run a Microsoft Defender XDR advanced hunting query",
-    description = "Runs a KQL query with Microsoft Graph `runHuntingQuery` and returns the rows with typed values (dates, numbers, booleans) according to the query schema. " +
-        "Requires the Microsoft Graph application permission ThreatHunting.Read.All."
+    description = """
+        Runs a KQL query with Microsoft Graph `runHuntingQuery` and returns the rows with typed values (dates,
+        numbers, booleans) according to the query schema. Requires the Microsoft Graph application permission
+        ThreatHunting.Read.All.
+        """
 )
 @Plugin(
     examples = {
         @Example(
             title = "Store a day of PowerShell process events for a device",
             full = true,
-            code = "id: defender_hunting\n"
-                + "namespace: company.security\n"
-                + "\n"
-                + "inputs:\n"
-                + "  - id: deviceName\n"
-                + "    type: STRING\n"
-                + "    # Device names only, so the input cannot change the KQL query below\n"
-                + "    validator: \"^[A-Za-z0-9._-]+$\"\n"
-                + "\n"
-                + "tasks:\n"
-                + "  - id: hunt\n"
-                + "    type: io.kestra.plugin.microsoft365.defender.HuntingQuery\n"
-                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
-                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
-                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
-                + "    timespan: P1D\n"
-                + "    query: |\n"
-                + "      DeviceProcessEvents\n"
-                + "      | where DeviceName == \"{{ inputs.deviceName }}\"\n"
-                + "      | where FileName =~ \"powershell.exe\"\n"
-                + "      | project Timestamp, AccountName, ProcessCommandLine\n"
-                + "\n"
-                + "  - id: log\n"
-                + "    type: io.kestra.plugin.core.log.Log\n"
-                + "    message: \"{{ outputs.hunt.count }} rows stored in {{ outputs.hunt.uri }}\"\n"
+            code = """
+                id: defender_hunting
+                namespace: company.security
+
+                inputs:
+                  - id: deviceName
+                    type: STRING
+                    # Device names only, so the input cannot change the KQL query below
+                    validator: "^[A-Za-z0-9._-]+$"
+
+                tasks:
+                  - id: hunt
+                    type: io.kestra.plugin.microsoft365.defender.HuntingQuery
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    timespan: P1D
+                    query: |
+                      DeviceProcessEvents
+                      | where DeviceName == "{{ inputs.deviceName }}"
+                      | where FileName =~ "powershell.exe"
+                      | project Timestamp, AccountName, ProcessCommandLine
+
+                  - id: log
+                    type: io.kestra.plugin.core.log.Log
+                    message: "{{ outputs.hunt.count }} rows stored in {{ outputs.hunt.uri }}"
+                """
         )
     }
 )
@@ -79,8 +84,11 @@ public class HuntingQuery extends AbstractDefender implements RunnableTask<Hunti
 
     @Schema(
         title = "KQL query",
-        description = "Advanced hunting query in Kusto Query Language (KQL). The query is sent as rendered, so validate any input templated into it " +
-            "(for example with an input `validator`): a value containing `\"` could otherwise change the query."
+        description = """
+            Advanced hunting query in Kusto Query Language (KQL). The query is sent as rendered, so validate any input
+            templated into it (for example with an input `validator`): a value containing `"` could otherwise change the
+            query.
+            """
     )
     @NotNull
     @PluginProperty(group = "main")
@@ -88,7 +96,10 @@ public class HuntingQuery extends AbstractDefender implements RunnableTask<Hunti
 
     @Schema(
         title = "Time span",
-        description = "How far back the query looks, as an ISO-8601 duration. Microsoft Graph defaults to 30 days when no time span is sent; this task always sends one."
+        description = """
+            How far back the query looks, as an ISO-8601 duration. Microsoft Graph defaults to 30 days when no time span
+            is sent; this task always sends one.
+            """
     )
     @Builder.Default
     @PluginProperty(group = "processing")
@@ -96,10 +107,12 @@ public class HuntingQuery extends AbstractDefender implements RunnableTask<Hunti
 
     @Schema(
         title = "How to output the rows",
-        description = "FETCH - outputs the rows as `rows`\n" +
-            "FETCH_ONE - outputs the first row as `row`\n" +
-            "STORE - stores the rows in an ION file and outputs its `uri`\n" +
-            "NONE - only outputs `count` and `schema`"
+        description = """
+            FETCH - outputs the rows as `rows`
+            FETCH_ONE - outputs the first row as `row`
+            STORE - stores the rows in an ION file and outputs its `uri`
+            NONE - only outputs `count` and `schema`
+            """
     )
     @NotNull
     @Builder.Default

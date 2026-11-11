@@ -31,31 +31,36 @@ import java.util.Map;
 @NoArgsConstructor
 @Schema(
     title = "List Microsoft Defender XDR incidents",
-    description = "Lists incidents from the Microsoft Graph security API (`/security/incidents`), most recent first, following `@odata.nextLink` until `top` incidents are collected. " +
-        "Requires the Microsoft Graph application permission SecurityIncident.Read.All."
+    description = """
+        Lists incidents from the Microsoft Graph security API (`/security/incidents`), most recent first, following
+        `@odata.nextLink` until `top` incidents are collected. Requires the Microsoft Graph application permission
+        SecurityIncident.Read.All.
+        """
 )
 @Plugin(
     examples = {
         @Example(
             title = "List active high-severity incidents with their alerts",
             full = true,
-            code = "id: defender_list_incidents\n"
-                + "namespace: company.security\n"
-                + "\n"
-                + "tasks:\n"
-                + "  - id: list_incidents\n"
-                + "    type: io.kestra.plugin.microsoft365.defender.ListIncidents\n"
-                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
-                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
-                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
-                + "    severity: HIGH\n"
-                + "    status: ACTIVE\n"
-                + "    expandAlerts: true\n"
-                + "    top: 20\n"
-                + "\n"
-                + "  - id: log\n"
-                + "    type: io.kestra.plugin.core.log.Log\n"
-                + "    message: \"{{ outputs.list_incidents.incidents | jq('[.[].displayName]') | first }}\"\n"
+            code = """
+                id: defender_list_incidents
+                namespace: company.security
+
+                tasks:
+                  - id: list_incidents
+                    type: io.kestra.plugin.microsoft365.defender.ListIncidents
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    severity: HIGH
+                    status: ACTIVE
+                    expandAlerts: true
+                    top: 20
+
+                  - id: log
+                    type: io.kestra.plugin.core.log.Log
+                    message: "{{ outputs.list_incidents.incidents | jq('[.[].displayName]') | first }}"
+                """
         )
     }
 )
@@ -72,14 +77,14 @@ public class ListIncidents extends AbstractDefender implements RunnableTask<List
 
     @Schema(
         title = "Severity",
-        description = "Only return incidents with this severity."
+        description = "Only return incidents with this severity. Allowed values: `INFORMATIONAL`, `LOW`, `MEDIUM`, `HIGH`."
     )
     @PluginProperty(group = "processing")
     private Property<Severity> severity;
 
     @Schema(
         title = "Status",
-        description = "Only return incidents with this status."
+        description = "Only return incidents with this status. Allowed values: `ACTIVE`, `IN_PROGRESS`, `RESOLVED`, `REDIRECTED`, `AWAITING_ACTION`."
     )
     @PluginProperty(group = "processing")
     private Property<IncidentStatus> status;
@@ -102,10 +107,12 @@ public class ListIncidents extends AbstractDefender implements RunnableTask<List
 
     @Schema(
         title = "How to output the incidents",
-        description = "FETCH - outputs the incidents as `incidents`\n" +
-            "FETCH_ONE - outputs the first incident as `incident`\n" +
-            "STORE - stores the incidents in an ION file and outputs its `uri`\n" +
-            "NONE - only outputs `count`"
+        description = """
+            FETCH - outputs the incidents as `incidents`
+            FETCH_ONE - outputs the first incident as `incident`
+            STORE - stores the incidents in an ION file and outputs its `uri`
+            NONE - only outputs `count`
+            """
     )
     @NotNull
     @Builder.Default

@@ -55,61 +55,68 @@ import java.util.function.Function;
 @NoArgsConstructor
 @Schema(
     title = "Trigger on new or updated Microsoft Defender XDR alerts or incidents",
-    description = "Polls `/security/alerts_v2` or `/security/incidents` for items whose `lastUpdateDateTime` is at or after the last one seen minus `lookback`, " +
-        "and starts one execution with the items not fired yet, stored as an ION file in internal storage. " +
-        "Seen items are kept in the trigger state by id and `lastUpdateDateTime`, so items sharing a timestamp or indexed late are not missed and are not fired twice. " +
-        "On the first poll no execution is started, so existing items are not replayed. " +
-        "Requires the Microsoft Graph application permission SecurityAlert.Read.All or SecurityIncident.Read.All."
+    description = """
+        Polls `/security/alerts_v2` or `/security/incidents` for items whose `lastUpdateDateTime` is at or after the
+        last one seen minus `lookback`, and starts one execution with the items not fired yet, stored as an ION file
+        in internal storage. Seen items are kept in the trigger state by id and `lastUpdateDateTime`, so items sharing
+        a timestamp or indexed late are not missed and are not fired twice. On the first poll no execution is started,
+        so existing items are not replayed. Requires the Microsoft Graph application permission SecurityAlert.Read.All
+        or SecurityIncident.Read.All.
+        """
 )
 @Plugin(
     examples = {
         @Example(
             title = "Start a flow on every new or updated high-severity incident",
             full = true,
-            code = "id: defender_on_new_incident\n"
-                + "namespace: company.security\n"
-                + "\n"
-                + "triggers:\n"
-                + "  - id: on_incident\n"
-                + "    type: io.kestra.plugin.microsoft365.defender.Trigger\n"
-                + "    interval: PT1M\n"
-                + "    resource: INCIDENTS\n"
-                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
-                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
-                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
-                + "    severity: HIGH\n"
-                + "\n"
-                + "tasks:\n"
-                + "  - id: each_incident\n"
-                + "    type: io.kestra.plugin.core.flow.ForEachItem\n"
-                + "    items: \"{{ trigger.uri }}\"\n"
-                + "    batch:\n"
-                + "      rows: 1\n"
-                + "    namespace: company.security\n"
-                + "    flowId: triage_incident\n"
-                + "    inputs:\n"
-                + "      incident_file: \"{{ taskrun.items }}\"\n"
+            code = """
+                id: defender_on_new_incident
+                namespace: company.security
+
+                triggers:
+                  - id: on_incident
+                    type: io.kestra.plugin.microsoft365.defender.Trigger
+                    interval: PT1M
+                    resource: INCIDENTS
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    severity: HIGH
+
+                tasks:
+                  - id: each_incident
+                    type: io.kestra.plugin.core.flow.ForEachItem
+                    items: "{{ trigger.uri }}"
+                    batch:
+                      rows: 1
+                    namespace: company.security
+                    flowId: triage_incident
+                    inputs:
+                      incident_file: "{{ taskrun.items }}"
+                """
         ),
         @Example(
             title = "Start a flow on new Defender for Endpoint alerts only",
             full = true,
-            code = "id: defender_on_endpoint_alert\n"
-                + "namespace: company.security\n"
-                + "\n"
-                + "triggers:\n"
-                + "  - id: on_alert\n"
-                + "    type: io.kestra.plugin.microsoft365.defender.Trigger\n"
-                + "    interval: PT5M\n"
-                + "    on: CREATE\n"
-                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
-                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
-                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
-                + "    filter: \"serviceSource eq 'microsoftDefenderForEndpoint'\"\n"
-                + "\n"
-                + "tasks:\n"
-                + "  - id: log\n"
-                + "    type: io.kestra.plugin.core.log.Log\n"
-                + "    message: \"{{ trigger.count }} new alerts stored in {{ trigger.uri }}\"\n"
+            code = """
+                id: defender_on_endpoint_alert
+                namespace: company.security
+
+                triggers:
+                  - id: on_alert
+                    type: io.kestra.plugin.microsoft365.defender.Trigger
+                    interval: PT5M
+                    on: CREATE
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    filter: "serviceSource eq 'microsoftDefenderForEndpoint'"
+
+                tasks:
+                  - id: log
+                    type: io.kestra.plugin.core.log.Log
+                    message: "{{ trigger.count }} new alerts stored in {{ trigger.uri }}"
+                """
         )
     }
 )
@@ -140,14 +147,16 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
     @PluginProperty(group = "processing")
     private Property<String> filter;
 
-    @Schema(title = "Severity", description = "Only fire for items with this severity.")
+    @Schema(title = "Severity", description = "Only fire for items with this severity. Allowed values: `INFORMATIONAL`, `LOW`, `MEDIUM`, `HIGH`.")
     @PluginProperty(group = "processing")
     private Property<Severity> severity;
 
     @Schema(
         title = "Lookback",
-        description = "How far before the latest `lastUpdateDateTime` seen each poll reads again, to catch items indexed late. " +
-            "Items already fired are skipped using the trigger state."
+        description = """
+            How far before the latest `lastUpdateDateTime` seen each poll reads again, to catch items indexed late. Must
+            be zero or positive and shorter than `stateTtl`. Items already fired are skipped using the trigger state.
+            """
     )
     @Builder.Default
     @PluginProperty(group = "processing")
@@ -172,7 +181,10 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
 
     @Schema(
         title = "State TTL",
-        description = "How long a seen item is remembered after its last change; default 7 days. An item updated after that is seen as new."
+        description = """
+            How long a seen item is remembered after it was last observed; default 7 days. Must be positive and longer
+            than `lookback`. Items still in the lookback window are retained and refreshed on every poll.
+            """
     )
     @Builder.Default
     @PluginProperty(group = "advanced")
@@ -191,7 +203,18 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
             .orElse(StatefulTriggerService.defaultKey(context.getNamespace(), context.getFlowId(), this.id));
         Duration rStateTtl = runContext.render(stateTtl).as(Duration.class).orElse(DEFAULT_STATE_TTL);
 
-        Map<String, StatefulTriggerService.Entry> state = StatefulTriggerService.readState(runContext, rStateKey, Optional.of(rStateTtl));
+        if (rLookback.isNegative()) {
+            throw new IllegalArgumentException("lookback must be zero or positive");
+        }
+        if (rStateTtl.isZero() || rStateTtl.isNegative()) {
+            throw new IllegalArgumentException("stateTtl must be positive");
+        }
+        if (rStateTtl.compareTo(rLookback) <= 0) {
+            throw new IllegalArgumentException("stateTtl must be longer than lookback");
+        }
+
+        // Retain expired entries in the active lookback window until they can be refreshed.
+        Map<String, StatefulTriggerService.Entry> state = StatefulTriggerService.readState(runContext, rStateKey, Optional.empty());
         StatefulTriggerService.Entry watermarkEntry = state.remove(WATERMARK_KEY);
 
         if (watermarkEntry == null) {
@@ -209,6 +232,12 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
             // Look back across subsequent polls without replaying items from before the trigger was first enabled.
             since = startTime.modifiedAt();
         }
+        Instant windowStart = since;
+        Instant stateCutoff = Instant.now().minus(rStateTtl);
+        state.entrySet().removeIf(entry -> !START_TIME_KEY.equals(entry.getKey())
+            && entry.getValue().lastSeenAt() != null
+            && !entry.getValue().lastSeenAt().isAfter(stateCutoff)
+            && (entry.getValue().modifiedAt() == null || entry.getValue().modifiedAt().isBefore(windowStart)));
         String query = DefenderUtils.combineFilters(
             "lastUpdateDateTime ge " + ODATA_DATETIME.format(since),
             rFilter,
@@ -327,7 +356,9 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
                 watermark = lastUpdate;
             }
             StatefulTriggerService.Entry candidate = StatefulTriggerService.Entry.candidate(id, lastUpdate.toString(), lastUpdate);
-            if (StatefulTriggerService.computeAndUpdateState(state, candidate, on).fire()) {
+            boolean fire = StatefulTriggerService.computeAndUpdateState(state, candidate, on).fire();
+            state.put(id, new StatefulTriggerService.Entry(id, candidate.version(), lastUpdate, Instant.now()));
+            if (fire) {
                 FileSerde.write(output, DefenderUtils.toMap(item));
                 count++;
             }

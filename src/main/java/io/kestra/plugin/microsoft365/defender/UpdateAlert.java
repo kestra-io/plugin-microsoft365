@@ -26,32 +26,37 @@ import java.util.Map;
 @NoArgsConstructor
 @Schema(
     title = "Update a Microsoft Defender XDR alert",
-    description = "Updates the status, classification, determination or assignee of an alert (`PATCH /security/alerts_v2/{id}`). " +
-        "Only the properties that are set are sent. Requires the Microsoft Graph application permission SecurityAlert.ReadWrite.All."
+    description = """
+        Updates the status, classification, determination or assignee of an alert (`PATCH /security/alerts_v2/{id}`).
+        Only the properties that are set are sent. Requires the Microsoft Graph application permission
+        SecurityAlert.ReadWrite.All.
+        """
 )
 @Plugin(
     examples = {
         @Example(
             title = "Resolve an alert as a false positive",
             full = true,
-            code = "id: defender_resolve_alert\n"
-                + "namespace: company.security\n"
-                + "\n"
-                + "inputs:\n"
-                + "  - id: alertId\n"
-                + "    type: STRING\n"
-                + "\n"
-                + "tasks:\n"
-                + "  - id: resolve\n"
-                + "    type: io.kestra.plugin.microsoft365.defender.UpdateAlert\n"
-                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
-                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
-                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
-                + "    alertId: \"{{ inputs.alertId }}\"\n"
-                + "    status: RESOLVED\n"
-                + "    classification: FALSE_POSITIVE\n"
-                + "    determination: OTHER\n"
-                + "    assignedTo: soc-tier1@company.com\n"
+            code = """
+                id: defender_resolve_alert
+                namespace: company.security
+
+                inputs:
+                  - id: alertId
+                    type: STRING
+
+                tasks:
+                  - id: resolve
+                    type: io.kestra.plugin.microsoft365.defender.UpdateAlert
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    alertId: "{{ inputs.alertId }}"
+                    status: RESOLVED
+                    classification: FALSE_POSITIVE
+                    determination: OTHER
+                    assignedTo: soc-tier1@company.com
+                """
         )
     }
 )
@@ -62,20 +67,28 @@ public class UpdateAlert extends AbstractDefender implements RunnableTask<Update
     @PluginProperty(group = "main")
     private Property<String> alertId;
 
-    @Schema(title = "Status")
+    @Schema(title = "Status", description = "Allowed values: `NEW`, `IN_PROGRESS`, `RESOLVED`.")
     @PluginProperty(group = "main")
     private Property<AlertStatus> status;
 
     @Schema(
         title = "Classification",
-        description = "How the item was classified after investigation."
+        description = """
+            How the item was classified after investigation. Allowed values: `UNKNOWN`, `FALSE_POSITIVE`, `TRUE_POSITIVE`,
+            `INFORMATIONAL_EXPECTED_ACTIVITY`.
+            """
     )
     @PluginProperty(group = "main")
     private Property<Classification> classification;
 
     @Schema(
         title = "Determination",
-        description = "What the investigation determined, for example `MALWARE`, `PHISHING` or `SECURITY_TESTING`."
+        description = """
+            What the investigation determined. Allowed values: `UNKNOWN`, `APT`, `MALWARE`, `SECURITY_PERSONNEL`,
+            `SECURITY_TESTING`, `UNWANTED_SOFTWARE`, `OTHER`, `MULTI_STAGED_ATTACK`, `COMPROMISED_ACCOUNT`, `PHISHING`,
+            `MALICIOUS_USER_ACTIVITY`, `NOT_MALICIOUS`, `NOT_ENOUGH_DATA_TO_VALIDATE`, `CONFIRMED_ACTIVITY`,
+            `LINE_OF_BUSINESS_APPLICATION`.
+            """
     )
     @PluginProperty(group = "main")
     private Property<Determination> determination;

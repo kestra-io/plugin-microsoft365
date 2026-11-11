@@ -10,12 +10,14 @@ import io.kestra.core.models.triggers.TriggerService;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.utils.TestsUtils;
+import io.kestra.core.utils.IdUtils;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import java.io.InputStream;
 import java.net.URI;
 import java.time.Instant;
+import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -32,11 +34,64 @@ import static org.mockito.Mockito.mockStatic;
 @KestraTest
 class TriggerTest extends AbstractDefenderTest {
 
-    // Trigger ids are fixed per test, so the state left by a previous run is removed first
-    private Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> mock(Trigger trigger) throws Exception {
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = TestsUtils.mockTrigger(runContextFactory, trigger);
-        StatefulTriggerService.writeState(runContext(context), key(context), new HashMap<>(), Optional.empty());
-        return context;
+    @Test
+    void rejectsInvalidDurationsBeforeReadingStateOrCallingGraph() throws Exception {
+        Duration[][] invalid = {
+            {Duration.ofSeconds(-1), Duration.ofDays(7)},
+            {Duration.ZERO, Duration.ZERO},
+            {Duration.ZERO, Duration.ofSeconds(-1)},
+            {Duration.ofMinutes(5), Duration.ofMinutes(5)},
+            {Duration.ofMinutes(5), Duration.ofMinutes(4)}
+        };
+        for (Duration[] durations : invalid) {
+            Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName())
+                .lookback(Property.ofValue(durations[0]))
+                .stateTtl(Property.ofValue(durations[1])).build();
+            Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+            assertThrows(IllegalArgumentException.class, () -> trigger.evaluate(context.getKey(), context.getValue()));
+            assertThat(state(context).isEmpty(), is(true));
+        }
+        wm.verify(0, anyRequestedFor(anyUrl()));
+    }
+
+    @Test
+    void permitsZeroLookbackWithPositiveTtl() throws Exception {
+        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName())
+            .lookback(Property.ofValue(Duration.ZERO)).stateTtl(Property.ofValue(Duration.ofHours(1))).build();
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
+        assertThat(state(context), hasKey(Trigger.WATERMARK_KEY));
+    }
+
+    @Test
+    void expiredEntryInsideLookbackIsRefreshedWithoutFiringAgain() throws Exception {
+        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
+        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        seedWatermark(context, "2026-10-24T09:00:00Z");
+        Map<String, StatefulTriggerService.Entry> entries = state(context);
+        Instant modifiedAt = Instant.parse("2026-10-24T08:58:00Z");
+        Instant expired = Instant.now().minus(Duration.ofDays(8));
+        entries.put("a1", new StatefulTriggerService.Entry("a1", modifiedAt.toString(), modifiedAt, expired));
+        entries.put("outside_window", new StatefulTriggerService.Entry("outside_window", "old",
+            Instant.parse("2026-10-24T08:00:00Z"), expired));
+        StatefulTriggerService.writeState(runContext(context), key(context), entries, Optional.empty());
+        stubAlerts("lastUpdateDateTime ge 2026-10-24T08:55:00.0000000Z",
+            alertJson("a1", "high", "new", modifiedAt.toString()));
+
+        Instant before = Instant.now();
+        assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
+        Map<String, StatefulTriggerService.Entry> refreshed = state(context);
+        assertThat(refreshed.get("a1").lastSeenAt(), greaterThanOrEqualTo(before));
+        assertThat(refreshed, not(hasKey("outside_window")));
+
+        // Unchanged items must refresh their lastSeenAt on every subsequent poll too.
+        Instant firstSeen = refreshed.get("a1").lastSeenAt();
+        assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
+        assertThat(state(context).get("a1").lastSeenAt(), greaterThanOrEqualTo(firstSeen));
+    }
+
+    private Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> mock(Trigger trigger) {
+        return TestsUtils.mockTrigger(runContextFactory, trigger);
     }
 
     private static RunContext runContext(Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context) {
@@ -79,7 +134,7 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void firstPollStoresWatermarkWithoutFiring() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id("first_poll").type(Trigger.class.getName()).build();
+        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
         Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
         Instant before = Instant.now();
 
@@ -93,7 +148,7 @@ class TriggerTest extends AbstractDefenderTest {
     @Test
     void firesForAlertsSinceWatermarkMinusLookbackAndStoresThem() throws Exception {
         Trigger trigger = TestableTrigger.builder()
-            .id("fires_since_watermark")
+            .id(IdUtils.create())
             .type(Trigger.class.getName())
             .severity(Property.ofValue(Severity.HIGH))
             .build();
@@ -126,7 +181,7 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void sameTimestampAndLateIndexedAlertsFireOnceEach() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id("same_timestamp").type(Trigger.class.getName()).build();
+        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
         Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
 
@@ -153,7 +208,7 @@ class TriggerTest extends AbstractDefenderTest {
     @Test
     void onCreateIgnoresUpdatesOfSeenAlerts() throws Exception {
         Trigger trigger = TestableTrigger.builder()
-            .id("on_create")
+            .id(IdUtils.create())
             .type(Trigger.class.getName())
             .on(Property.ofValue(StatefulTriggerInterface.On.CREATE))
             .build();
@@ -171,7 +226,7 @@ class TriggerTest extends AbstractDefenderTest {
     @Test
     void pollsIncidentsAndDoesNotFireWhenNothingChanged() throws Exception {
         Trigger trigger = TestableTrigger.builder()
-            .id("incidents_unchanged")
+            .id(IdUtils.create())
             .type(Trigger.class.getName())
             .resource(Property.ofValue(Trigger.Resource.INCIDENTS))
             .build();
@@ -190,7 +245,7 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void throttlingSkipsThePollAndKeepsTheState() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id("throttling").type(Trigger.class.getName()).build();
+        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
         Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
 
@@ -214,7 +269,7 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void executionCreationFailureKeepsStateSoNextPollRetries() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id("execution_failure").type(Trigger.class.getName()).build();
+        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
         Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
         stubAlerts("lastUpdateDateTime ge 2026-10-24T07:55:00.0000000Z",
@@ -240,7 +295,7 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void lookbackDoesNotReplayItemsFromBeforeTheFirstPoll() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id("initial_lookback").type(Trigger.class.getName()).build();
+        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
         Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
         assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
         Instant start = Instant.parse(watermark(context));
@@ -256,7 +311,7 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void largeBacklogIsStoredWithoutEmbeddingItemsInTheExecution() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id("large_backlog").type(Trigger.class.getName()).build();
+        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
         Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
         String[] alerts = new String[2000];

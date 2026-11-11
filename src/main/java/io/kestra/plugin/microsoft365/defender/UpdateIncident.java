@@ -39,51 +39,56 @@ import java.util.Map;
 @NoArgsConstructor
 @Schema(
     title = "Update a Microsoft Defender XDR incident",
-    description = "Updates the status, classification, determination, assignee or custom tags of an incident (`PATCH /security/incidents/{id}`), " +
-        "only sending the properties that are set, and optionally adds a comment (`POST /security/incidents/{id}/comments`). " +
-        "Requires the Microsoft Graph application permission SecurityIncident.ReadWrite.All."
+    description = """
+        Updates the status, classification, determination, assignee or custom tags of an incident (`PATCH
+        /security/incidents/{id}`), only sending the properties that are set, and optionally adds a comment (`POST
+        /security/incidents/{id}/comments`). Requires the Microsoft Graph application permission
+        SecurityIncident.ReadWrite.All.
+        """
 )
 @Plugin(
     examples = {
         @Example(
             title = "Enrich an incident with an advanced hunting query, then assign it",
             full = true,
-            code = "id: defender_enrich_incident\n"
-                + "namespace: company.security\n"
-                + "\n"
-                + "inputs:\n"
-                + "  - id: incidentId\n"
-                + "    type: STRING\n"
-                + "  - id: deviceName\n"
-                + "    type: STRING\n"
-                + "    # Device names only, so the input cannot change the KQL query below\n"
-                + "    validator: \"^[A-Za-z0-9._-]+$\"\n"
-                + "\n"
-                + "tasks:\n"
-                + "  - id: hunt\n"
-                + "    type: io.kestra.plugin.microsoft365.defender.HuntingQuery\n"
-                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
-                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
-                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
-                + "    timespan: P1D\n"
-                + "    fetchType: FETCH\n"
-                + "    query: |\n"
-                + "      DeviceProcessEvents\n"
-                + "      | where DeviceName == \"{{ inputs.deviceName }}\"\n"
-                + "      | where FileName in~ (\"powershell.exe\", \"cmd.exe\")\n"
-                + "      | summarize count() by AccountName, FileName\n"
-                + "\n"
-                + "  - id: assign\n"
-                + "    type: io.kestra.plugin.microsoft365.defender.UpdateIncident\n"
-                + "    tenantId: \"{{ secret('AZURE_TENANT_ID') }}\"\n"
-                + "    clientId: \"{{ secret('AZURE_CLIENT_ID') }}\"\n"
-                + "    clientSecret: \"{{ secret('AZURE_CLIENT_SECRET') }}\"\n"
-                + "    incidentId: \"{{ inputs.incidentId }}\"\n"
-                + "    status: IN_PROGRESS\n"
-                + "    assignedTo: soc-tier2@company.com\n"
-                + "    customTags:\n"
-                + "      - kestra\n"
-                + "    comment: \"Hunting query returned {{ outputs.hunt.count }} suspicious process rows\"\n"
+            code = """
+                id: defender_enrich_incident
+                namespace: company.security
+
+                inputs:
+                  - id: incidentId
+                    type: STRING
+                  - id: deviceName
+                    type: STRING
+                    # Device names only, so the input cannot change the KQL query below
+                    validator: "^[A-Za-z0-9._-]+$"
+
+                tasks:
+                  - id: hunt
+                    type: io.kestra.plugin.microsoft365.defender.HuntingQuery
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    timespan: P1D
+                    fetchType: FETCH
+                    query: |
+                      DeviceProcessEvents
+                      | where DeviceName == "{{ inputs.deviceName }}"
+                      | where FileName in~ ("powershell.exe", "cmd.exe")
+                      | summarize count() by AccountName, FileName
+
+                  - id: assign
+                    type: io.kestra.plugin.microsoft365.defender.UpdateIncident
+                    tenantId: "{{ secret('AZURE_TENANT_ID') }}"
+                    clientId: "{{ secret('AZURE_CLIENT_ID') }}"
+                    clientSecret: "{{ secret('AZURE_CLIENT_SECRET') }}"
+                    incidentId: "{{ inputs.incidentId }}"
+                    status: IN_PROGRESS
+                    assignedTo: soc-tier2@company.com
+                    customTags:
+                      - kestra
+                    comment: "Hunting query returned {{ outputs.hunt.count }} suspicious process rows"
+                """
         )
     }
 )
@@ -94,20 +99,28 @@ public class UpdateIncident extends AbstractDefender implements RunnableTask<Upd
     @PluginProperty(group = "main")
     private Property<String> incidentId;
 
-    @Schema(title = "Status")
+    @Schema(title = "Status", description = "Allowed values: `ACTIVE`, `IN_PROGRESS`, `RESOLVED`, `REDIRECTED`, `AWAITING_ACTION`.")
     @PluginProperty(group = "main")
     private Property<IncidentStatus> status;
 
     @Schema(
         title = "Classification",
-        description = "How the item was classified after investigation."
+        description = """
+            How the item was classified after investigation. Allowed values: `UNKNOWN`, `FALSE_POSITIVE`, `TRUE_POSITIVE`,
+            `INFORMATIONAL_EXPECTED_ACTIVITY`.
+            """
     )
     @PluginProperty(group = "main")
     private Property<Classification> classification;
 
     @Schema(
         title = "Determination",
-        description = "What the investigation determined, for example `MALWARE`, `PHISHING` or `SECURITY_TESTING`."
+        description = """
+            What the investigation determined. Allowed values: `UNKNOWN`, `APT`, `MALWARE`, `SECURITY_PERSONNEL`,
+            `SECURITY_TESTING`, `UNWANTED_SOFTWARE`, `OTHER`, `MULTI_STAGED_ATTACK`, `COMPROMISED_ACCOUNT`, `PHISHING`,
+            `MALICIOUS_USER_ACTIVITY`, `NOT_MALICIOUS`, `NOT_ENOUGH_DATA_TO_VALIDATE`, `CONFIRMED_ACTIVITY`,
+            `LINE_OF_BUSINESS_APPLICATION`.
+            """
     )
     @PluginProperty(group = "main")
     private Property<Determination> determination;
