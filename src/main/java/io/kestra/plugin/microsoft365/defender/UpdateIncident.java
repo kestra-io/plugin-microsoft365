@@ -25,6 +25,7 @@ import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -214,7 +215,7 @@ public class UpdateIncident extends AbstractDefender implements RunnableTask<Upd
     }
 
     // The SDK has no builder for POST /security/incidents/{id}/comments that sends the single alertComment object the endpoint documents
-    private static void addComment(GraphServiceClient client, String incidentId, String comment) throws Exception {
+    private static void addComment(GraphServiceClient client, String incidentId, String comment) throws URISyntaxException {
         var alertComment = new AlertComment();
         alertComment.setComment(comment);
 

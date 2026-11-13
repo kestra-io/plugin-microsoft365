@@ -17,11 +17,11 @@ class IncidentsTest extends AbstractDefenderTest {
 
     @Test
     void listIncidentsCapsPageSizeAndExpandsAlerts() throws Exception {
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/incidents"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/incidents".formatted(GRAPH)))
             .withQueryParam("$top", equalTo("50"))
             .withQueryParam("$expand", equalTo("alerts"))
             .withQueryParam("$filter", equalTo("(severity eq 'high') and (status eq 'inProgress')"))
-            .willReturn(okJson("{\"value\":[" + incidentJson("101", "inProgress", "2026-10-24T10:00:00Z") + "]}")));
+            .willReturn(okJson("{\"value\":[%s]}".formatted(incidentJson("101", "inProgress", "2026-10-24T10:00:00Z")))));
 
         var output = withWireMock(ListIncidents.builder().id(IdUtils.create()).type(ListIncidents.class.getName())
             .severity(Property.ofValue(Severity.HIGH))
@@ -36,7 +36,7 @@ class IncidentsTest extends AbstractDefenderTest {
 
     @Test
     void getIncident() throws Exception {
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/incidents/101"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/incidents/101".formatted(GRAPH)))
             .willReturn(okJson(incidentJson("101", "active", "2026-10-24T10:00:00Z"))));
 
         var output = withWireMock(GetIncident.builder()
@@ -47,16 +47,16 @@ class IncidentsTest extends AbstractDefenderTest {
 
         assertThat(output.getIncident().get("id"), is("101"));
         assertThat(output.getIncident().get("customTags"), is(List.of("existing")));
-        wm.verify(getRequestedFor(urlPathEqualTo(GRAPH + "/security/incidents/101")).withQueryParam("$expand", absent()));
+        wm.verify(getRequestedFor(urlPathEqualTo("%s/security/incidents/101".formatted(GRAPH))).withQueryParam("$expand", absent()));
     }
 
     @Test
     void updateIncidentPatchesThenPostsCommentAsSingleObject() throws Exception {
-        wm.stubFor(patch(urlPathEqualTo(GRAPH + "/security/incidents/101"))
+        wm.stubFor(patch(urlPathEqualTo("%s/security/incidents/101".formatted(GRAPH)))
             .willReturn(okJson(incidentJson("101", "inProgress", "2026-10-24T11:00:00Z"))));
-        wm.stubFor(post(urlPathEqualTo(GRAPH + "/security/incidents/101/comments"))
+        wm.stubFor(post(urlPathEqualTo("%s/security/incidents/101/comments".formatted(GRAPH)))
             .willReturn(okJson("{\"value\":[{\"comment\":\"Hunting returned 3 rows\",\"createdByDisplayName\":\"app\"}]}")));
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/incidents/101"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/incidents/101".formatted(GRAPH)))
             .willReturn(okJson(incidentJson("101", "inProgress", "2026-10-24T11:00:01Z")
                 .replace("}", ",\"comments\":[{\"comment\":\"Hunting returned 3 rows\"}]}"))));
 
@@ -68,22 +68,22 @@ class IncidentsTest extends AbstractDefenderTest {
             .comment(Property.ofValue("Hunting returned 3 rows"))
             .build()).run(runContext());
 
-        wm.verify(patchRequestedFor(urlPathEqualTo(GRAPH + "/security/incidents/101"))
+        wm.verify(patchRequestedFor(urlPathEqualTo("%s/security/incidents/101".formatted(GRAPH)))
             .withRequestBody(matchingJsonPath("$.status", equalTo("inProgress")))
             .withRequestBody(matchingJsonPath("$.assignedTo", equalTo("soc-tier2@company.com")))
             .withRequestBody(matchingJsonPath("$.customTags[0]", equalTo("kestra")))
             .withRequestBody(notContaining("classification"))
             .withRequestBody(notContaining("comment")));
-        wm.verify(postRequestedFor(urlPathEqualTo(GRAPH + "/security/incidents/101/comments"))
+        wm.verify(postRequestedFor(urlPathEqualTo("%s/security/incidents/101/comments".formatted(GRAPH)))
             .withRequestBody(matchingJsonPath("$.comment", equalTo("Hunting returned 3 rows"))));
         assertThat(((List<?>) output.getIncident().get("comments")), hasSize(1));
     }
 
     @Test
     void updateIncidentWithOnlyCommentSkipsPatch() throws Exception {
-        wm.stubFor(post(urlPathEqualTo(GRAPH + "/security/incidents/101/comments"))
+        wm.stubFor(post(urlPathEqualTo("%s/security/incidents/101/comments".formatted(GRAPH)))
             .willReturn(okJson("{\"value\":[]}")));
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/incidents/101"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/incidents/101".formatted(GRAPH)))
             .willReturn(okJson(incidentJson("101", "active", "2026-10-24T11:00:00Z"))));
 
         var output = withWireMock(UpdateIncident.builder().id(IdUtils.create()).type(UpdateIncident.class.getName())
@@ -97,9 +97,9 @@ class IncidentsTest extends AbstractDefenderTest {
 
     @Test
     void failedCommentAfterAnUpdateSaysTheUpdateWasApplied() throws Exception {
-        wm.stubFor(patch(urlPathEqualTo(GRAPH + "/security/incidents/101"))
+        wm.stubFor(patch(urlPathEqualTo("%s/security/incidents/101".formatted(GRAPH)))
             .willReturn(okJson(incidentJson("101", "inProgress", "2026-10-24T11:00:00Z"))));
-        wm.stubFor(post(urlPathEqualTo(GRAPH + "/security/incidents/101/comments"))
+        wm.stubFor(post(urlPathEqualTo("%s/security/incidents/101/comments".formatted(GRAPH)))
             .willReturn(aResponse().withStatus(400).withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":{\"code\":\"BadRequest\",\"message\":\"Comment is too long\"}}")));
 
@@ -116,17 +116,17 @@ class IncidentsTest extends AbstractDefenderTest {
             containsString("add the comment to incident '101' (HTTP 400)"),
             containsString("Comment is too long"),
             endsWith("The incident update was applied, only the comment is missing.")));
-        wm.verify(1, patchRequestedFor(urlPathEqualTo(GRAPH + "/security/incidents/101")));
+        wm.verify(1, patchRequestedFor(urlPathEqualTo("%s/security/incidents/101".formatted(GRAPH))));
         wm.verify(0, getRequestedFor(anyUrl()));
     }
 
     @Test
     void failedReadBackAfterTheCommentDoesNotFailTheTask() throws Exception {
-        wm.stubFor(patch(urlPathEqualTo(GRAPH + "/security/incidents/101"))
+        wm.stubFor(patch(urlPathEqualTo("%s/security/incidents/101".formatted(GRAPH)))
             .willReturn(okJson(incidentJson("101", "inProgress", "2026-10-24T11:00:00Z"))));
-        wm.stubFor(post(urlPathEqualTo(GRAPH + "/security/incidents/101/comments"))
+        wm.stubFor(post(urlPathEqualTo("%s/security/incidents/101/comments".formatted(GRAPH)))
             .willReturn(okJson("{\"value\":[]}")));
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/incidents/101"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/incidents/101".formatted(GRAPH)))
             .willReturn(aResponse().withStatus(404).withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":{\"code\":\"NotFound\",\"message\":\"Incident not found\"}}")));
 
@@ -140,7 +140,7 @@ class IncidentsTest extends AbstractDefenderTest {
             .build()).run(runContext());
 
         assertThat(output.getIncident().get("status"), is("inProgress"));
-        wm.verify(1, postRequestedFor(urlPathEqualTo(GRAPH + "/security/incidents/101/comments")));
+        wm.verify(1, postRequestedFor(urlPathEqualTo("%s/security/incidents/101/comments".formatted(GRAPH))));
     }
 
     @Test
@@ -156,7 +156,7 @@ class IncidentsTest extends AbstractDefenderTest {
 
     @Test
     void notFoundIsReported() throws Exception {
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/incidents/999"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/incidents/999".formatted(GRAPH)))
             .willReturn(aResponse().withStatus(404).withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":{\"code\":\"NotFound\",\"message\":\"Incident not found\"}}")));
 

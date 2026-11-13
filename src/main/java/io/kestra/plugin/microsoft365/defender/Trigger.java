@@ -42,6 +42,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -170,7 +171,8 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
         title = "Trigger event type",
         description = """
             `CREATE` fires for items not seen before and polls on `createdDateTime`, so an item forgotten after `stateTtl`
-            does not fire again when it changes. `UPDATE` fires for seen items with a new `lastUpdateDateTime`.
+            does not fire again when it changes. `UPDATE` fires only for items the trigger has already seen, with a new
+            `lastUpdateDateTime`, so changes to items that existed before the first poll or were forgotten after `stateTtl` do not fire.
             `CREATE_OR_UPDATE` (default) fires for both.
             """
     )
@@ -178,7 +180,7 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
     @PluginProperty(group = "processing")
     private Property<On> on = Property.ofValue(On.CREATE_OR_UPDATE);
 
-    @Schema(title = "State key", description = "Key of the trigger state in the namespace KV store; defaults to `<namespace>_<flowId>_<triggerId>`.")
+    @Schema(title = "State key", description = "Key of the trigger state in the namespace KV store. Defaults to `<namespace>_<flowId>_<triggerId>`.")
     @PluginProperty(group = "advanced")
     private Property<String> stateKey;
 
@@ -187,7 +189,7 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
         description = """
             How long a seen item is remembered after it was last read. Default `P7D`. Must be positive and longer than
             `lookback`. Items still in the lookback window are kept and refreshed on every poll. An item that changes
-            after it was forgotten is seen as new, so with `UPDATE` that change does not fire; `CREATE` and
+            after it was forgotten is seen as new, so with `UPDATE` that change does not fire. `CREATE` and
             `CREATE_OR_UPDATE` are not affected.
             """
     )
@@ -290,7 +292,7 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
                 runContext.logger().warn("Microsoft Graph is throttling or unavailable (HTTP {}), skipping this poll", e.getResponseStatusCode());
                 return Optional.empty();
             }
-            throw DefenderUtils.graphError(e, "list %s".formatted(rResource.name().toLowerCase()));
+            throw DefenderUtils.graphError(e, "list %s".formatted(rResource.name().toLowerCase(Locale.ROOT)));
         }
 
         if (poll.count == 0) {
@@ -344,7 +346,6 @@ public class Trigger extends AbstractMicrosoft365Trigger implements PollingTrigg
         StatefulTriggerService.writeState(runContext, key, state, Optional.of(ttl));
     }
 
-    // Items read during one poll: updates the state, writes the items to fire to the output file and tracks the watermark
     private static class Poll {
         private final Map<String, StatefulTriggerService.Entry> state;
         private final On on;

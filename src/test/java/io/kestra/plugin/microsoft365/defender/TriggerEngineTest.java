@@ -1,7 +1,6 @@
 package io.kestra.plugin.microsoft365.defender;
 
 import io.kestra.core.junit.annotations.KestraTest;
-import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.flows.State;
 import io.kestra.core.repositories.LocalFlowRepositoryLoader;
 import io.kestra.core.runners.TestRunner;
@@ -11,11 +10,9 @@ import io.kestra.core.storages.StorageInterface;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
-import java.io.InputStream;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -40,10 +37,9 @@ class TriggerEngineTest extends AbstractDefenderTest {
 
     @Test
     void schedulerFiresAndRunsFlowWithStoredAlerts() throws Exception {
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .withQueryParam("$filter", containing("lastUpdateDateTime ge "))
-            .willReturn(okJson("{\"value\":["
-                + alertJson("engine-alert", "high", "new", Instant.now().toString()) + "]}")));
+            .willReturn(okJson("{\"value\":[%s]}".formatted(alertJson("engine-alert", "high", "new", Instant.now().toString())))));
 
         repositoryLoader.load(Objects.requireNonNull(getClass().getClassLoader().getResource("flows/defender")));
         runner.setWorkerThread(2);
@@ -68,6 +64,6 @@ class TriggerEngineTest extends AbstractDefenderTest {
             assertThat(items, hasSize(1));
             assertThat(((Map<?, ?>) items.getFirst()).get("id"), is("engine-alert"));
         }
-        wm.verify(getRequestedFor(urlPathEqualTo(GRAPH + "/security/alerts_v2")));
+        wm.verify(getRequestedFor(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH))));
     }
 }

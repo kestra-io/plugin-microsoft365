@@ -1,12 +1,10 @@
 package io.kestra.plugin.microsoft365.defender;
 
 import io.kestra.core.junit.annotations.KestraTest;
-import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.flows.State;
 import io.kestra.core.models.triggers.StatefulTriggerService;
 import io.kestra.core.repositories.ExecutionRepositoryInterface;
 import io.kestra.core.repositories.LocalFlowRepositoryLoader;
-import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.TestRunnerUtils;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.utils.Await;
@@ -14,12 +12,10 @@ import io.micronaut.data.model.Pageable;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
-import java.io.InputStream;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -56,16 +52,16 @@ class TriggerRunnerTest extends AbstractDefenderTest {
         assertThat(StatefulTriggerService.readState(runContext, STATE_KEY, Optional.empty())
             .get(Trigger.WATERMARK_KEY).version(), is(watermark.toString()));
 
-        var nextLink = wm.baseUrl() + GRAPH + "/security/alerts_v2?$skiptoken=p2";
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+        var nextLink = "%s%s/security/alerts_v2?$skiptoken=p2".formatted(wm.baseUrl(), GRAPH);
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .withQueryParam("$skiptoken", equalTo("p2"))
             .atPriority(1)
-            .willReturn(okJson("{\"value\":[" + alertJson("a2", "high", "new", "2026-10-24T09:00:00Z") + "]}")));
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+            .willReturn(okJson("{\"value\":[%s]}".formatted(alertJson("a2", "high", "new", "2026-10-24T09:00:00Z")))));
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .withQueryParam("$filter", containing("lastUpdateDateTime ge"))
             .atPriority(2)
-            .willReturn(okJson("{\"value\":[" + alertJson("a1", "high", "new", "2026-10-24T09:00:00Z")
-                + "],\"@odata.nextLink\":\"" + nextLink + "\"}")));
+            .willReturn(okJson("{\"value\":[%s],\"@odata.nextLink\":\"%s\"}".formatted(
+                alertJson("a1", "high", "new", "2026-10-24T09:00:00Z"), nextLink))));
 
         // Only authentication and the Graph base URL are replaced by TestableTrigger.
         // The scheduler, trigger worker, execution queue, executor and task worker are real.
@@ -84,10 +80,10 @@ class TriggerRunnerTest extends AbstractDefenderTest {
             assertThat(items.stream().map(item -> ((Map<?, ?>) item).get("id")).toList(), contains("a1", "a2"));
         }
         assertThat(execution.getTaskRunList(), hasSize(1));
-        assertThat(execution.getTaskRunList().getFirst().getOutputs().get("value"), is("2|" + uri));
+        assertThat(execution.getTaskRunList().getFirst().getOutputs().get("value"), is("2|%s".formatted(uri)));
 
         // Wait for another complete poll against the same Graph data before checking deduplication.
-        Await.until(() -> wm.findAll(getRequestedFor(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+        Await.until(() -> wm.findAll(getRequestedFor(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
                 .withQueryParam("$skiptoken", equalTo("p2"))).size() >= 3,
             Duration.ofMillis(100), Duration.ofSeconds(20));
         assertThat(executionRepository.findByFlowId(MAIN_TENANT, NAMESPACE, FLOW_ID, Pageable.UNPAGED), hasSize(1));

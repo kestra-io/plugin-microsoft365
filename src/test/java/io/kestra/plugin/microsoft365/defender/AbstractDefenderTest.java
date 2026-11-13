@@ -29,7 +29,7 @@ abstract class AbstractDefenderTest {
 
     static GraphServiceClient wireMockClient() {
         var client = new GraphServiceClient(new AnonymousAuthenticationProvider());
-        client.getRequestAdapter().setBaseUrl(wm.baseUrl() + GRAPH);
+        client.getRequestAdapter().setBaseUrl("%s%s".formatted(wm.baseUrl(), GRAPH));
         return client;
     }
 

@@ -4,14 +4,12 @@ import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
-import io.kestra.core.runners.RunContext;
 import io.kestra.core.utils.IdUtils;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.List;
-import java.util.Map;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -23,18 +21,18 @@ class AlertsTest extends AbstractDefenderTest {
 
     @Test
     void listAlertsCombinesFiltersAndStopsAtTop() throws Exception {
-        var nextLink = wm.baseUrl() + GRAPH + "/security/alerts_v2?$top=3&$skiptoken=page2";
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+        var nextLink = "%s%s/security/alerts_v2?$top=3&$skiptoken=page2".formatted(wm.baseUrl(), GRAPH);
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .withQueryParam("$skiptoken", equalTo("page2"))
             .atPriority(1)
-            .willReturn(okJson("{\"value\":[" + alertJson("a3", "high", "new", "2026-10-24T08:00:00Z") + ","
-                + alertJson("a4", "high", "new", "2026-10-24T07:00:00Z") + "]}")));
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+            .willReturn(okJson("{\"value\":[%s,%s]}".formatted(
+                alertJson("a3", "high", "new", "2026-10-24T08:00:00Z"), alertJson("a4", "high", "new", "2026-10-24T07:00:00Z")))));
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .withQueryParam("$top", equalTo("3"))
             .withQueryParam("$filter", equalTo("(serviceSource eq 'microsoftDefenderForEndpoint') and (severity eq 'high') and (status eq 'new')"))
             .atPriority(2)
-            .willReturn(okJson("{\"value\":[" + alertJson("a1", "high", "new", "2026-10-24T10:00:00Z") + ","
-                + alertJson("a2", "high", "new", "2026-10-24T09:00:00Z") + "],\"@odata.nextLink\":\"" + nextLink + "\"}")));
+            .willReturn(okJson("{\"value\":[%s,%s],\"@odata.nextLink\":\"%s\"}".formatted(
+                alertJson("a1", "high", "new", "2026-10-24T10:00:00Z"), alertJson("a2", "high", "new", "2026-10-24T09:00:00Z"), nextLink))));
 
         var task = withWireMock(ListAlerts.builder().id(IdUtils.create()).type(ListAlerts.class.getName())
             .filter(Property.ofValue("serviceSource eq 'microsoftDefenderForEndpoint'"))
@@ -53,13 +51,13 @@ class AlertsTest extends AbstractDefenderTest {
         assertThat(first.get("lastUpdateDateTime").toString(), startsWith("2026-10-24T10:00"));
         assertThat(first, not(hasKey("@odata.type")));
         assertThat((List<?>) first.get("evidence"), hasSize(1));
-        wm.verify(2, getRequestedFor(urlPathEqualTo(GRAPH + "/security/alerts_v2")));
+        wm.verify(2, getRequestedFor(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH))));
     }
 
     @Test
     void listAlertsStoreWritesIonFile() throws Exception {
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
-            .willReturn(okJson("{\"value\":[" + alertJson("a1", "low", "new", "2026-10-24T10:00:00Z") + "]}")));
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
+            .willReturn(okJson("{\"value\":[%s]}".formatted(alertJson("a1", "low", "new", "2026-10-24T10:00:00Z")))));
 
         var task = withWireMock(ListAlerts.builder()
             .id(IdUtils.create())
@@ -76,14 +74,14 @@ class AlertsTest extends AbstractDefenderTest {
         try (var reader = new BufferedReader(new InputStreamReader(runContext.storage().getFile(output.getUri())))) {
             assertThat(reader.readLine(), containsString("a1"));
         }
-        wm.verify(getRequestedFor(urlPathEqualTo(GRAPH + "/security/alerts_v2")).withQueryParam("$top", equalTo("100")));
+        wm.verify(getRequestedFor(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH))).withQueryParam("$top", equalTo("100")));
     }
 
     @Test
     void listAlertsFetchOne() throws Exception {
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
-            .willReturn(okJson("{\"value\":[" + alertJson("a1", "low", "new", "2026-10-24T10:00:00Z") + ","
-                + alertJson("a2", "low", "new", "2026-10-24T09:00:00Z") + "]}")));
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
+            .willReturn(okJson("{\"value\":[%s,%s]}".formatted(
+                alertJson("a1", "low", "new", "2026-10-24T10:00:00Z"), alertJson("a2", "low", "new", "2026-10-24T09:00:00Z")))));
 
         var output = withWireMock(ListAlerts.builder()
             .id(IdUtils.create())
@@ -116,7 +114,7 @@ class AlertsTest extends AbstractDefenderTest {
 
     @Test
     void throttlingErrorMentionsRetryAfter() throws Exception {
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .willReturn(aResponse().withStatus(429).withHeader("Retry-After", "1")
                 .withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":{\"code\":\"TooManyRequests\",\"message\":\"Too many requests\"}}")));
@@ -131,7 +129,7 @@ class AlertsTest extends AbstractDefenderTest {
 
     @Test
     void getAlert() throws Exception {
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2/da123"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2/da123".formatted(GRAPH)))
             .willReturn(okJson(alertJson("da123", "medium", "inProgress", "2026-10-24T10:00:00Z"))));
 
         var output = withWireMock(GetAlert.builder()
@@ -147,7 +145,7 @@ class AlertsTest extends AbstractDefenderTest {
 
     @Test
     void updateAlertSendsOnlySetProperties() throws Exception {
-        wm.stubFor(patch(urlPathEqualTo(GRAPH + "/security/alerts_v2/da123"))
+        wm.stubFor(patch(urlPathEqualTo("%s/security/alerts_v2/da123".formatted(GRAPH)))
             .willReturn(okJson(alertJson("da123", "medium", "resolved", "2026-10-24T11:00:00Z"))));
 
         var task = withWireMock(UpdateAlert.builder().id(IdUtils.create()).type(UpdateAlert.class.getName())
@@ -159,7 +157,7 @@ class AlertsTest extends AbstractDefenderTest {
         var output = task.run(runContext());
 
         assertThat(output.getAlert().get("status"), is("resolved"));
-        wm.verify(patchRequestedFor(urlPathEqualTo(GRAPH + "/security/alerts_v2/da123"))
+        wm.verify(patchRequestedFor(urlPathEqualTo("%s/security/alerts_v2/da123".formatted(GRAPH)))
             .withRequestBody(matchingJsonPath("$.status", equalTo("resolved")))
             .withRequestBody(matchingJsonPath("$.classification", equalTo("falsePositive")))
             .withRequestBody(notContaining("determination"))

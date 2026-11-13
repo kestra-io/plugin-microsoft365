@@ -97,7 +97,7 @@ public class HuntingQuery extends AbstractDefender implements RunnableTask<Hunti
         title = "Time span",
         description = """
             How far back the query looks, as an ISO-8601 duration. Default `P7D`. Microsoft Graph defaults to 30 days when
-            no time span is sent; this task always sends one.
+            no time span is sent. This task always sends one.
             """
     )
     @Builder.Default

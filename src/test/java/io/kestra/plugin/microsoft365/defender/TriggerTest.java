@@ -9,15 +9,13 @@ import io.kestra.core.models.triggers.StatefulTriggerService;
 import io.kestra.core.models.triggers.TriggerService;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
-import io.kestra.core.utils.TestsUtils;
 import io.kestra.core.utils.IdUtils;
+import io.kestra.core.utils.TestsUtils;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
-import java.io.InputStream;
 import java.net.URI;
-import java.time.Instant;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -29,6 +27,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 
 @KestraTest
@@ -43,7 +42,7 @@ class TriggerTest extends AbstractDefenderTest {
             {Duration.ofMinutes(5), Duration.ofMinutes(5)},
             {Duration.ofMinutes(5), Duration.ofMinutes(4)}
         };
-        for (Duration[] durations : invalid) {
+        for (var durations : invalid) {
             var trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName())
                 .lookback(Property.ofValue(durations[0]))
                 .stateTtl(Property.ofValue(durations[1])).build();
@@ -153,9 +152,9 @@ class TriggerTest extends AbstractDefenderTest {
 
     private static void stubAlerts(String filter, String... alerts) {
         wm.resetAll();
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .withQueryParam("$filter", equalTo(filter))
-            .willReturn(okJson("{\"value\":[" + String.join(",", alerts) + "]}")));
+            .willReturn(okJson("{\"value\":[%s]}".formatted(String.join(",", alerts)))));
     }
 
     @Test
@@ -181,17 +180,17 @@ class TriggerTest extends AbstractDefenderTest {
         var context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
 
-        var nextLink = wm.baseUrl() + GRAPH + "/security/alerts_v2?$skiptoken=p2";
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+        var nextLink = "%s%s/security/alerts_v2?$skiptoken=p2".formatted(wm.baseUrl(), GRAPH);
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .withQueryParam("$skiptoken", equalTo("p2"))
             .atPriority(1)
-            .willReturn(okJson("{\"value\":[" + alertJson("a2", "high", "new", "2026-10-24T09:00:00Z") + "]}")));
+            .willReturn(okJson("{\"value\":[%s]}".formatted(alertJson("a2", "high", "new", "2026-10-24T09:00:00Z")))));
         // default lookback of 5 minutes before the watermark, with ge so items sharing the watermark timestamp are read again
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .withQueryParam("$filter", equalTo("(lastUpdateDateTime ge 2026-10-24T07:55:00.0000000Z) and (severity eq 'high')"))
             .atPriority(2)
-            .willReturn(okJson("{\"value\":[" + alertJson("a1", "high", "new", "2026-10-24T10:30:00.1234567Z") + "],"
-                + "\"@odata.nextLink\":\"" + nextLink + "\"}")));
+            .willReturn(okJson("{\"value\":[%s],\"@odata.nextLink\":\"%s\"}".formatted(
+                alertJson("a1", "high", "new", "2026-10-24T10:30:00.1234567Z"), nextLink))));
 
         var execution = trigger.evaluate(context.getKey(), context.getValue());
 
@@ -251,6 +250,23 @@ class TriggerTest extends AbstractDefenderTest {
     }
 
     @Test
+    void switchingOnModeRestartsFromANewStartingPoint() throws Exception {
+        var trigger = TestableTrigger.builder()
+            .id(IdUtils.create())
+            .type(Trigger.class.getName())
+            .on(Property.ofValue(StatefulTriggerInterface.On.CREATE))
+            .build();
+        var context = mock(trigger);
+        seedWatermark(context, "2026-10-24T08:00:00Z");
+
+        assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
+
+        wm.verify(0, anyRequestedFor(anyUrl()));
+        assertThat(state(context), hasKey(Trigger.CREATED_WATERMARK_KEY));
+        assertThat(state(context), not(hasKey(Trigger.WATERMARK_KEY)));
+    }
+
+    @Test
     void onCreateDoesNotFireAgainForAForgottenAlertThatChanges() throws Exception {
         var trigger = TestableTrigger.builder()
             .id(IdUtils.create())
@@ -258,7 +274,7 @@ class TriggerTest extends AbstractDefenderTest {
             .on(Property.ofValue(StatefulTriggerInterface.On.CREATE))
             .build();
         var context = mock(trigger);
-        // a1 was fired long ago and is forgotten after stateTtl; both watermarks are seeded so the previous lastUpdateDateTime polling would run too
+        // a1 was fired long ago and forgotten after stateTtl. Both watermarks are seeded so the old lastUpdateDateTime polling would run too.
         var watermark = Instant.parse("2026-10-24T09:00:00Z");
         var created = Instant.parse("2026-10-10T09:00:00Z");
         var expired = Instant.now().minus(Duration.ofDays(8));
@@ -271,12 +287,12 @@ class TriggerTest extends AbstractDefenderTest {
         // a1 changes again at 09:30: only a lastUpdateDateTime query returns it
         var a1 = alertJson("a1", "high", "resolved", "2026-10-10T09:00:00Z", "2026-10-24T09:30:00Z");
         var a2 = alertJson("a2", "high", "new", "2026-10-24T09:01:00Z", "2026-10-24T09:01:00Z");
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .withQueryParam("$filter", equalTo("createdDateTime ge 2026-10-24T08:55:00.0000000Z"))
-            .willReturn(okJson("{\"value\":[" + a2 + "]}")));
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+            .willReturn(okJson("{\"value\":[%s]}".formatted(a2))));
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .withQueryParam("$filter", equalTo("lastUpdateDateTime ge 2026-10-24T08:55:00.0000000Z"))
-            .willReturn(okJson("{\"value\":[" + a1 + "," + a2 + "]}")));
+            .willReturn(okJson("{\"value\":[%s,%s]}".formatted(a1, a2))));
 
         var execution = trigger.evaluate(context.getKey(), context.getValue())
             .orElseThrow(() -> new AssertionError("Expected an execution for a2"));
@@ -295,7 +311,7 @@ class TriggerTest extends AbstractDefenderTest {
             .build();
         var context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/incidents"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/incidents".formatted(GRAPH)))
             .withQueryParam("$filter", equalTo("lastUpdateDateTime ge 2026-10-24T07:55:00.0000000Z"))
             .willReturn(okJson("{\"value\":[]}")));
 
@@ -303,7 +319,7 @@ class TriggerTest extends AbstractDefenderTest {
 
         assertThat(execution.isPresent(), is(false));
         assertThat(watermark(context), is("2026-10-24T08:00:00Z"));
-        wm.verify(1, getRequestedFor(urlPathEqualTo(GRAPH + "/security/incidents")));
+        wm.verify(1, getRequestedFor(urlPathEqualTo("%s/security/incidents".formatted(GRAPH))));
     }
 
     @Test
@@ -312,15 +328,15 @@ class TriggerTest extends AbstractDefenderTest {
         var context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
 
-        var nextLink = wm.baseUrl() + GRAPH + "/security/alerts_v2?$skiptoken=p2";
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+        var nextLink = "%s%s/security/alerts_v2?$skiptoken=p2".formatted(wm.baseUrl(), GRAPH);
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .withQueryParam("$skiptoken", equalTo("p2"))
             .atPriority(1)
             .willReturn(aResponse().withStatus(429).withHeader("Retry-After", "1")));
-        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+        wm.stubFor(get(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .atPriority(2)
-            .willReturn(okJson("{\"value\":[" + alertJson("a1", "high", "new", "2026-10-24T10:00:00Z") + "],"
-                + "\"@odata.nextLink\":\"" + nextLink + "\"}")));
+            .willReturn(okJson("{\"value\":[%s],\"@odata.nextLink\":\"%s\"}".formatted(
+                alertJson("a1", "high", "new", "2026-10-24T10:00:00Z"), nextLink))));
 
         var execution = trigger.evaluate(context.getKey(), context.getValue());
 
@@ -340,7 +356,7 @@ class TriggerTest extends AbstractDefenderTest {
 
         try (var service = mockStatic(TriggerService.class)) {
             service.when(() -> TriggerService.generateExecution(
-                org.mockito.ArgumentMatchers.eq(trigger),
+                eq(trigger),
                 org.mockito.ArgumentMatchers.eq(context.getKey()),
                 org.mockito.ArgumentMatchers.eq(context.getValue()),
                 org.mockito.ArgumentMatchers.any(Trigger.Output.class)
@@ -362,13 +378,13 @@ class TriggerTest extends AbstractDefenderTest {
         var context = mock(trigger);
         assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
         var start = Instant.parse(watermark(context));
-        var filter = "lastUpdateDateTime ge " + DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS'Z'")
-            .withZone(ZoneOffset.UTC).format(start);
+        var filter = "lastUpdateDateTime ge %s".formatted(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS'Z'")
+            .withZone(ZoneOffset.UTC).format(start));
         stubAlerts(filter);
 
         assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
 
-        wm.verify(1, getRequestedFor(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+        wm.verify(1, getRequestedFor(urlPathEqualTo("%s/security/alerts_v2".formatted(GRAPH)))
             .withQueryParam("$filter", equalTo(filter)));
     }
 
@@ -378,8 +394,8 @@ class TriggerTest extends AbstractDefenderTest {
         var context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
         var alerts = new String[2000];
-        for (int i = 0; i < alerts.length; i++) {
-            alerts[i] = alertJson("alert_" + i, "high", "new", "2026-10-24T09:00:00Z");
+        for (var i = 0; i < alerts.length; i++) {
+            alerts[i] = alertJson("alert_%d".formatted(i), "high", "new", "2026-10-24T09:00:00Z");
         }
         stubAlerts("lastUpdateDateTime ge 2026-10-24T07:55:00.0000000Z", alerts);
 

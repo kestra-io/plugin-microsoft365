@@ -20,9 +20,9 @@ class GraphEnumTest {
         values.addAll(List.of(Classification.values()));
         values.addAll(List.of(Determination.values()));
 
-        for (GraphEnum value : values) {
+        for (var value : values) {
             var expected = ((Enum<?>) value).name().toLowerCase().replace("_", "");
-            assertThat(value + " -> " + value.toGraph().getValue(), value.toGraph().getValue().toLowerCase(), is(expected));
+            assertThat("%s -> %s".formatted(value, value.toGraph().getValue()), value.toGraph().getValue().toLowerCase(), is(expected));
         }
     }
 

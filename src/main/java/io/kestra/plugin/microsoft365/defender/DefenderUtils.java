@@ -104,7 +104,6 @@ final class DefenderUtils {
         return runContext.storage().putFile(tempFile);
     }
 
-    /** Turns a Graph error into an actionable exception; throttling errors carry Retry-After to help tune a `retry` policy. */
     static RuntimeException graphError(ApiException e, String action) {
         var status = e.getResponseStatusCode();
         var detail = errorMessage(e);
@@ -113,8 +112,8 @@ final class DefenderUtils {
                 .formatted(action, retryAfter(e).map(", Retry-After: %ss"::formatted).orElse(""));
             case 401 -> "Authentication failed while trying to %s (HTTP 401). Check tenantId, clientId and the client secret or certificate."
                 .formatted(action);
-            case 403 -> ("Permission denied while trying to %s (HTTP 403). Check that the app registration was granted the required "
-                + "application permission (SecurityAlert.*, SecurityIncident.* or ThreatHunting.Read.All) with admin consent.").formatted(action);
+            case 403 -> "Permission denied while trying to %s (HTTP 403). Check that the app registration was granted the required application permission (SecurityAlert.*, SecurityIncident.* or ThreatHunting.Read.All) with admin consent."
+                .formatted(action);
             case 404 -> "Not found while trying to %s (HTTP 404).".formatted(action);
             default -> "Microsoft Graph error while trying to %s (HTTP %d).".formatted(action, status);
         };
