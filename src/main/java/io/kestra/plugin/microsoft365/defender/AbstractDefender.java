@@ -1,0 +1,54 @@
+package io.kestra.plugin.microsoft365.defender;
+
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+import io.kestra.core.models.property.Property;
+import io.kestra.core.models.tasks.common.FetchType;
+import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.microsoft365.AbstractGraphConnection;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+import lombok.experimental.SuperBuilder;
+
+import java.io.IOException;
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+
+@SuperBuilder
+@ToString
+@EqualsAndHashCode
+@Getter
+@NoArgsConstructor
+public abstract class AbstractDefender extends AbstractGraphConnection {
+    static final int DEFAULT_TOP = 100;
+    static final int MAX_TOP = 2000;
+
+    protected int renderTop(RunContext runContext, Property<Integer> top) throws IllegalVariableEvaluationException {
+        var rTop = runContext.render(top).as(Integer.class).orElse(DEFAULT_TOP);
+        if (rTop < 1 || rTop > MAX_TOP) {
+            throw new IllegalArgumentException("top must be between 1 and %d, got %d".formatted(MAX_TOP, rTop));
+        }
+        return rTop;
+    }
+
+    protected String renderFilter(RunContext runContext, Property<String> filter, Property<Severity> severity, String statusClause)
+        throws IllegalVariableEvaluationException {
+        var rFilter = runContext.render(filter).as(String.class).orElse(null);
+        var rSeverity = runContext.render(severity).as(Severity.class).orElse(null);
+        return DefenderUtils.combineFilters(rFilter, DefenderUtils.eqClause("severity", rSeverity), statusClause);
+    }
+
+    protected static Fetched fetch(RunContext runContext, FetchType fetchType, List<Map<String, Object>> items) throws IOException {
+        return switch (fetchType) {
+            case FETCH -> new Fetched(items, null, null);
+            case FETCH_ONE -> new Fetched(null, items.isEmpty() ? null : items.getFirst(), null);
+            case STORE -> new Fetched(null, null, DefenderUtils.store(runContext, items));
+            case NONE -> new Fetched(null, null, null);
+        };
+    }
+
+    protected record Fetched(List<Map<String, Object>> items, Map<String, Object> first, URI uri) {
+    }
+}

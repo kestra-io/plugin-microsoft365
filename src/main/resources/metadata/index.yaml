@@ -1,8 +1,8 @@
 group: io.kestra.plugin.microsoft365
 name: "microsoft365"
 title: "Microsoft 365"
-description: "Tasks that integrate Microsoft 365 and Dynamics 365 services."
-body: "Authenticate with Microsoft Graph or Azure AD (tenant, client ID/secret or certificate) once and reuse the connection to manage Outlook mail, OneDrive/SharePoint files, Dataverse entities, and Business Central financials directly from Kestra workflows."
+description: "Tasks that integrate Microsoft 365, Microsoft Defender XDR, and Dynamics 365 services."
+body: "Authenticate with Microsoft Graph or Azure AD (tenant, client ID/secret or certificate) once and reuse the connection to manage Outlook mail, OneDrive/SharePoint files, Microsoft Defender XDR alerts and incidents, Dataverse entities, and Business Central financials directly from Kestra workflows. Use Defender tasks to list, get, and update alerts and incidents, run advanced hunting KQL queries, and trigger workflows on new or updated detections."
 videos: []
 createdBy: "Kestra Core Team"
 managedBy: "Kestra Core Team"
