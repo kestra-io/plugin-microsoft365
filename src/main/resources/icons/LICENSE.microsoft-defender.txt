@@ -4,7 +4,7 @@ Revision: ee4b24a4209e6b857053ce41bfa8b361044d0fd8
 Path: site/assets/icons/microsoft-defender-xdr.svg
 Original SHA-256: f7bd2acbac528f74ec8ed1442dfae25614658fbeef67146d126a95e69d9d7197
 
-Changes: fixed paint colors replaced with currentColor; display size set to 24px.
+Changes: none, the file is identical to the original (same SHA-256).
 Product names and logos remain trademarks of Microsoft Corporation.
 
     MIT License

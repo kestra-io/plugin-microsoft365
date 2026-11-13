@@ -3,6 +3,7 @@ package io.kestra.plugin.microsoft365.defender;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
+import io.kestra.core.utils.IdUtils;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -36,7 +37,7 @@ class HuntingQueryTest extends AbstractDefenderTest {
     void fetchConvertsValuesFromSchema() throws Exception {
         wm.stubFor(post(urlPathEqualTo(GRAPH + "/security/microsoft.graph.security.runHuntingQuery")).willReturn(okJson(RESPONSE)));
 
-        HuntingQuery.Output output = withWireMock(HuntingQuery.builder()
+        var output = withWireMock(HuntingQuery.builder().id(IdUtils.create()).type(HuntingQuery.class.getName())
             .query(Property.ofValue("DeviceProcessEvents | take 2"))
             .timespan(Property.ofValue(Duration.ofDays(1)))
             .fetchType(Property.ofValue(FetchType.FETCH))
@@ -49,7 +50,7 @@ class HuntingQueryTest extends AbstractDefenderTest {
         assertThat(output.getCount(), is(2));
         assertThat(output.getSchema(), hasItem(Map.of("name", "Timestamp", "type", "DateTime")));
 
-        Map<String, Object> row = output.getRows().getFirst();
+        var row = output.getRows().getFirst();
         assertThat(row.get("timestamp"), is(Instant.parse("2026-10-24T09:40:12.1234567Z")));
         assertThat(row.get("fileName"), is("powershell.exe"));
         assertThat(row.get("count"), is(3L));
@@ -57,7 +58,7 @@ class HuntingQueryTest extends AbstractDefenderTest {
         assertThat(row.get("isSigned"), is(true));
         assertThat(((Map<?, ?>) row.get("details")).get("parent"), is("cmd.exe"));
 
-        Map<String, Object> second = output.getRows().get(1);
+        var second = output.getRows().get(1);
         assertThat(second.get("count"), is(12345678901L));
         assertThat(second.get("score"), is(1.0));
         assertThat(second.get("details"), nullValue());
@@ -67,7 +68,7 @@ class HuntingQueryTest extends AbstractDefenderTest {
     void defaultsToSevenDaysAndStore() throws Exception {
         wm.stubFor(post(urlPathEqualTo(GRAPH + "/security/microsoft.graph.security.runHuntingQuery")).willReturn(okJson(RESPONSE)));
 
-        HuntingQuery.Output output = withWireMock(HuntingQuery.builder()
+        var output = withWireMock(HuntingQuery.builder().id(IdUtils.create()).type(HuntingQuery.class.getName())
             .query(Property.ofValue("DeviceProcessEvents | take 2"))
             .build()).run(runContext());
 

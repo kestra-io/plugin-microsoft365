@@ -16,10 +16,6 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Base class of the Microsoft Defender XDR tasks: reuses the Microsoft Graph connection of the plugin
- * (tenantId, clientId, clientSecret or pemCertificate) and holds the shared list helpers.
- */
 @SuperBuilder
 @ToString
 @EqualsAndHashCode
@@ -30,23 +26,20 @@ public abstract class AbstractDefender extends AbstractGraphConnection {
     static final int MAX_TOP = 2000;
 
     protected int renderTop(RunContext runContext, Property<Integer> top) throws IllegalVariableEvaluationException {
-        int rTop = runContext.render(top).as(Integer.class).orElse(DEFAULT_TOP);
+        var rTop = runContext.render(top).as(Integer.class).orElse(DEFAULT_TOP);
         if (rTop < 1 || rTop > MAX_TOP) {
-            throw new IllegalArgumentException("top must be between 1 and " + MAX_TOP + ", got " + rTop);
+            throw new IllegalArgumentException("top must be between 1 and %d, got %d".formatted(MAX_TOP, rTop));
         }
         return rTop;
     }
 
     protected String renderFilter(RunContext runContext, Property<String> filter, Property<Severity> severity, String statusClause)
         throws IllegalVariableEvaluationException {
-        String rFilter = runContext.render(filter).as(String.class).orElse(null);
-        Severity rSeverity = runContext.render(severity).as(Severity.class).orElse(null);
+        var rFilter = runContext.render(filter).as(String.class).orElse(null);
+        var rSeverity = runContext.render(severity).as(Severity.class).orElse(null);
         return DefenderUtils.combineFilters(rFilter, DefenderUtils.eqClause("severity", rSeverity), statusClause);
     }
 
-    /**
-     * Fills the FETCH / FETCH_ONE / STORE fields of a list output.
-     */
     protected static Fetched fetch(RunContext runContext, FetchType fetchType, List<Map<String, Object>> items) throws IOException {
         return switch (fetchType) {
             case FETCH -> new Fetched(items, null, null);

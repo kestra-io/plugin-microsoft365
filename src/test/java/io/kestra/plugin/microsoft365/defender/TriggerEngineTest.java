@@ -50,7 +50,7 @@ class TriggerEngineTest extends AbstractDefenderTest {
         runner.run();
 
         // The real scheduler initializes the state on its first poll, then polls Graph through the SDK.
-        Execution execution = runnerUtils.awaitFlowExecution(
+        var execution = runnerUtils.awaitFlowExecution(
             candidate -> candidate.getState().isTerminated(),
             MAIN_TENANT, "io.kestra.tests.defender", "defender-trigger", Duration.ofSeconds(30)
         );
@@ -62,9 +62,9 @@ class TriggerEngineTest extends AbstractDefenderTest {
         assertThat(execution.getTaskRunList(), hasSize(1));
         assertThat(execution.getTaskRunList().getFirst().getOutputs().get("value"), is("1"));
 
-        URI uri = URI.create(execution.getTrigger().getVariables().get("uri").toString());
-        try (InputStream input = storage.get(execution.getTenantId(), execution.getNamespace(), uri)) {
-            List<Object> items = FileSerde.readAll(input).collectList().block();
+        var uri = URI.create(execution.getTrigger().getVariables().get("uri").toString());
+        try (var input = storage.get(execution.getTenantId(), execution.getNamespace(), uri)) {
+            var items = FileSerde.readAll(input).collectList().block();
             assertThat(items, hasSize(1));
             assertThat(((Map<?, ?>) items.getFirst()).get("id"), is("engine-alert"));
         }

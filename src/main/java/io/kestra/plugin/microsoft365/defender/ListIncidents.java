@@ -2,7 +2,6 @@ package io.kestra.plugin.microsoft365.defender;
 
 import com.microsoft.graph.models.security.Incident;
 import com.microsoft.graph.models.security.IncidentCollectionResponse;
-import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -32,9 +31,9 @@ import java.util.Map;
 @Schema(
     title = "List Microsoft Defender XDR incidents",
     description = """
-        Lists incidents from the Microsoft Graph security API (`/security/incidents`), most recent first, following
-        `@odata.nextLink` until `top` incidents are collected. Requires the Microsoft Graph application permission
-        SecurityIncident.Read.All.
+        Lists incidents from the Microsoft Graph security API (`/security/incidents`) in the order Microsoft Graph
+        returns them, following `@odata.nextLink` until `top` incidents are collected. Requires the Microsoft Graph
+        application permission SecurityIncident.Read.All.
         """
 )
 @Plugin(
@@ -91,7 +90,7 @@ public class ListIncidents extends AbstractDefender implements RunnableTask<List
 
     @Schema(
         title = "Include alerts",
-        description = "Expand the alerts of each incident (`$expand=alerts`)."
+        description = "Expand the alerts of each incident (`$expand=alerts`). Default `false`."
     )
     @Builder.Default
     @PluginProperty(group = "processing")
@@ -99,7 +98,7 @@ public class ListIncidents extends AbstractDefender implements RunnableTask<List
 
     @Schema(
         title = "Maximum number of incidents",
-        description = "Between 1 and 2000."
+        description = "Between 1 and 2000. Default `100`."
     )
     @Builder.Default
     @PluginProperty(group = "processing")
@@ -112,6 +111,8 @@ public class ListIncidents extends AbstractDefender implements RunnableTask<List
             FETCH_ONE - outputs the first incident as `incident`
             STORE - stores the incidents in an ION file and outputs its `uri`
             NONE - only outputs `count`
+
+            Default `FETCH`.
             """
     )
     @NotNull
@@ -121,18 +122,18 @@ public class ListIncidents extends AbstractDefender implements RunnableTask<List
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        int rTop = renderTop(runContext, top);
-        IncidentStatus rStatus = runContext.render(status).as(IncidentStatus.class).orElse(null);
-        String rFilter = renderFilter(runContext, filter, severity, DefenderUtils.eqClause("status", rStatus));
-        boolean rExpandAlerts = runContext.render(expandAlerts).as(Boolean.class).orElse(false);
-        FetchType rFetchType = runContext.render(fetchType).as(FetchType.class).orElse(FetchType.FETCH);
+        var rTop = renderTop(runContext, top);
+        var rStatus = runContext.render(status).as(IncidentStatus.class).orElse(null);
+        var rFilter = renderFilter(runContext, filter, severity, DefenderUtils.eqClause("status", rStatus));
+        var rExpandAlerts = runContext.render(expandAlerts).as(Boolean.class).orElse(false);
+        var rFetchType = runContext.render(fetchType).as(FetchType.class).orElse(FetchType.FETCH);
 
         runContext.logger().info("Listing up to {} Defender incidents (filter: {})", rTop, rFilter);
 
-        GraphServiceClient client = graphClient(runContext);
+        var client = graphClient(runContext);
         List<Incident> incidents;
         try {
-            IncidentCollectionResponse firstPage = client.security().incidents().get(config -> {
+            var firstPage = client.security().incidents().get(config -> {
                 config.queryParameters.top = Math.min(rTop, PAGE_SIZE);
                 config.queryParameters.filter = rFilter;
                 if (rExpandAlerts) {
@@ -152,7 +153,7 @@ public class ListIncidents extends AbstractDefender implements RunnableTask<List
 
         runContext.logger().info("Retrieved {} Defender incidents", incidents.size());
 
-        Fetched fetched = fetch(runContext, rFetchType, DefenderUtils.toMaps(incidents));
+        var fetched = fetch(runContext, rFetchType, DefenderUtils.toMaps(incidents));
         return Output.builder()
             .incidents(fetched.items())
             .incident(fetched.first())

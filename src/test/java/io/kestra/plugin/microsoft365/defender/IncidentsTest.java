@@ -2,6 +2,7 @@ package io.kestra.plugin.microsoft365.defender;
 
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
+import io.kestra.core.utils.IdUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -22,7 +23,7 @@ class IncidentsTest extends AbstractDefenderTest {
             .withQueryParam("$filter", equalTo("(severity eq 'high') and (status eq 'inProgress')"))
             .willReturn(okJson("{\"value\":[" + incidentJson("101", "inProgress", "2026-10-24T10:00:00Z") + "]}")));
 
-        ListIncidents.Output output = withWireMock(ListIncidents.builder()
+        var output = withWireMock(ListIncidents.builder().id(IdUtils.create()).type(ListIncidents.class.getName())
             .severity(Property.ofValue(Severity.HIGH))
             .status(Property.ofValue(IncidentStatus.IN_PROGRESS))
             .expandAlerts(Property.ofValue(true))
@@ -38,7 +39,11 @@ class IncidentsTest extends AbstractDefenderTest {
         wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/incidents/101"))
             .willReturn(okJson(incidentJson("101", "active", "2026-10-24T10:00:00Z"))));
 
-        GetIncident.Output output = withWireMock(GetIncident.builder().incidentId(Property.ofValue("101")).build()).run(runContext());
+        var output = withWireMock(GetIncident.builder()
+            .id(IdUtils.create())
+            .type(GetIncident.class.getName())
+            .incidentId(Property.ofValue("101"))
+            .build()).run(runContext());
 
         assertThat(output.getIncident().get("id"), is("101"));
         assertThat(output.getIncident().get("customTags"), is(List.of("existing")));
@@ -55,7 +60,7 @@ class IncidentsTest extends AbstractDefenderTest {
             .willReturn(okJson(incidentJson("101", "inProgress", "2026-10-24T11:00:01Z")
                 .replace("}", ",\"comments\":[{\"comment\":\"Hunting returned 3 rows\"}]}"))));
 
-        UpdateIncident.Output output = withWireMock(UpdateIncident.builder()
+        var output = withWireMock(UpdateIncident.builder().id(IdUtils.create()).type(UpdateIncident.class.getName())
             .incidentId(Property.ofValue("101"))
             .status(Property.ofValue(IncidentStatus.IN_PROGRESS))
             .assignedTo(Property.ofValue("soc-tier2@company.com"))
@@ -81,7 +86,7 @@ class IncidentsTest extends AbstractDefenderTest {
         wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/incidents/101"))
             .willReturn(okJson(incidentJson("101", "active", "2026-10-24T11:00:00Z"))));
 
-        UpdateIncident.Output output = withWireMock(UpdateIncident.builder()
+        var output = withWireMock(UpdateIncident.builder().id(IdUtils.create()).type(UpdateIncident.class.getName())
             .incidentId(Property.ofValue("101"))
             .comment(Property.ofValue("Looking into it"))
             .build()).run(runContext());
@@ -91,8 +96,60 @@ class IncidentsTest extends AbstractDefenderTest {
     }
 
     @Test
+    void failedCommentAfterAnUpdateSaysTheUpdateWasApplied() throws Exception {
+        wm.stubFor(patch(urlPathEqualTo(GRAPH + "/security/incidents/101"))
+            .willReturn(okJson(incidentJson("101", "inProgress", "2026-10-24T11:00:00Z"))));
+        wm.stubFor(post(urlPathEqualTo(GRAPH + "/security/incidents/101/comments"))
+            .willReturn(aResponse().withStatus(400).withHeader("Content-Type", "application/json")
+                .withBody("{\"error\":{\"code\":\"BadRequest\",\"message\":\"Comment is too long\"}}")));
+
+        var task = withWireMock(UpdateIncident.builder()
+            .id(IdUtils.create())
+            .type(UpdateIncident.class.getName())
+            .incidentId(Property.ofValue("101"))
+            .status(Property.ofValue(IncidentStatus.IN_PROGRESS))
+            .comment(Property.ofValue("Hunting returned 3 rows"))
+            .build());
+        var e = assertThrows(IllegalStateException.class, () -> task.run(runContext()));
+
+        assertThat(e.getMessage(), allOf(
+            containsString("add the comment to incident '101' (HTTP 400)"),
+            containsString("Comment is too long"),
+            endsWith("The incident update was applied, only the comment is missing.")));
+        wm.verify(1, patchRequestedFor(urlPathEqualTo(GRAPH + "/security/incidents/101")));
+        wm.verify(0, getRequestedFor(anyUrl()));
+    }
+
+    @Test
+    void failedReadBackAfterTheCommentDoesNotFailTheTask() throws Exception {
+        wm.stubFor(patch(urlPathEqualTo(GRAPH + "/security/incidents/101"))
+            .willReturn(okJson(incidentJson("101", "inProgress", "2026-10-24T11:00:00Z"))));
+        wm.stubFor(post(urlPathEqualTo(GRAPH + "/security/incidents/101/comments"))
+            .willReturn(okJson("{\"value\":[]}")));
+        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/incidents/101"))
+            .willReturn(aResponse().withStatus(404).withHeader("Content-Type", "application/json")
+                .withBody("{\"error\":{\"code\":\"NotFound\",\"message\":\"Incident not found\"}}")));
+
+        // Failing here would make a retry post the comment twice
+        var output = withWireMock(UpdateIncident.builder()
+            .id(IdUtils.create())
+            .type(UpdateIncident.class.getName())
+            .incidentId(Property.ofValue("101"))
+            .status(Property.ofValue(IncidentStatus.IN_PROGRESS))
+            .comment(Property.ofValue("Hunting returned 3 rows"))
+            .build()).run(runContext());
+
+        assertThat(output.getIncident().get("status"), is("inProgress"));
+        wm.verify(1, postRequestedFor(urlPathEqualTo(GRAPH + "/security/incidents/101/comments")));
+    }
+
+    @Test
     void updateIncidentRequiresAProperty() throws Exception {
-        UpdateIncident task = withWireMock(UpdateIncident.builder().incidentId(Property.ofValue("101")).build());
+        var task = withWireMock(UpdateIncident.builder()
+            .id(IdUtils.create())
+            .type(UpdateIncident.class.getName())
+            .incidentId(Property.ofValue("101"))
+            .build());
         assertThrows(IllegalArgumentException.class, () -> task.run(runContext()));
         wm.verify(0, anyRequestedFor(anyUrl()));
     }
@@ -103,8 +160,12 @@ class IncidentsTest extends AbstractDefenderTest {
             .willReturn(aResponse().withStatus(404).withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":{\"code\":\"NotFound\",\"message\":\"Incident not found\"}}")));
 
-        GetIncident task = withWireMock(GetIncident.builder().incidentId(Property.ofValue("999")).build());
-        IllegalStateException e = assertThrows(IllegalStateException.class, () -> task.run(runContext()));
+        var task = withWireMock(GetIncident.builder()
+            .id(IdUtils.create())
+            .type(GetIncident.class.getName())
+            .incidentId(Property.ofValue("999"))
+            .build());
+        var e = assertThrows(IllegalStateException.class, () -> task.run(runContext()));
         assertThat(e.getMessage(), allOf(containsString("HTTP 404"), containsString("Incident not found")));
     }
 }

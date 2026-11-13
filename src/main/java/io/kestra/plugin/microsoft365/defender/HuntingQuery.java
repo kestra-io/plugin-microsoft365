@@ -1,7 +1,6 @@
 package io.kestra.plugin.microsoft365.defender;
 
 import com.microsoft.graph.models.security.HuntingQueryResults;
-import com.microsoft.graph.models.security.SinglePropertySchema;
 import com.microsoft.graph.security.microsoftgraphsecurityrunhuntingquery.RunHuntingQueryPostRequestBody;
 import com.microsoft.kiota.ApiException;
 import io.kestra.core.models.annotations.Example;
@@ -97,8 +96,8 @@ public class HuntingQuery extends AbstractDefender implements RunnableTask<Hunti
     @Schema(
         title = "Time span",
         description = """
-            How far back the query looks, as an ISO-8601 duration. Microsoft Graph defaults to 30 days when no time span
-            is sent; this task always sends one.
+            How far back the query looks, as an ISO-8601 duration. Default `P7D`. Microsoft Graph defaults to 30 days when
+            no time span is sent; this task always sends one.
             """
     )
     @Builder.Default
@@ -112,6 +111,8 @@ public class HuntingQuery extends AbstractDefender implements RunnableTask<Hunti
             FETCH_ONE - outputs the first row as `row`
             STORE - stores the rows in an ION file and outputs its `uri`
             NONE - only outputs `count` and `schema`
+
+            Default `STORE`.
             """
     )
     @NotNull
@@ -121,12 +122,12 @@ public class HuntingQuery extends AbstractDefender implements RunnableTask<Hunti
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        String rQuery = runContext.render(query).as(String.class)
+        var rQuery = runContext.render(query).as(String.class)
             .orElseThrow(() -> new IllegalArgumentException("query is required"));
-        Duration rTimespan = runContext.render(timespan).as(Duration.class).orElse(Duration.ofDays(7));
-        FetchType rFetchType = runContext.render(fetchType).as(FetchType.class).orElse(FetchType.STORE);
+        var rTimespan = runContext.render(timespan).as(Duration.class).orElse(Duration.ofDays(7));
+        var rFetchType = runContext.render(fetchType).as(FetchType.class).orElse(FetchType.STORE);
 
-        RunHuntingQueryPostRequestBody body = new RunHuntingQueryPostRequestBody();
+        var body = new RunHuntingQueryPostRequestBody();
         body.setQuery(rQuery);
         body.setTimespan(isoTimespan(rTimespan));
 
@@ -139,20 +140,20 @@ public class HuntingQuery extends AbstractDefender implements RunnableTask<Hunti
             throw DefenderUtils.graphError(e, "run the advanced hunting query");
         }
 
-        List<Map<String, String>> schema = new ArrayList<>();
-        Map<String, String> typesByColumn = new HashMap<>();
+        var schema = new ArrayList<Map<String, String>>();
+        var typesByColumn = new HashMap<String, String>();
         if (results != null && results.getSchema() != null) {
-            for (SinglePropertySchema column : results.getSchema()) {
+            for (var column : results.getSchema()) {
                 schema.add(Map.of("name", column.getName(), "type", column.getType() == null ? "" : column.getType()));
                 // Result keys can differ in case from the schema names, so look types up case-insensitively
                 typesByColumn.put(column.getName().toLowerCase(Locale.ROOT), column.getType());
             }
         }
 
-        List<Map<String, Object>> rows = new ArrayList<>();
+        var rows = new ArrayList<Map<String, Object>>();
         if (results != null && results.getResults() != null) {
-            for (Map<String, Object> raw : DefenderUtils.toMaps(results.getResults())) {
-                Map<String, Object> row = new LinkedHashMap<>();
+            for (var raw : DefenderUtils.toMaps(results.getResults())) {
+                var row = new LinkedHashMap<String, Object>();
                 raw.forEach((key, value) -> row.put(key, convert(value, typesByColumn.get(key.toLowerCase(Locale.ROOT)))));
                 rows.add(row);
             }
@@ -160,7 +161,7 @@ public class HuntingQuery extends AbstractDefender implements RunnableTask<Hunti
 
         runContext.logger().info("Advanced hunting query returned {} rows", rows.size());
 
-        Fetched fetched = fetch(runContext, rFetchType, rows);
+        var fetched = fetch(runContext, rFetchType, rows);
         return Output.builder()
             .schema(schema)
             .rows(fetched.items())
@@ -170,19 +171,14 @@ public class HuntingQuery extends AbstractDefender implements RunnableTask<Hunti
             .build();
     }
 
-    /**
-     * Whole days are sent as {@code P<n>D}, which is what the Defender portal uses, instead of {@code Duration}'s {@code PT<n>H}.
-     */
+    // Whole days are sent as P<n>D, as the Defender portal does, instead of Duration's PT<n>H
     static String isoTimespan(Duration duration) {
         if (!duration.isZero() && duration.toSeconds() % Duration.ofDays(1).toSeconds() == 0 && duration.getNano() == 0) {
-            return "P" + duration.toDays() + "D";
+            return "P%dD".formatted(duration.toDays());
         }
         return duration.toString();
     }
 
-    /**
-     * Converts a JSON value to the Java type matching its Kusto column type.
-     */
     static Object convert(Object value, String type) {
         if (value == null || type == null) {
             return value;

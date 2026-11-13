@@ -2,7 +2,6 @@ package io.kestra.plugin.microsoft365.defender;
 
 import com.microsoft.graph.models.security.Alert;
 import com.microsoft.graph.models.security.AlertCollectionResponse;
-import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
@@ -32,9 +31,9 @@ import java.util.Map;
 @Schema(
     title = "List Microsoft Defender XDR alerts",
     description = """
-        Lists alerts from the Microsoft Graph security API (`/security/alerts_v2`), most recent first, following
-        `@odata.nextLink` until `top` alerts are collected. Requires the Microsoft Graph application permission
-        SecurityAlert.Read.All.
+        Lists alerts from the Microsoft Graph security API (`/security/alerts_v2`) in the order Microsoft Graph
+        returns them, following `@odata.nextLink` until `top` alerts are collected. Requires the Microsoft Graph
+        application permission SecurityAlert.Read.All.
         """
 )
 @Plugin(
@@ -113,7 +112,7 @@ public class ListAlerts extends AbstractDefender implements RunnableTask<ListAle
 
     @Schema(
         title = "Maximum number of alerts",
-        description = "Between 1 and 2000."
+        description = "Between 1 and 2000. Default `100`."
     )
     @Builder.Default
     @PluginProperty(group = "processing")
@@ -126,6 +125,8 @@ public class ListAlerts extends AbstractDefender implements RunnableTask<ListAle
             FETCH_ONE - outputs the first alert as `alert`
             STORE - stores the alerts in an ION file and outputs its `uri`
             NONE - only outputs `count`
+
+            Default `FETCH`.
             """
     )
     @NotNull
@@ -135,17 +136,17 @@ public class ListAlerts extends AbstractDefender implements RunnableTask<ListAle
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        int rTop = renderTop(runContext, top);
-        AlertStatus rStatus = runContext.render(status).as(AlertStatus.class).orElse(null);
-        String rFilter = renderFilter(runContext, filter, severity, DefenderUtils.eqClause("status", rStatus));
-        FetchType rFetchType = runContext.render(fetchType).as(FetchType.class).orElse(FetchType.FETCH);
+        var rTop = renderTop(runContext, top);
+        var rStatus = runContext.render(status).as(AlertStatus.class).orElse(null);
+        var rFilter = renderFilter(runContext, filter, severity, DefenderUtils.eqClause("status", rStatus));
+        var rFetchType = runContext.render(fetchType).as(FetchType.class).orElse(FetchType.FETCH);
 
         runContext.logger().info("Listing up to {} Defender alerts (filter: {})", rTop, rFilter);
 
-        GraphServiceClient client = graphClient(runContext);
+        var client = graphClient(runContext);
         List<Alert> alerts;
         try {
-            AlertCollectionResponse firstPage = client.security().alertsV2().get(config -> {
+            var firstPage = client.security().alertsV2().get(config -> {
                 config.queryParameters.top = rTop;
                 config.queryParameters.filter = rFilter;
             });
@@ -162,7 +163,7 @@ public class ListAlerts extends AbstractDefender implements RunnableTask<ListAle
 
         runContext.logger().info("Retrieved {} Defender alerts", alerts.size());
 
-        Fetched fetched = fetch(runContext, rFetchType, DefenderUtils.toMaps(alerts));
+        var fetched = fetch(runContext, rFetchType, DefenderUtils.toMaps(alerts));
         return Output.builder()
             .alerts(fetched.items())
             .alert(fetched.first())

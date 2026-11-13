@@ -15,10 +15,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 
-/**
- * Runs the tasks against WireMock through the real Graph SDK client (no token call), so tests check the actual
- * request URLs, query strings and bodies, and the parsing of the Graph JSON responses.
- */
+// Real Graph SDK client against WireMock (no token call), so tests check the actual requests and the parsing of the responses
 abstract class AbstractDefenderTest {
     static final String GRAPH = "/v1.0";
 
@@ -31,13 +28,13 @@ abstract class AbstractDefenderTest {
     protected RunContextFactory runContextFactory;
 
     static GraphServiceClient wireMockClient() {
-        GraphServiceClient client = new GraphServiceClient(new AnonymousAuthenticationProvider());
+        var client = new GraphServiceClient(new AnonymousAuthenticationProvider());
         client.getRequestAdapter().setBaseUrl(wm.baseUrl() + GRAPH);
         return client;
     }
 
     static <T extends AbstractDefender> T withWireMock(T task) throws Exception {
-        T spied = spy(task);
+        var spied = spy(task);
         doReturn(wireMockClient()).when(spied).graphClient(any());
         return spied;
     }
@@ -47,14 +44,20 @@ abstract class AbstractDefenderTest {
     }
 
     static String alertJson(String id, String severity, String status, String lastUpdate) {
-        return "{\"@odata.type\":\"#microsoft.graph.security.alert\",\"id\":\"" + id + "\",\"title\":\"Suspicious PowerShell\","
-            + "\"severity\":\"" + severity + "\",\"status\":\"" + status + "\","
-            + "\"serviceSource\":\"microsoftDefenderForEndpoint\",\"lastUpdateDateTime\":\"" + lastUpdate + "\","
-            + "\"evidence\":[{\"@odata.type\":\"#microsoft.graph.security.deviceEvidence\",\"deviceDnsName\":\"host-1\"}]}";
+        return alertJson(id, severity, status, lastUpdate, lastUpdate);
+    }
+
+    static String alertJson(String id, String severity, String status, String created, String lastUpdate) {
+        return """
+            {"@odata.type":"#microsoft.graph.security.alert","id":"%s","title":"Suspicious PowerShell","severity":"%s","status":"%s",
+             "serviceSource":"microsoftDefenderForEndpoint","createdDateTime":"%s","lastUpdateDateTime":"%s",
+             "evidence":[{"@odata.type":"#microsoft.graph.security.deviceEvidence","deviceDnsName":"host-1"}]}"""
+            .formatted(id, severity, status, created, lastUpdate);
     }
 
     static String incidentJson(String id, String status, String lastUpdate) {
-        return "{\"id\":\"" + id + "\",\"displayName\":\"Multi-stage incident\",\"severity\":\"high\",\"status\":\"" + status + "\","
-            + "\"lastUpdateDateTime\":\"" + lastUpdate + "\",\"customTags\":[\"existing\"]}";
+        return """
+            {"id":"%s","displayName":"Multi-stage incident","severity":"high","status":"%s","createdDateTime":"%s","lastUpdateDateTime":"%s","customTags":["existing"]}"""
+            .formatted(id, status, lastUpdate, lastUpdate);
     }
 }

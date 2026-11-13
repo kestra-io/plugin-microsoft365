@@ -2,9 +2,6 @@ package io.kestra.plugin.microsoft365.defender;
 
 import com.microsoft.graph.models.security.AlertDetermination;
 
-/**
- * Determination of a Defender alert or incident, mapped to the Microsoft Graph `alertDetermination` values.
- */
 public enum Determination implements GraphEnum {
     UNKNOWN(AlertDetermination.Unknown),
     APT(AlertDetermination.Apt),

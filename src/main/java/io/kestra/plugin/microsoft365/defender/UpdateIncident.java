@@ -2,7 +2,6 @@ package io.kestra.plugin.microsoft365.defender;
 
 import com.microsoft.graph.models.security.AlertComment;
 import com.microsoft.graph.models.security.Incident;
-import com.microsoft.graph.security.incidents.item.IncidentItemRequestBuilder;
 import com.microsoft.graph.models.odataerrors.ODataError;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
@@ -145,78 +144,88 @@ public class UpdateIncident extends AbstractDefender implements RunnableTask<Upd
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        String rIncidentId = runContext.render(incidentId).as(String.class)
+        var rIncidentId = runContext.render(incidentId).as(String.class)
             .orElseThrow(() -> new IllegalArgumentException("incidentId is required"));
 
-        Incident patch = new Incident();
-        boolean changed = false;
-        IncidentStatus rStatus = runContext.render(status).as(IncidentStatus.class).orElse(null);
+        var patch = new Incident();
+        var changed = false;
+        var rStatus = runContext.render(status).as(IncidentStatus.class).orElse(null);
         if (rStatus != null) {
             patch.setStatus(rStatus.toGraph());
             changed = true;
         }
-        Classification rClassification = runContext.render(classification).as(Classification.class).orElse(null);
+        var rClassification = runContext.render(classification).as(Classification.class).orElse(null);
         if (rClassification != null) {
             patch.setClassification(rClassification.toGraph());
             changed = true;
         }
-        Determination rDetermination = runContext.render(determination).as(Determination.class).orElse(null);
+        var rDetermination = runContext.render(determination).as(Determination.class).orElse(null);
         if (rDetermination != null) {
             patch.setDetermination(rDetermination.toGraph());
             changed = true;
         }
-        String rAssignedTo = runContext.render(assignedTo).as(String.class).orElse(null);
+        var rAssignedTo = runContext.render(assignedTo).as(String.class).orElse(null);
         if (rAssignedTo != null) {
             patch.setAssignedTo(rAssignedTo);
             changed = true;
         }
-        List<String> rCustomTags = runContext.render(customTags).asList(String.class);
+        var rCustomTags = runContext.render(customTags).asList(String.class);
         if (customTags != null) {
             patch.setCustomTags(rCustomTags);
             changed = true;
         }
-        String rComment = runContext.render(comment).as(String.class).orElse(null);
+        var rComment = runContext.render(comment).as(String.class).orElse(null);
         if (!changed && rComment == null) {
             throw new IllegalArgumentException("Set at least one of status, classification, determination, assignedTo, customTags or comment");
         }
 
-        GraphServiceClient client = graphClient(runContext);
-        IncidentItemRequestBuilder incidentRequest = client.security().incidents().byIncidentId(rIncidentId);
+        var client = graphClient(runContext);
+        var incidentRequest = client.security().incidents().byIncidentId(rIncidentId);
         Incident updated = null;
-        try {
-            if (changed) {
+        if (changed) {
+            try {
                 updated = incidentRequest.patch(patch);
-                runContext.logger().info("Updated Defender incident '{}'", rIncidentId);
+            } catch (ApiException e) {
+                throw DefenderUtils.graphError(e, "update incident '%s'".formatted(rIncidentId));
             }
-            if (rComment != null) {
+            runContext.logger().info("Updated Defender incident '{}'", rIncidentId);
+        }
+        if (rComment != null) {
+            try {
                 addComment(client, rIncidentId, rComment);
-                runContext.logger().info("Added a comment to Defender incident '{}'", rIncidentId);
-                // Read the incident back so the output includes the new comment
-                updated = incidentRequest.get();
+            } catch (ApiException e) {
+                var error = DefenderUtils.graphError(e, "add the comment to incident '%s'".formatted(rIncidentId));
+                if (changed) {
+                    throw new IllegalStateException("%s The incident update was applied, only the comment is missing.".formatted(error.getMessage()), e);
+                }
+                throw error;
             }
-        } catch (ApiException e) {
-            throw DefenderUtils.graphError(e, "update incident '" + rIncidentId + "'");
+            runContext.logger().info("Added a comment to Defender incident '{}'", rIncidentId);
+            // The comment is posted, so a failed read-back must not fail the task: a retry would post it twice
+            try {
+                updated = incidentRequest.get();
+            } catch (ApiException e) {
+                runContext.logger().warn("Added the comment to Defender incident '{}' but could not read the incident back: {}",
+                    rIncidentId, DefenderUtils.graphError(e, "get incident '%s'".formatted(rIncidentId)).getMessage());
+            }
         }
 
         return Output.builder().incident(DefenderUtils.toMap(updated)).build();
     }
 
-    /**
-     * POST /security/incidents/{id}/comments. The SDK has no request builder for it, and the alert one sends the comment
-     * as a JSON array whereas the endpoint documents a single alertComment object, so the request is built here.
-     */
+    // The SDK has no builder for POST /security/incidents/{id}/comments that sends the single alertComment object the endpoint documents
     private static void addComment(GraphServiceClient client, String incidentId, String comment) throws Exception {
-        AlertComment alertComment = new AlertComment();
+        var alertComment = new AlertComment();
         alertComment.setComment(comment);
 
-        RequestInformation request = new RequestInformation();
+        var request = new RequestInformation();
         request.httpMethod = HttpMethod.POST;
-        request.setUri(new URI(client.getRequestAdapter().getBaseUrl() + "/security/incidents/"
-            + URLEncoder.encode(incidentId, StandardCharsets.UTF_8) + "/comments"));
+        request.setUri(new URI("%s/security/incidents/%s/comments".formatted(
+            client.getRequestAdapter().getBaseUrl(), URLEncoder.encode(incidentId, StandardCharsets.UTF_8))));
         request.headers.tryAdd("Accept", "application/json");
         request.setContentFromParsable(client.getRequestAdapter(), "application/json", alertComment);
 
-        HashMap<String, ParsableFactory<? extends Parsable>> errorMapping = new HashMap<>();
+        var errorMapping = new HashMap<String, ParsableFactory<? extends Parsable>>();
         errorMapping.put("XXX", ODataError::createFromDiscriminatorValue);
         client.getRequestAdapter().sendCollection(request, errorMapping, AlertComment::createFromDiscriminatorValue);
     }

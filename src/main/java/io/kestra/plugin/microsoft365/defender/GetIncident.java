@@ -69,7 +69,7 @@ public class GetIncident extends AbstractDefender implements RunnableTask<GetInc
 
     @Schema(
         title = "Include alerts",
-        description = "Expand the alerts of the incident (`$expand=alerts`)."
+        description = "Expand the alerts of the incident (`$expand=alerts`). Default `false`."
     )
     @Builder.Default
     @PluginProperty(group = "processing")
@@ -77,9 +77,9 @@ public class GetIncident extends AbstractDefender implements RunnableTask<GetInc
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        String rIncidentId = runContext.render(incidentId).as(String.class)
+        var rIncidentId = runContext.render(incidentId).as(String.class)
             .orElseThrow(() -> new IllegalArgumentException("incidentId is required"));
-        boolean rExpandAlerts = runContext.render(expandAlerts).as(Boolean.class).orElse(false);
+        var rExpandAlerts = runContext.render(expandAlerts).as(Boolean.class).orElse(false);
 
         Incident incident;
         try {
@@ -89,7 +89,7 @@ public class GetIncident extends AbstractDefender implements RunnableTask<GetInc
                 }
             });
         } catch (ApiException e) {
-            throw DefenderUtils.graphError(e, "get incident '" + rIncidentId + "'");
+            throw DefenderUtils.graphError(e, "get incident '%s'".formatted(rIncidentId));
         }
 
         return Output.builder().incident(DefenderUtils.toMap(incident)).build();

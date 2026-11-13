@@ -5,6 +5,7 @@ import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.utils.IdUtils;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
@@ -22,7 +23,7 @@ class AlertsTest extends AbstractDefenderTest {
 
     @Test
     void listAlertsCombinesFiltersAndStopsAtTop() throws Exception {
-        String nextLink = wm.baseUrl() + GRAPH + "/security/alerts_v2?$top=3&$skiptoken=page2";
+        var nextLink = wm.baseUrl() + GRAPH + "/security/alerts_v2?$top=3&$skiptoken=page2";
         wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
             .withQueryParam("$skiptoken", equalTo("page2"))
             .atPriority(1)
@@ -35,18 +36,18 @@ class AlertsTest extends AbstractDefenderTest {
             .willReturn(okJson("{\"value\":[" + alertJson("a1", "high", "new", "2026-10-24T10:00:00Z") + ","
                 + alertJson("a2", "high", "new", "2026-10-24T09:00:00Z") + "],\"@odata.nextLink\":\"" + nextLink + "\"}")));
 
-        ListAlerts task = withWireMock(ListAlerts.builder()
+        var task = withWireMock(ListAlerts.builder().id(IdUtils.create()).type(ListAlerts.class.getName())
             .filter(Property.ofValue("serviceSource eq 'microsoftDefenderForEndpoint'"))
             .severity(Property.ofValue(Severity.HIGH))
             .status(Property.ofValue(AlertStatus.NEW))
             .top(Property.ofValue(3))
             .build());
 
-        ListAlerts.Output output = task.run(runContext());
+        var output = task.run(runContext());
 
         assertThat(output.getCount(), is(3));
         assertThat(output.getAlerts().stream().map(a -> a.get("id")).toList(), contains("a1", "a2", "a3"));
-        Map<String, Object> first = output.getAlerts().getFirst();
+        var first = output.getAlerts().getFirst();
         assertThat(first.get("severity"), is("high"));
         assertThat(first.get("serviceSource"), is("microsoftDefenderForEndpoint"));
         assertThat(first.get("lastUpdateDateTime").toString(), startsWith("2026-10-24T10:00"));
@@ -60,15 +61,19 @@ class AlertsTest extends AbstractDefenderTest {
         wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
             .willReturn(okJson("{\"value\":[" + alertJson("a1", "low", "new", "2026-10-24T10:00:00Z") + "]}")));
 
-        ListAlerts task = withWireMock(ListAlerts.builder().fetchType(Property.ofValue(FetchType.STORE)).build());
-        RunContext runContext = runContext();
+        var task = withWireMock(ListAlerts.builder()
+            .id(IdUtils.create())
+            .type(ListAlerts.class.getName())
+            .fetchType(Property.ofValue(FetchType.STORE))
+            .build());
+        var runContext = runContext();
 
-        ListAlerts.Output output = task.run(runContext);
+        var output = task.run(runContext);
 
         assertThat(output.getCount(), is(1));
         assertThat(output.getAlerts(), nullValue());
         assertThat(output.getUri(), notNullValue());
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(runContext.storage().getFile(output.getUri())))) {
+        try (var reader = new BufferedReader(new InputStreamReader(runContext.storage().getFile(output.getUri())))) {
             assertThat(reader.readLine(), containsString("a1"));
         }
         wm.verify(getRequestedFor(urlPathEqualTo(GRAPH + "/security/alerts_v2")).withQueryParam("$top", equalTo("100")));
@@ -80,7 +85,11 @@ class AlertsTest extends AbstractDefenderTest {
             .willReturn(okJson("{\"value\":[" + alertJson("a1", "low", "new", "2026-10-24T10:00:00Z") + ","
                 + alertJson("a2", "low", "new", "2026-10-24T09:00:00Z") + "]}")));
 
-        ListAlerts.Output output = withWireMock(ListAlerts.builder().fetchType(Property.ofValue(FetchType.FETCH_ONE)).build()).run(runContext());
+        var output = withWireMock(ListAlerts.builder()
+            .id(IdUtils.create())
+            .type(ListAlerts.class.getName())
+            .fetchType(Property.ofValue(FetchType.FETCH_ONE))
+            .build()).run(runContext());
 
         assertThat(output.getAlert().get("id"), is("a1"));
         assertThat(output.getAlerts(), nullValue());
@@ -89,10 +98,18 @@ class AlertsTest extends AbstractDefenderTest {
     @Test
     void listAlertsRejectsInvalidValues() throws Exception {
         // A rendered value outside the enum fails before any call to Graph
-        ListAlerts badSeverity = withWireMock(ListAlerts.builder().severity(Property.ofExpression("{{ 'CRITICAL' }}")).build());
+        var badSeverity = withWireMock(ListAlerts.builder()
+            .id(IdUtils.create())
+            .type(ListAlerts.class.getName())
+            .severity(Property.ofExpression("{{ 'CRITICAL' }}"))
+            .build());
         assertThrows(IllegalVariableEvaluationException.class, () -> badSeverity.run(runContext()));
 
-        ListAlerts badTop = withWireMock(ListAlerts.builder().top(Property.ofValue(2001)).build());
+        var badTop = withWireMock(ListAlerts.builder()
+            .id(IdUtils.create())
+            .type(ListAlerts.class.getName())
+            .top(Property.ofValue(2001))
+            .build());
         assertThrows(IllegalArgumentException.class, () -> badTop.run(runContext()));
         wm.verify(0, getRequestedFor(anyUrl()));
     }
@@ -104,8 +121,8 @@ class AlertsTest extends AbstractDefenderTest {
                 .withHeader("Content-Type", "application/json")
                 .withBody("{\"error\":{\"code\":\"TooManyRequests\",\"message\":\"Too many requests\"}}")));
 
-        ListAlerts task = withWireMock(ListAlerts.builder().build());
-        IllegalStateException e = assertThrows(IllegalStateException.class, () -> task.run(runContext()));
+        var task = withWireMock(ListAlerts.builder().id(IdUtils.create()).type(ListAlerts.class.getName()).build());
+        var e = assertThrows(IllegalStateException.class, () -> task.run(runContext()));
 
         assertThat(e.getMessage(), containsString("HTTP 429"));
         assertThat(e.getMessage(), containsString("Retry-After: 1s"));
@@ -117,7 +134,11 @@ class AlertsTest extends AbstractDefenderTest {
         wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2/da123"))
             .willReturn(okJson(alertJson("da123", "medium", "inProgress", "2026-10-24T10:00:00Z"))));
 
-        GetAlert.Output output = withWireMock(GetAlert.builder().alertId(Property.ofValue("da123")).build()).run(runContext());
+        var output = withWireMock(GetAlert.builder()
+            .id(IdUtils.create())
+            .type(GetAlert.class.getName())
+            .alertId(Property.ofValue("da123"))
+            .build()).run(runContext());
 
         assertThat(output.getAlert().get("id"), is("da123"));
         assertThat(output.getAlert().get("status"), is("inProgress"));
@@ -129,13 +150,13 @@ class AlertsTest extends AbstractDefenderTest {
         wm.stubFor(patch(urlPathEqualTo(GRAPH + "/security/alerts_v2/da123"))
             .willReturn(okJson(alertJson("da123", "medium", "resolved", "2026-10-24T11:00:00Z"))));
 
-        UpdateAlert task = withWireMock(UpdateAlert.builder()
+        var task = withWireMock(UpdateAlert.builder().id(IdUtils.create()).type(UpdateAlert.class.getName())
             .alertId(Property.ofValue("da123"))
             .status(Property.ofValue(AlertStatus.RESOLVED))
             .classification(Property.ofValue(Classification.FALSE_POSITIVE))
             .build());
 
-        UpdateAlert.Output output = task.run(runContext());
+        var output = task.run(runContext());
 
         assertThat(output.getAlert().get("status"), is("resolved"));
         wm.verify(patchRequestedFor(urlPathEqualTo(GRAPH + "/security/alerts_v2/da123"))
@@ -147,10 +168,19 @@ class AlertsTest extends AbstractDefenderTest {
 
     @Test
     void updateAlertRequiresAProperty() throws Exception {
-        UpdateAlert task = withWireMock(UpdateAlert.builder().alertId(Property.ofValue("da123")).build());
+        var task = withWireMock(UpdateAlert.builder()
+            .id(IdUtils.create())
+            .type(UpdateAlert.class.getName())
+            .alertId(Property.ofValue("da123"))
+            .build());
         assertThrows(IllegalArgumentException.class, () -> task.run(runContext()));
 
-        UpdateAlert badStatus = withWireMock(UpdateAlert.builder().alertId(Property.ofValue("da123")).status(Property.ofExpression("{{ 'CLOSED' }}")).build());
+        var badStatus = withWireMock(UpdateAlert.builder()
+            .id(IdUtils.create())
+            .type(UpdateAlert.class.getName())
+            .alertId(Property.ofValue("da123"))
+            .status(Property.ofExpression("{{ 'CLOSED' }}"))
+            .build());
         assertThrows(IllegalVariableEvaluationException.class, () -> badStatus.run(runContext()));
         wm.verify(0, anyRequestedFor(anyUrl()));
     }

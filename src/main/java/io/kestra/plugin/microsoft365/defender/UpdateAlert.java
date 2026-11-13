@@ -99,27 +99,27 @@ public class UpdateAlert extends AbstractDefender implements RunnableTask<Update
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        String rAlertId = runContext.render(alertId).as(String.class)
+        var rAlertId = runContext.render(alertId).as(String.class)
             .orElseThrow(() -> new IllegalArgumentException("alertId is required"));
 
-        Alert patch = new Alert();
-        boolean changed = false;
-        AlertStatus rStatus = runContext.render(status).as(AlertStatus.class).orElse(null);
+        var patch = new Alert();
+        var changed = false;
+        var rStatus = runContext.render(status).as(AlertStatus.class).orElse(null);
         if (rStatus != null) {
             patch.setStatus(rStatus.toGraph());
             changed = true;
         }
-        Classification rClassification = runContext.render(classification).as(Classification.class).orElse(null);
+        var rClassification = runContext.render(classification).as(Classification.class).orElse(null);
         if (rClassification != null) {
             patch.setClassification(rClassification.toGraph());
             changed = true;
         }
-        Determination rDetermination = runContext.render(determination).as(Determination.class).orElse(null);
+        var rDetermination = runContext.render(determination).as(Determination.class).orElse(null);
         if (rDetermination != null) {
             patch.setDetermination(rDetermination.toGraph());
             changed = true;
         }
-        String rAssignedTo = runContext.render(assignedTo).as(String.class).orElse(null);
+        var rAssignedTo = runContext.render(assignedTo).as(String.class).orElse(null);
         if (rAssignedTo != null) {
             patch.setAssignedTo(rAssignedTo);
             changed = true;
@@ -132,7 +132,7 @@ public class UpdateAlert extends AbstractDefender implements RunnableTask<Update
         try {
             updated = graphClient(runContext).security().alertsV2().byAlertId(rAlertId).patch(patch);
         } catch (ApiException e) {
-            throw DefenderUtils.graphError(e, "update alert '" + rAlertId + "'");
+            throw DefenderUtils.graphError(e, "update alert '%s'".formatted(rAlertId));
         }
         runContext.logger().info("Updated Defender alert '{}'", rAlertId);
 

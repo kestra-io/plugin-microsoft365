@@ -2,9 +2,6 @@ package io.kestra.plugin.microsoft365.defender;
 
 import com.microsoft.graph.models.security.AlertClassification;
 
-/**
- * Classification of a Defender alert or incident, mapped to the Microsoft Graph `alertClassification` values.
- */
 public enum Classification implements GraphEnum {
     UNKNOWN(AlertClassification.Unknown),
     FALSE_POSITIVE(AlertClassification.FalsePositive),

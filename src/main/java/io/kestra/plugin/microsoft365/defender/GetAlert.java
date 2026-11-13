@@ -68,14 +68,14 @@ public class GetAlert extends AbstractDefender implements RunnableTask<GetAlert.
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        String rAlertId = runContext.render(alertId).as(String.class)
+        var rAlertId = runContext.render(alertId).as(String.class)
             .orElseThrow(() -> new IllegalArgumentException("alertId is required"));
 
         Alert alert;
         try {
             alert = graphClient(runContext).security().alertsV2().byAlertId(rAlertId).get();
         } catch (ApiException e) {
-            throw DefenderUtils.graphError(e, "get alert '" + rAlertId + "'");
+            throw DefenderUtils.graphError(e, "get alert '%s'".formatted(rAlertId));
         }
 
         return Output.builder().alert(DefenderUtils.toMap(alert)).build();

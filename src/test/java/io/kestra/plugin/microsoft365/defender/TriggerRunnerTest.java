@@ -46,17 +46,17 @@ class TriggerRunnerTest extends AbstractDefenderTest {
 
     @Test
     void schedulerFiresAFlowWithStoredAlertsAndDoesNotReplayThem() throws Exception {
-        RunContext runContext = runContextFactory.of(Map.of("flow", Map.of(
+        var runContext = runContextFactory.of(Map.of("flow", Map.of(
             "tenantId", MAIN_TENANT, "namespace", NAMESPACE, "id", FLOW_ID)));
-        Instant watermark = Instant.parse("2026-10-24T08:00:00Z");
-        Map<String, StatefulTriggerService.Entry> state = new HashMap<>();
+        var watermark = Instant.parse("2026-10-24T08:00:00Z");
+        var state = new HashMap<String, StatefulTriggerService.Entry>();
         state.put(Trigger.WATERMARK_KEY, new StatefulTriggerService.Entry(
             Trigger.WATERMARK_KEY, watermark.toString(), watermark, Instant.now()));
         StatefulTriggerService.writeState(runContext, STATE_KEY, state, Optional.empty());
         assertThat(StatefulTriggerService.readState(runContext, STATE_KEY, Optional.empty())
             .get(Trigger.WATERMARK_KEY).version(), is(watermark.toString()));
 
-        String nextLink = wm.baseUrl() + GRAPH + "/security/alerts_v2?$skiptoken=p2";
+        var nextLink = wm.baseUrl() + GRAPH + "/security/alerts_v2?$skiptoken=p2";
         wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
             .withQueryParam("$skiptoken", equalTo("p2"))
             .atPriority(1)
@@ -70,17 +70,17 @@ class TriggerRunnerTest extends AbstractDefenderTest {
         // Only authentication and the Graph base URL are replaced by TestableTrigger.
         // The scheduler, trigger worker, execution queue, executor and task worker are real.
         repositoryLoader.load(Objects.requireNonNull(getClass().getClassLoader().getResource("flows/defender-runner")));
-        Execution execution = runnerUtils.awaitFlowExecution(
+        var execution = runnerUtils.awaitFlowExecution(
             candidate -> candidate.getState().isTerminated(), MAIN_TENANT, NAMESPACE, FLOW_ID, Duration.ofSeconds(30));
 
         assertThat(execution.getState().getCurrent(), is(State.Type.SUCCESS));
         assertThat(execution.getTrigger().getId(), is("on_alert"));
-        Map<String, Object> variables = execution.getTrigger().getVariables();
+        var variables = execution.getTrigger().getVariables();
         assertThat(variables.get("count"), is(2));
         assertThat(variables, not(hasKey("items")));
-        URI uri = URI.create(variables.get("uri").toString());
-        try (InputStream input = runContext.storage().getFile(uri)) {
-            List<Object> items = FileSerde.readAll(input).collectList().block();
+        var uri = URI.create(variables.get("uri").toString());
+        try (var input = runContext.storage().getFile(uri)) {
+            var items = FileSerde.readAll(input).collectList().block();
             assertThat(items.stream().map(item -> ((Map<?, ?>) item).get("id")).toList(), contains("a1", "a2"));
         }
         assertThat(execution.getTaskRunList(), hasSize(1));

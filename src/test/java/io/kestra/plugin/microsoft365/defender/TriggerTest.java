@@ -44,10 +44,10 @@ class TriggerTest extends AbstractDefenderTest {
             {Duration.ofMinutes(5), Duration.ofMinutes(4)}
         };
         for (Duration[] durations : invalid) {
-            Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName())
+            var trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName())
                 .lookback(Property.ofValue(durations[0]))
                 .stateTtl(Property.ofValue(durations[1])).build();
-            Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+            var context = mock(trigger);
             assertThrows(IllegalArgumentException.class, () -> trigger.evaluate(context.getKey(), context.getValue()));
             assertThat(state(context).isEmpty(), is(true));
         }
@@ -56,21 +56,21 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void permitsZeroLookbackWithPositiveTtl() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName())
+        var trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName())
             .lookback(Property.ofValue(Duration.ZERO)).stateTtl(Property.ofValue(Duration.ofHours(1))).build();
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        var context = mock(trigger);
         assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
         assertThat(state(context), hasKey(Trigger.WATERMARK_KEY));
     }
 
     @Test
     void expiredEntryInsideLookbackIsRefreshedWithoutFiringAgain() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        var trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
+        var context = mock(trigger);
         seedWatermark(context, "2026-10-24T09:00:00Z");
-        Map<String, StatefulTriggerService.Entry> entries = state(context);
-        Instant modifiedAt = Instant.parse("2026-10-24T08:58:00Z");
-        Instant expired = Instant.now().minus(Duration.ofDays(8));
+        var entries = state(context);
+        var modifiedAt = Instant.parse("2026-10-24T08:58:00Z");
+        var expired = Instant.now().minus(Duration.ofDays(8));
         entries.put("a1", new StatefulTriggerService.Entry("a1", modifiedAt.toString(), modifiedAt, expired));
         entries.put("outside_window", new StatefulTriggerService.Entry("outside_window", "old",
             Instant.parse("2026-10-24T08:00:00Z"), expired));
@@ -78,16 +78,38 @@ class TriggerTest extends AbstractDefenderTest {
         stubAlerts("lastUpdateDateTime ge 2026-10-24T08:55:00.0000000Z",
             alertJson("a1", "high", "new", modifiedAt.toString()));
 
-        Instant before = Instant.now();
+        var before = Instant.now();
         assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
-        Map<String, StatefulTriggerService.Entry> refreshed = state(context);
+        var refreshed = state(context);
         assertThat(refreshed.get("a1").lastSeenAt(), greaterThanOrEqualTo(before));
         assertThat(refreshed, not(hasKey("outside_window")));
 
-        // Unchanged items must refresh their lastSeenAt on every subsequent poll too.
-        Instant firstSeen = refreshed.get("a1").lastSeenAt();
+        // Unchanged items must refresh their lastSeenAt on every poll: with an older lastSeenAt seeded, a missing refresh fails
+        var stale = Instant.now().minus(Duration.ofHours(1));
+        var a1 = refreshed.get("a1");
+        refreshed.put("a1", new StatefulTriggerService.Entry("a1", a1.version(), a1.modifiedAt(), stale));
+        StatefulTriggerService.writeState(runContext(context), key(context), refreshed, Optional.empty());
+        var beforeSecondPoll = Instant.now();
         assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
-        assertThat(state(context).get("a1").lastSeenAt(), greaterThanOrEqualTo(firstSeen));
+        assertThat(state(context).get("a1").lastSeenAt(), greaterThanOrEqualTo(beforeSecondPoll));
+    }
+
+    @Test
+    void invalidDurationMessagesGiveTheValuesAndTheFix() throws Exception {
+        assertThat(invalidDurationMessage(Duration.ofSeconds(-1), Duration.ofDays(7)),
+            is("lookback (PT-1S) must be zero or positive. Set lookback to PT0S or longer."));
+        assertThat(invalidDurationMessage(Duration.ZERO, Duration.ZERO),
+            is("stateTtl (PT0S) must be positive. Set stateTtl to a positive duration such as P7D."));
+        assertThat(invalidDurationMessage(Duration.ofMinutes(5), Duration.ofMinutes(5)),
+            is("stateTtl (PT5M) must be longer than lookback (PT5M). Increase stateTtl or reduce lookback."));
+    }
+
+    private String invalidDurationMessage(Duration lookback, Duration stateTtl) {
+        var trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName())
+            .lookback(Property.ofValue(lookback))
+            .stateTtl(Property.ofValue(stateTtl)).build();
+        var context = mock(trigger);
+        return assertThrows(IllegalArgumentException.class, () -> trigger.evaluate(context.getKey(), context.getValue())).getMessage();
     }
 
     private Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> mock(Trigger trigger) {
@@ -108,9 +130,13 @@ class TriggerTest extends AbstractDefenderTest {
     }
 
     private static void seedWatermark(Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context, String watermark) {
-        Map<String, StatefulTriggerService.Entry> state = new HashMap<>();
-        Instant instant = Instant.parse(watermark);
-        state.put(Trigger.WATERMARK_KEY, new StatefulTriggerService.Entry(Trigger.WATERMARK_KEY, instant.toString(), instant, Instant.now()));
+        seedWatermark(context, Trigger.WATERMARK_KEY, watermark);
+    }
+
+    private static void seedWatermark(Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context, String watermarkKey, String watermark) {
+        var state = new HashMap<String, StatefulTriggerService.Entry>();
+        var instant = Instant.parse(watermark);
+        state.put(watermarkKey, new StatefulTriggerService.Entry(watermarkKey, instant.toString(), instant, Instant.now()));
         StatefulTriggerService.writeState(runContext(context), key(context), state, Optional.empty());
     }
 
@@ -119,8 +145,8 @@ class TriggerTest extends AbstractDefenderTest {
     }
 
     private static List<Object> storedItems(Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context, Execution execution) throws Exception {
-        URI uri = URI.create(execution.getTrigger().getVariables().get("uri").toString());
-        try (InputStream inputStream = runContext(context).storage().getFile(uri)) {
+        var uri = URI.create(execution.getTrigger().getVariables().get("uri").toString());
+        try (var inputStream = runContext(context).storage().getFile(uri)) {
             return FileSerde.readAll(inputStream).collectList().block();
         }
     }
@@ -134,11 +160,11 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void firstPollStoresWatermarkWithoutFiring() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
-        Instant before = Instant.now();
+        var trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
+        var context = mock(trigger);
+        var before = Instant.now();
 
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        var execution = trigger.evaluate(context.getKey(), context.getValue());
 
         assertThat(execution.isPresent(), is(false));
         assertThat(Instant.parse(watermark(context)), greaterThanOrEqualTo(before.minusSeconds(1)));
@@ -147,15 +173,15 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void firesForAlertsSinceWatermarkMinusLookbackAndStoresThem() throws Exception {
-        Trigger trigger = TestableTrigger.builder()
+        var trigger = TestableTrigger.builder()
             .id(IdUtils.create())
             .type(Trigger.class.getName())
             .severity(Property.ofValue(Severity.HIGH))
             .build();
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        var context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
 
-        String nextLink = wm.baseUrl() + GRAPH + "/security/alerts_v2?$skiptoken=p2";
+        var nextLink = wm.baseUrl() + GRAPH + "/security/alerts_v2?$skiptoken=p2";
         wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
             .withQueryParam("$skiptoken", equalTo("p2"))
             .atPriority(1)
@@ -167,13 +193,13 @@ class TriggerTest extends AbstractDefenderTest {
             .willReturn(okJson("{\"value\":[" + alertJson("a1", "high", "new", "2026-10-24T10:30:00.1234567Z") + "],"
                 + "\"@odata.nextLink\":\"" + nextLink + "\"}")));
 
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        var execution = trigger.evaluate(context.getKey(), context.getValue());
 
         assertThat(execution.isPresent(), is(true));
-        Map<String, Object> variables = execution.get().getTrigger().getVariables();
+        var variables = execution.get().getTrigger().getVariables();
         assertThat(variables.get("count"), is(2));
         assertThat(variables, not(hasKey("items")));
-        List<Object> items = storedItems(context, execution.get());
+        var items = storedItems(context, execution.get());
         assertThat(items.stream().map(item -> ((Map<?, ?>) item).get("id")).toList(), contains("a1", "a2"));
         // the max lastUpdateDateTime across all pages, not the first item of the last page
         assertThat(watermark(context), is("2026-10-24T10:30:00.123456700Z"));
@@ -181,12 +207,12 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void sameTimestampAndLateIndexedAlertsFireOnceEach() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        var trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
+        var context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
 
         stubAlerts("lastUpdateDateTime ge 2026-10-24T07:55:00.0000000Z", alertJson("a1", "high", "new", "2026-10-24T09:00:00Z"));
-        Optional<Execution> first = trigger.evaluate(context.getKey(), context.getValue());
+        var first = trigger.evaluate(context.getKey(), context.getValue());
         assertThat(first.isPresent(), is(true));
         assertThat(first.get().getTrigger().getVariables().get("count"), is(1));
 
@@ -195,48 +221,85 @@ class TriggerTest extends AbstractDefenderTest {
             alertJson("a1", "high", "new", "2026-10-24T09:00:00Z"),
             alertJson("a2", "high", "new", "2026-10-24T09:00:00Z"),
             alertJson("a3", "high", "new", "2026-10-24T08:58:00Z"));
-        Optional<Execution> second = trigger.evaluate(context.getKey(), context.getValue());
+        var second = trigger.evaluate(context.getKey(), context.getValue());
         assertThat(second.isPresent(), is(true));
         assertThat(storedItems(context, second.get()).stream().map(item -> ((Map<?, ?>) item).get("id")).toList(), contains("a2", "a3"));
 
         // nothing new: no execution, a1 to a3 are not fired twice
-        Optional<Execution> third = trigger.evaluate(context.getKey(), context.getValue());
+        var third = trigger.evaluate(context.getKey(), context.getValue());
         assertThat(third.isPresent(), is(false));
         assertThat(watermark(context), is("2026-10-24T09:00:00Z"));
     }
 
     @Test
     void onCreateIgnoresUpdatesOfSeenAlerts() throws Exception {
-        Trigger trigger = TestableTrigger.builder()
+        var trigger = TestableTrigger.builder()
             .id(IdUtils.create())
             .type(Trigger.class.getName())
             .on(Property.ofValue(StatefulTriggerInterface.On.CREATE))
             .build();
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
-        seedWatermark(context, "2026-10-24T08:00:00Z");
+        var context = mock(trigger);
+        seedWatermark(context, Trigger.CREATED_WATERMARK_KEY, "2026-10-24T08:00:00Z");
 
-        stubAlerts("lastUpdateDateTime ge 2026-10-24T07:55:00.0000000Z", alertJson("a1", "high", "new", "2026-10-24T09:00:00Z"));
+        stubAlerts("createdDateTime ge 2026-10-24T07:55:00.0000000Z", alertJson("a1", "high", "new", "2026-10-24T09:00:00Z"));
         assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(true));
 
-        stubAlerts("lastUpdateDateTime ge 2026-10-24T08:55:00.0000000Z", alertJson("a1", "high", "resolved", "2026-10-24T09:30:00Z"));
+        stubAlerts("createdDateTime ge 2026-10-24T08:55:00.0000000Z",
+            alertJson("a1", "high", "resolved", "2026-10-24T09:00:00Z", "2026-10-24T09:30:00Z"));
         assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
-        assertThat(watermark(context), is("2026-10-24T09:30:00Z"));
+        assertThat(state(context).get(Trigger.CREATED_WATERMARK_KEY).version(), is("2026-10-24T09:00:00Z"));
+    }
+
+    @Test
+    void onCreateDoesNotFireAgainForAForgottenAlertThatChanges() throws Exception {
+        var trigger = TestableTrigger.builder()
+            .id(IdUtils.create())
+            .type(Trigger.class.getName())
+            .on(Property.ofValue(StatefulTriggerInterface.On.CREATE))
+            .build();
+        var context = mock(trigger);
+        // a1 was fired long ago and is forgotten after stateTtl; both watermarks are seeded so the previous lastUpdateDateTime polling would run too
+        var watermark = Instant.parse("2026-10-24T09:00:00Z");
+        var created = Instant.parse("2026-10-10T09:00:00Z");
+        var expired = Instant.now().minus(Duration.ofDays(8));
+        var state = new HashMap<String, StatefulTriggerService.Entry>();
+        state.put(Trigger.WATERMARK_KEY, new StatefulTriggerService.Entry(Trigger.WATERMARK_KEY, watermark.toString(), watermark, Instant.now()));
+        state.put(Trigger.CREATED_WATERMARK_KEY, new StatefulTriggerService.Entry(Trigger.CREATED_WATERMARK_KEY, watermark.toString(), watermark, Instant.now()));
+        state.put("a1", new StatefulTriggerService.Entry("a1", created.toString(), created, expired));
+        StatefulTriggerService.writeState(runContext(context), key(context), state, Optional.empty());
+
+        // a1 changes again at 09:30: only a lastUpdateDateTime query returns it
+        var a1 = alertJson("a1", "high", "resolved", "2026-10-10T09:00:00Z", "2026-10-24T09:30:00Z");
+        var a2 = alertJson("a2", "high", "new", "2026-10-24T09:01:00Z", "2026-10-24T09:01:00Z");
+        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+            .withQueryParam("$filter", equalTo("createdDateTime ge 2026-10-24T08:55:00.0000000Z"))
+            .willReturn(okJson("{\"value\":[" + a2 + "]}")));
+        wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
+            .withQueryParam("$filter", equalTo("lastUpdateDateTime ge 2026-10-24T08:55:00.0000000Z"))
+            .willReturn(okJson("{\"value\":[" + a1 + "," + a2 + "]}")));
+
+        var execution = trigger.evaluate(context.getKey(), context.getValue())
+            .orElseThrow(() -> new AssertionError("Expected an execution for a2"));
+
+        assertThat(storedItems(context, execution).stream().map(item -> ((Map<?, ?>) item).get("id")).toList(), contains("a2"));
+        assertThat(state(context), not(hasKey("a1")));
+        assertThat(state(context).get(Trigger.CREATED_WATERMARK_KEY).version(), is("2026-10-24T09:01:00Z"));
     }
 
     @Test
     void pollsIncidentsAndDoesNotFireWhenNothingChanged() throws Exception {
-        Trigger trigger = TestableTrigger.builder()
+        var trigger = TestableTrigger.builder()
             .id(IdUtils.create())
             .type(Trigger.class.getName())
             .resource(Property.ofValue(Trigger.Resource.INCIDENTS))
             .build();
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        var context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
         wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/incidents"))
             .withQueryParam("$filter", equalTo("lastUpdateDateTime ge 2026-10-24T07:55:00.0000000Z"))
             .willReturn(okJson("{\"value\":[]}")));
 
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        var execution = trigger.evaluate(context.getKey(), context.getValue());
 
         assertThat(execution.isPresent(), is(false));
         assertThat(watermark(context), is("2026-10-24T08:00:00Z"));
@@ -245,11 +308,11 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void throttlingSkipsThePollAndKeepsTheState() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        var trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
+        var context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
 
-        String nextLink = wm.baseUrl() + GRAPH + "/security/alerts_v2?$skiptoken=p2";
+        var nextLink = wm.baseUrl() + GRAPH + "/security/alerts_v2?$skiptoken=p2";
         wm.stubFor(get(urlPathEqualTo(GRAPH + "/security/alerts_v2"))
             .withQueryParam("$skiptoken", equalTo("p2"))
             .atPriority(1)
@@ -259,7 +322,7 @@ class TriggerTest extends AbstractDefenderTest {
             .willReturn(okJson("{\"value\":[" + alertJson("a1", "high", "new", "2026-10-24T10:00:00Z") + "],"
                 + "\"@odata.nextLink\":\"" + nextLink + "\"}")));
 
-        Optional<Execution> execution = trigger.evaluate(context.getKey(), context.getValue());
+        var execution = trigger.evaluate(context.getKey(), context.getValue());
 
         assertThat(execution.isPresent(), is(false));
         assertThat(watermark(context), is("2026-10-24T08:00:00Z"));
@@ -269,13 +332,13 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void executionCreationFailureKeepsStateSoNextPollRetries() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        var trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
+        var context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
         stubAlerts("lastUpdateDateTime ge 2026-10-24T07:55:00.0000000Z",
             alertJson("a1", "high", "new", "2026-10-24T09:00:00Z"));
 
-        try (MockedStatic<TriggerService> service = mockStatic(TriggerService.class)) {
+        try (var service = mockStatic(TriggerService.class)) {
             service.when(() -> TriggerService.generateExecution(
                 org.mockito.ArgumentMatchers.eq(trigger),
                 org.mockito.ArgumentMatchers.eq(context.getKey()),
@@ -288,18 +351,18 @@ class TriggerTest extends AbstractDefenderTest {
 
         assertThat(watermark(context), is("2026-10-24T08:00:00Z"));
         assertThat(state(context), not(hasKey("a1")));
-        Optional<Execution> retry = trigger.evaluate(context.getKey(), context.getValue());
+        var retry = trigger.evaluate(context.getKey(), context.getValue());
         assertThat(retry.isPresent(), is(true));
         assertThat(storedItems(context, retry.get()).stream().map(item -> ((Map<?, ?>) item).get("id")).toList(), contains("a1"));
     }
 
     @Test
     void lookbackDoesNotReplayItemsFromBeforeTheFirstPoll() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        var trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
+        var context = mock(trigger);
         assertThat(trigger.evaluate(context.getKey(), context.getValue()).isPresent(), is(false));
-        Instant start = Instant.parse(watermark(context));
-        String filter = "lastUpdateDateTime ge " + DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS'Z'")
+        var start = Instant.parse(watermark(context));
+        var filter = "lastUpdateDateTime ge " + DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS'Z'")
             .withZone(ZoneOffset.UTC).format(start);
         stubAlerts(filter);
 
@@ -311,16 +374,16 @@ class TriggerTest extends AbstractDefenderTest {
 
     @Test
     void largeBacklogIsStoredWithoutEmbeddingItemsInTheExecution() throws Exception {
-        Trigger trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
-        Map.Entry<ConditionContext, io.kestra.core.models.triggers.Trigger> context = mock(trigger);
+        var trigger = TestableTrigger.builder().id(IdUtils.create()).type(Trigger.class.getName()).build();
+        var context = mock(trigger);
         seedWatermark(context, "2026-10-24T08:00:00Z");
-        String[] alerts = new String[2000];
+        var alerts = new String[2000];
         for (int i = 0; i < alerts.length; i++) {
             alerts[i] = alertJson("alert_" + i, "high", "new", "2026-10-24T09:00:00Z");
         }
         stubAlerts("lastUpdateDateTime ge 2026-10-24T07:55:00.0000000Z", alerts);
 
-        Execution execution = trigger.evaluate(context.getKey(), context.getValue())
+        var execution = trigger.evaluate(context.getKey(), context.getValue())
             .orElseThrow(() -> new AssertionError("Expected a backlog execution"));
 
         assertThat(execution.getTrigger().getVariables().get("count"), is(alerts.length));
